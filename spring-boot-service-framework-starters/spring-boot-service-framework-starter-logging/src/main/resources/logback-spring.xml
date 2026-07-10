@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty name="SMB_LOG_LEVEL"
+                    scope="context"
+                    source="smbtech.logging.level"
+                    defaultValue="INFO"/>
+    <springProperty name="ASYNC_ENABLED"
+                    scope="context"
+                    source="smbtech.logging.async.enabled"
+                    defaultValue="true"/>
+    <springProperty name="ASYNC_QUEUE_SIZE"
+                    scope="context"
+                    source="smbtech.logging.async.queue-size"
+                    defaultValue="2048"/>
+    <springProperty name="ASYNC_DISCARDING_THRESHOLD"
+                    scope="context"
+                    source="smbtech.logging.async.discarding-threshold"
+                    defaultValue="0"/>
+    <springProperty name="ASYNC_NEVER_BLOCK"
+                    scope="context"
+                    source="smbtech.logging.async.never-block"
+                    defaultValue="false"/>
+    <springProperty name="ASYNC_MAX_FLUSH_TIME"
+                    scope="context"
+                    source="smbtech.logging.async.max-flush-time-ms"
+                    defaultValue="1000"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>com.smbtech.serviceframework.starter.logging.adapter.out.logback.SmbStructuredLogFormatter</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>${ASYNC_QUEUE_SIZE}</queueSize>
+        <discardingThreshold>${ASYNC_DISCARDING_THRESHOLD}</discardingThreshold>
+        <neverBlock>${ASYNC_NEVER_BLOCK}</neverBlock>
+        <maxFlushTime>${ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="STDOUT"/>
+    </appender>
+
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>ASYNC_ENABLED</key>
+        <value>true</value>
+    </condition>
+    <if>
+        <then>
+            <root level="${SMB_LOG_LEVEL}">
+                <appender-ref ref="ASYNC"/>
+            </root>
+        </then>
+        <else>
+            <root level="${SMB_LOG_LEVEL}">
+                <appender-ref ref="STDOUT"/>
+            </root>
+        </else>
+    </if>
+</configuration>

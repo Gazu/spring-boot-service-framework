@@ -1,0 +1,81 @@
+# Gradle
+.gradle/
+build/
+/out/
+/classes/
+
+# Java archives and generated packages
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle wrapper runtime files
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Spring Boot and application logs
+logs/
+log/
+*.log
+*.log.*
+spring.log
+application.log
+
+# Runtime and temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.pid
+*.seed
+*.stackdump
+
+# Test and coverage reports
+coverage/
+.coverage/
+htmlcov/
+jacoco.exec
+test-results/
+
+# IDEs and editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+.factorypath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+application-default.yml
+application-default.yaml
+application-default.properties
+!application-default.example.yml
+!application-default.example.yaml
+!application-default.example.properties
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+*.crt
+
+# Maven local outputs, if any module or example uses Maven later
+target/
+
+# Node artifacts, useful for documentation or example frontends
+node_modules/
+dist/
+.next/
+.nuxt/

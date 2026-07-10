@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: logging-consumer-example
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: B3
+
+smbtech:
+  logging:
+    production: false
+    level: INFO
+    async:
+      enabled: false
+    transaction:
+      enabled: true

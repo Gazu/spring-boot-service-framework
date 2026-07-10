@@ -1,0 +1,101 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+description = 'Framework-independent structured logging domain and ports'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.register('verifyHexagonalBoundaries') {
+    group = 'verification'
+    description = 'Ensures the logging core does not import framework or adapter APIs.'
+    inputs.files(fileTree('src/main/java') {
+        include '**/*.java'
+    })
+
+    doLast {
+        def forbiddenImports = [
+                'org.springframework.',
+                'org.slf4j.',
+                'ch.qos.logback.',
+                'jakarta.servlet.',
+                'com.fasterxml.jackson.'
+        ]
+        def violations = []
+        inputs.files.files.each { source ->
+            source.eachLine { line, number ->
+                def trimmed = line.trim()
+                if (trimmed.startsWith('import ') &&
+                        forbiddenImports.any { trimmed.contains(it) }) {
+                    violations << "${source}:$number: $trimmed"
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException(
+                    "Hexagonal boundary violations:\n" + violations.join('\n')
+            )
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyHexagonalBoundaries')
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'Spring Boot Service Framework - Logging Core'
+                description = project.description
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = layout.buildDirectory.dir('repository')
+        }
+
+        def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
+                .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
+                .orNull
+        if (privateRepositoryUrl) {
+            maven {
+                name = 'privateRegistry'
+                url = uri(privateRepositoryUrl)
+                credentials {
+                    username = providers.gradleProperty('privateMavenUsername')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
+                            .getOrElse('')
+                    password = providers.gradleProperty('privateMavenPassword')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
+                            .getOrElse('')
+                }
+            }
+        }
+    }
+}

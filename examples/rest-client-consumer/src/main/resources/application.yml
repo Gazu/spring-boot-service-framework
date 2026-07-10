@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: rest-client-consumer-example
+  security:
+    oauth2:
+      client:
+        provider:
+          my-provider:
+            token-uri: ${TOKEN_URI}
+        registration:
+          payments-token:
+            provider: my-provider
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - payment.read
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: B3
+
+smbtech:
+  rest-clients:
+    clients:
+      payments:
+        base-url: http://localhost:9999
+        authentication-type: CLIENT_CREDENTIALS
+        credential-token-requestor-id: payments-token
+        default-headers:
+          X-Application-Name: rest-client-consumer-example
+        scopes: payment.read
+        resilience:
+          enabled: false
+          retry:
+            enabled: true
+            max-attempts: 2
+            backoff: 10ms
+            retry-on-statuses: [429]
+          circuit-breaker:
+            enabled: true
+            failure-threshold: 3
+            open-duration: 30s
+        observability:
+          enabled: false
+          metric-name: smbtech.http.client.requests
+          include-uri: false
+          include-status: true
+          include-exception: true
+          tags:
+            system: payments
+            layer: integration
+        audit:
+          enabled: true
+          include-request: true
+          include-response: true
+          include-headers: true
+          include-body: true
+          max-body-size: 4096

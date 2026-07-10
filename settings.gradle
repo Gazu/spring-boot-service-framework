@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'spring-boot-service-framework'
+
+include 'spring-boot-service-framework-commons'
+include 'spring-boot-service-framework-logging-core'
+include 'spring-boot-service-framework-http-client-core'
+include 'spring-boot-service-framework-mock-core'
+include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging'
+include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
+include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock'

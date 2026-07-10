@@ -1,0 +1,65 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = 'com.smbtech'
+    version = '0.1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+tasks.register('baseline') {
+    group = 'verification'
+    description = 'Compiles and tests every framework module.'
+    dependsOn(
+            ':spring-boot-service-framework-logging-core:check',
+            ':spring-boot-service-framework-http-client-core:check',
+            ':spring-boot-service-framework-mock-core:check',
+            ':spring-boot-service-framework-commons:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check'
+    )
+}
+
+tasks.register('publishLocalArtifacts') {
+    group = 'publishing'
+    description = 'Publishes every framework artifact into module-local Maven repositories.'
+    dependsOn(
+            ':spring-boot-service-framework-logging-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-http-client-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-mock-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-commons:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:publishAllPublicationsToLocalBuildRepository'
+    )
+}
+
+tasks.register('loggingConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds the standalone logging example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/logging-consumer')
+    tasks = ['clean', 'test']
+}
+
+tasks.register('restClientConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds the standalone REST client example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/rest-client-consumer')
+    tasks = ['clean', 'test']
+}
+
+tasks.register('consumerSmoke') {
+    group = 'verification'
+    description = 'Builds all standalone consumer examples against the published Maven artifacts.'
+    dependsOn(
+            tasks.named('loggingConsumerSmoke'),
+            tasks.named('restClientConsumerSmoke')
+    )
+}

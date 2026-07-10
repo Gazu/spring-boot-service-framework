@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.smbtech.examples'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def frameworkRoot = file('../..')
+
+repositories {
+    maven {
+        name = 'starterBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/build/repository")
+    }
+    maven {
+        name = 'starterBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/build/repository")
+    }
+    maven {
+        name = 'httpClientCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-http-client-core/build/repository")
+    }
+    maven {
+        name = 'commonsBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-commons/build/repository")
+    }
+    maven {
+        name = 'loggingCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-logging-core/build/repository")
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-micrometer-tracing-brave'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.1.0-SNAPSHOT'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

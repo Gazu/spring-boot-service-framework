@@ -1,0 +1,11 @@
+{
+  "status": 201,
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Mock": "true"
+  },
+  "body": {
+    "id": "pay-123",
+    "status": "MOCKED"
+  }
+}
