@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorCategory;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
+import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
 import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecodingException;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class HttpErrorBodyDecoderTest {
 
     private final HttpErrorBodyDecoder decoder = new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules());
+
+    @Test
+    void implementsCoreBodyReaderContract() {
+        assertThat(decoder).isInstanceOf(HttpErrorResponseBodyReader.class);
+    }
 
     @Test
     void decodesCompleteExceptionBodyIntoClass() {
@@ -49,10 +56,58 @@ class HttpErrorBodyDecoderTest {
     }
 
     @Test
+    void readsErrorBodyIntoClassThroughCoreContract() {
+        HttpErrorResponse error = error("{\"code\":\"DOWNSTREAM_ERROR\",\"message\":\"contract\"}");
+
+        ErrorPayload payload = decoder.read(error, ErrorPayload.class);
+
+        assertThat(payload.code()).isEqualTo("DOWNSTREAM_ERROR");
+        assertThat(payload.message()).isEqualTo("contract");
+    }
+
+    @Test
+    void readsErrorBodyIntoGenericTypeThroughCoreContract() {
+        HttpErrorResponse error = error("""
+                {"errors":[{"code":"A"},{"code":"B"}]}
+                """);
+        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {
+        }.getType();
+
+        Map<String, List<Map<String, String>>> payload = decoder.read(error, type);
+
+        assertThat(payload.get("errors"))
+                .extracting(item -> item.get("code"))
+                .containsExactly("A", "B");
+    }
+
+    @Test
+    void decodesErrorBodyIntoGenericType() {
+        HttpErrorResponse error = error("""
+                {"errors":[{"code":"A"},{"code":"B"}]}
+                """);
+        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {
+        }.getType();
+
+        Map<String, List<Map<String, String>>> payload = decoder.decode(error, type);
+
+        assertThat(payload.get("errors"))
+                .extracting(item -> item.get("code"))
+                .containsExactly("A", "B");
+    }
+
+    @Test
     void returnsEmptyWhenBodyIsNotPresent() {
         HttpClientResponseException exception = new HttpClientResponseException(error(""));
 
         assertThat(decoder.decodeIfPresent(exception, ErrorPayload.class)).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyForTypeReferenceWhenBodyIsNotPresent() {
+        HttpClientResponseException exception = new HttpClientResponseException(error(""));
+
+        assertThat(decoder.decodeIfPresent(exception, new TypeReference<Map<String, Object>>() {
+        })).isEmpty();
     }
 
     @Test
@@ -63,6 +118,18 @@ class HttpErrorBodyDecoderTest {
                 .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
                     assertThat(decodingException.error()).isSameAs(exception.error());
                     assertThat(decodingException.getMessage()).contains("status=400");
+                });
+    }
+
+    @Test
+    void throwsSafeExceptionWhenBodyIsMissingAndReadIsRequiredThroughCoreContract() {
+        HttpErrorResponse error = error("");
+
+        assertThatThrownBy(() -> decoder.read(error, ErrorPayload.class))
+                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
+                    assertThat(decodingException.error()).isSameAs(error);
+                    assertThat(decodingException.getMessage())
+                            .contains("HTTP error response does not contain a body");
                 });
     }
 
@@ -78,6 +145,40 @@ class HttpErrorBodyDecoderTest {
                     assertThat(decodingException.getMessage()).contains("target=");
                     assertThat(decodingException.getMessage()).doesNotContain("should-not-appear");
                 });
+    }
+
+    @Test
+    void throwsSafeExceptionWithoutLeakingInvalidBodyWhenReadingGenericType() {
+        HttpErrorResponse error = error("""
+                {"secret":"should-not-appear"
+                """);
+        Type type = new TypeReference<Map<String, Object>>() {
+        }.getType();
+
+        assertThatThrownBy(() -> decoder.read(error, type))
+                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
+                    assertThat(decodingException.error()).isSameAs(error);
+                    assertThat(decodingException.getMessage()).contains("target=");
+                    assertThat(decodingException.getMessage()).doesNotContain("should-not-appear");
+                });
+    }
+
+    @Test
+    void rejectsNullClassType() {
+        HttpErrorResponse error = error("{}");
+
+        assertThatThrownBy(() -> decoder.decode(error, (Class<ErrorPayload>) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("type must not be null");
+    }
+
+    @Test
+    void rejectsNullGenericType() {
+        HttpErrorResponse error = error("{}");
+
+        assertThatThrownBy(() -> decoder.decode(error, (Type) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("type must not be null");
     }
 
     private HttpErrorResponse error(String body) {

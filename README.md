@@ -76,12 +76,27 @@ Logback, Servlet, Jackson, or Apache HttpClient APIs.
 | Module | Purpose | Main public API / docs |
 |---|---|---|
 | `spring-boot-service-framework-commons` | Framework-neutral utilities, notification model, notifying exceptions, marker/type enums, and temporary logging compatibility classes. | [spring-boot-service-framework-commons/README.md](spring-boot-service-framework-commons/README.md) |
-| `spring-boot-service-framework-logging-core` | Immutable structured logging domain, application service, and ports. | `StructuredEvent`, `StructuredLogger`, `StructuredLoggerFactory` |
+| `spring-boot-service-framework-logging-core` | Immutable structured logging domain, application service, and ports. | [spring-boot-service-framework-logging-core/README.md](spring-boot-service-framework-logging-core/README.md) |
 | `spring-boot-service-framework-http-client-core` | HTTP client domain, policies, token definitions, ports, notifications, and inspectable downstream exceptions without Spring dependencies. | [spring-boot-service-framework-http-client-core/README.md](spring-boot-service-framework-http-client-core/README.md) |
 | `spring-boot-service-framework-mock-core` | Framework-neutral mock domain and exceptions, intended to evolve into a reusable mock responder core. | [spring-boot-service-framework-mock-core/README.md](spring-boot-service-framework-mock-core/README.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging` | Spring Boot starter for structured JSON logging, MDC correlation, servlet transaction filter, and Logback output. | [spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md](spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client` | Spring Boot starter for configured `RestClient` beans, API client proxies, authentication, SSL, audit, observability, and optional resilience. | [docs/rest-client.md](docs/rest-client.md) |
-| `spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock` | Spring Boot starter for configured mock response loading from classpath or file resources. | [spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md](spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md) |
+| `spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock` | Spring Boot starter for configured mock response loading from classpath or file resources. | [docs/mock.md](docs/mock.md) |
+
+---
+
+## Feature Map
+
+| Feature | Use this module | Start here |
+|---|---|---|
+| Structured JSON logging in a Spring Boot service | `spring-boot-service-framework-starter-logging` | [Logging starter README](spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md) |
+| Framework-neutral logging model and ports | `spring-boot-service-framework-logging-core` | [Logging core README](spring-boot-service-framework-logging-core/README.md) |
+| Named outbound `RestClient` beans and declarative HTTP APIs | `spring-boot-service-framework-starter-rest-client` | [REST client guide](docs/rest-client.md) |
+| HTTP client domain model, policies, ports, and exceptions | `spring-boot-service-framework-http-client-core` | [HTTP client core README](spring-boot-service-framework-http-client-core/README.md) |
+| Mock responses for controllers or outbound `RestClient` calls | `spring-boot-service-framework-starter-mock` | [Mock guide](docs/mock.md) |
+| Framework-neutral mock responder contracts | `spring-boot-service-framework-mock-core` | [Mock core README](spring-boot-service-framework-mock-core/README.md) |
+| Shared notifications and notifying exceptions | `spring-boot-service-framework-commons` | [Commons README](spring-boot-service-framework-commons/README.md) |
+| Standalone consumer smoke tests | `examples/*` | [Logging example](examples/logging-consumer/README.md), [REST client example](examples/rest-client-consumer/README.md) |
 
 ---
 
@@ -91,7 +106,7 @@ Logback, Servlet, Jackson, or Apache HttpClient APIs.
 |---|---|
 | Java | 21 |
 | Gradle | Wrapper-provided Gradle, currently 9.3.1 in generated reports |
-| Spring Boot | 4.0.x; current BOM is 4.0.4 |
+| Spring Boot | 4.1.0; controlled by `springBootVersion` in `gradle.properties` |
 | Publishing | Local Maven repositories under each module `build/repository`; optional private Maven registry |
 
 See [docs/compatibility.md](docs/compatibility.md) for the supported matrix.
@@ -117,9 +132,9 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.1.0-SNAPSHOT'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.2.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.2.0'
 }
 ```
 
@@ -150,7 +165,7 @@ includeBuild('../spring-boot-service-framework')
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.2.0'
 }
 ```
 
@@ -181,7 +196,7 @@ final class ProjectService {
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0'
 }
 ```
 
@@ -192,7 +207,7 @@ smbtech:
       payments:
         base-url: https://payments.example
         default-headers:
-          X-Application-Name: projects-service
+          X-Application-Name: orders-service
 ```
 
 The starter registers:
@@ -258,9 +273,15 @@ Resilience is disabled by default.
 
 ```bash
 ./gradlew clean check
+./gradlew documentationCheck
 ./gradlew baseline
 ./gradlew consumerSmoke
+./gradlew compatibilityCheck
 ```
+
+`documentationCheck` validates relative Markdown links and scans example
+documentation/configuration for accidentally committed secrets or encoded
+keystore material.
 
 `consumerSmoke` publishes artifacts only into temporary repositories under
 `build/repository` and builds standalone consumers without Gradle `project(...)`
@@ -303,6 +324,9 @@ Equivalent Gradle properties are also supported:
 | [PROVENANCE.md](PROVENANCE.md) | Source provenance and publication constraints. |
 | [docs/compatibility.md](docs/compatibility.md) | Supported versions and compatibility policy. |
 | [docs/rest-client.md](docs/rest-client.md) | Full REST client configuration and usage guide. |
+| [docs/mock.md](docs/mock.md) | Mock core and starter usage guide. |
+| [examples/logging-consumer/README.md](examples/logging-consumer/README.md) | Standalone logging starter consumer. |
+| [examples/rest-client-consumer/README.md](examples/rest-client-consumer/README.md) | Standalone REST client starter consumer. |
 
 ---
 
@@ -321,6 +345,6 @@ Equivalent Gradle properties are also supported:
 
 ## Current status
 
-The framework is in `0.1.0-SNAPSHOT`. APIs can still evolve before `1.0.0`.
+The framework is in `0.2.0`. APIs can still evolve before `1.0.0`.
 Private publication should happen only after ownership and provenance have been
 confirmed for all included components.

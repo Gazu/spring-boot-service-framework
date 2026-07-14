@@ -1,11 +1,11 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.1.0'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
 }
 
 group = 'com.smbtech.examples'
-version = '0.1.0-SNAPSHOT'
+version = '0.2.0'
 
 java {
     toolchain {
@@ -17,11 +17,11 @@ def frameworkRoot = file('../..')
 
 repositories {
     maven {
-        name = 'starterBuild'
+        name = 'restClientStarterBuild'
         url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/build/repository")
     }
     maven {
-        name = 'starterBuild'
+        name = 'loggingStarterBuild'
         url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/build/repository")
     }
     maven {
@@ -44,8 +44,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-micrometer-tracing-brave'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.2.0'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

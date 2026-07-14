@@ -31,7 +31,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0'
 }
 ```
 
@@ -77,7 +77,7 @@ smbtech:
       payments:
         base-url: https://payments.example
         default-headers:
-          X-Application-Name: projects-service
+          X-Application-Name: orders-service
 ```
 
 This registers:
@@ -429,7 +429,30 @@ AccessToken token = accessTokenClient.jwtBearer("payments-jwt-token", "payments.
 
 ### Token cache and scope validation
 
-The default cache is in-memory and stores tokens using a deterministic key:
+By default, Spring Security's in-memory authorized client service caches OAuth2
+access tokens for both supported non-user grants:
+
+```yaml
+smbtech:
+  rest-clients:
+    authentication:
+      token-cache:
+        client-credentials: true
+        jwt-bearer: true
+```
+
+| `client-credentials` | `jwt-bearer` | Behavior |
+|---:|---:|---|
+| `true` | `true` | Cache both `client_credentials` and JWT bearer access tokens. This is the default. |
+| `true` | `false` | Cache only `client_credentials`; fetch a new JWT bearer access token for each authorization. |
+| `false` | `true` | Cache only JWT bearer; fetch a new `client_credentials` access token for each authorization. |
+| `false` | `false` | Disable the starter-managed OAuth2 access-token cache for both grants. |
+
+The cache stores the returned OAuth2 `access_token`; it does not cache or reuse
+the signed `private_key_jwt` client assertion or the signed JWT bearer grant
+assertion. Those assertions are created as part of the token request.
+
+For static requests, the cache key is deterministic:
 
 ```text
 <registration-or-token-request-id>::<sorted requested scopes>
@@ -438,6 +461,17 @@ The default cache is in-memory and stores tokens using a deterministic key:
 When no requested scopes exist, the key is only the registration or token
 request id. This avoids collisions if the same OAuth2 client id is later used
 with a different requested scope set.
+
+For JWT bearer requests with dynamic custom claims, the starter includes the
+resolved dynamic claims in the internal authorization principal used by Spring
+Security. This means a cached JWT bearer access token is reused only for an
+equivalent set of dynamic claims. If `authentication.token-cache.jwt-bearer` is
+`false`, the dynamic-claims cache key is bypassed and every authorization fetches
+a fresh JWT bearer access token.
+
+These flags are enforced by wrapping the available
+`OAuth2AuthorizedClientService`, including the default service contributed by
+Spring Boot OAuth2 Client, when a `ClientRegistrationRepository` is available.
 
 `clients.<name>.scopes` and the `expectedScopes` argument in `AccessTokenClient`
 do not change the scopes requested from the authorization server. They define
@@ -469,7 +503,7 @@ smbtech:
   rest-clients:
     clients:
       oauth-certs:
-        base-url: https://core-oauth-gateway.smb-tech.cl
+        base-url: https://oauth.example.com
 ```
 
 Configure custom SSL when the downstream service requires a private truststore,
@@ -589,9 +623,10 @@ mapped into `HttpClientResponseException`. The exception carries:
 - the complete response body when `include-body=true`;
 - a structured `Notification` from `spring-boot-service-framework-commons`.
 
-The body available from `exception.responseBody()` and
-`exception.error().body()` is not truncated by audit settings. Audit logs can be
-truncated independently with `audit.max-body-size`.
+The body available from `exception.getErrorResponseAsString()`,
+`exception.responseBody()`, and `exception.error().body()` is not truncated by
+audit settings. Audit logs can be truncated independently with
+`audit.max-body-size`.
 
 ```yaml
 smbtech:
@@ -611,22 +646,33 @@ smbtech:
           max-body-size: 4096
 ```
 
-Decode JSON error bodies with `HttpErrorBodyDecoder`:
+For clients created by the starter, JSON error body decoding is attached to the
+exception automatically:
 
 ```java
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
-import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
 
 try {
     paymentsApi.createOrder(request);
 } catch (HttpClientResponseException exception) {
-    DownstreamError error = errorBodyDecoder.decode(exception, DownstreamError.class);
-    String completeBody = exception.responseBody();
+    DownstreamError error = exception.getJsonErrorResponseAsObject(DownstreamError.class);
+    String completeBody = exception.getErrorResponseAsString();
 }
 ```
 
-`decodeIfPresent(...)` returns `Optional.empty()` when the exception does not
-carry a body. Decode failures raise `HttpErrorBodyDecodingException`.
+`responseBody()` remains available for compatibility. For optional decoding,
+inject `HttpErrorBodyDecoder` and use `decodeIfPresent(...)`; it returns
+`Optional.empty()` when the exception does not carry a body:
+
+```java
+Optional<DownstreamError> error =
+        errorBodyDecoder.decodeIfPresent(exception, DownstreamError.class);
+```
+
+Decode failures raise `HttpErrorBodyDecodingException`. If an exception is
+created manually outside the starter and no reader is attached,
+`getJsonErrorResponseAsObject(...)` raises
+`HttpErrorResponseBodyReaderNotConfiguredException`.
 
 ---
 
@@ -743,6 +789,45 @@ Available customizer extension points:
 | `RestClientBuilderCustomizer` | Customize `RestClient.Builder` before the final client is built. |
 | `ApacheHttpClientBuilderCustomizer` | Customize Apache `HttpClientBuilder` when `client-type=APACHE_HTTP`. |
 | `ClientHttpRequestFactoryCustomizer` | Customize the Spring `ClientHttpRequestFactory`. |
+
+### Mock starter integration
+
+When the application also includes
+`spring-boot-service-framework-starter-mock`, outbound calls can be mocked by
+adding the mock interceptor through the standard customizer hook:
+
+```java
+import com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockRestClientInterceptor;
+import com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer;
+import org.springframework.context.annotation.Bean;
+
+@Bean
+RestClientBuilderCustomizer mockRestClientCustomizer(MockRestClientInterceptor mockInterceptor) {
+    return (definition, builder) -> builder.requestInterceptor(mockInterceptor);
+}
+```
+
+Use `X-Mock-Key` as a default header to select the mock response for a generated
+client:
+
+```yaml
+smbtech:
+  rest-clients:
+    clients:
+      payments:
+        base-url: https://payments.example.test
+        default-headers:
+          X-Mock-Key: payments-success
+  mocks:
+    endpoints:
+      payments-success:
+        enabled: true
+        file: classpath:mocks/payments-success.json
+```
+
+If the mock key is enabled, the call returns the configured mock response. If the
+mock key is missing or disabled, the interceptor lets the real HTTP call
+continue.
 
 ---
 
@@ -862,6 +947,8 @@ assertions.
 |---|---:|---|
 | `authentication.credentials.<id>.value` | empty | Plain credential value resolved by `*-ref` properties such as `password-ref`, `key-password-ref`, username refs, and password refs. |
 | `authentication.credentials.<id>.base64` | empty | Base64-encoded credential value resolved by `*-ref` properties. Takes priority over `value`; whitespace is ignored before decoding. |
+| `authentication.token-cache.client-credentials` | `true` | Whether the starter-managed Spring OAuth2 authorized client service caches `client_credentials` access tokens. |
+| `authentication.token-cache.jwt-bearer` | `true` | Whether the starter-managed Spring OAuth2 authorized client service caches JWT bearer grant access tokens. Dynamic custom claims are part of the cache identity when this is enabled. |
 | `authentication.client-assertions.<registration-id>.key-store-id` | empty | Signing keystore id for `private_key_jwt` client authentication. |
 | `authentication.client-assertions.<registration-id>.token-lifetime` | `60s` | Client assertion JWT lifetime. |
 | `authentication.client-assertions.<registration-id>.custom-claims.*` | empty | Provider-specific custom claims added to the client assertion. |
@@ -901,6 +988,7 @@ Run the standalone consumer smoke tests:
 ```bash
 ./gradlew restClientConsumerSmoke
 ./gradlew consumerSmoke
+./gradlew compatibilityCheck
 ```
 
 The example service lives in `examples/rest-client-consumer`. It consumes

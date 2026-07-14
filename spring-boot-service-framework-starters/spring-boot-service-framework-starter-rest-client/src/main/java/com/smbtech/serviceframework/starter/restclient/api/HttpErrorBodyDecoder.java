@@ -2,17 +2,20 @@ package com.smbtech.serviceframework.starter.restclient.api;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
+import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 
+import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Decodes downstream HTTP error bodies captured by {@link HttpClientResponseException}.
  */
-public final class HttpErrorBodyDecoder {
+public final class HttpErrorBodyDecoder implements HttpErrorResponseBodyReader {
 
     private final ObjectMapper objectMapper;
 
@@ -46,6 +49,16 @@ public final class HttpErrorBodyDecoder {
         return decode(exception.error(), type);
     }
 
+    @Override
+    public <T> T read(HttpErrorResponse error, Class<T> type) {
+        return decode(error, type);
+    }
+
+    @Override
+    public <T> T read(HttpErrorResponse error, Type type) {
+        return decode(error, type);
+    }
+
     /**
      * Decodes an HTTP error response body.
      *
@@ -61,6 +74,25 @@ public final class HttpErrorBodyDecoder {
             return objectMapper.readValue(safeError.body(), type);
         } catch (JsonProcessingException exception) {
             throw new HttpErrorBodyDecodingException(safeError, type.getName(), exception);
+        }
+    }
+
+    /**
+     * Decodes an HTTP error response body.
+     *
+     * @param error HTTP error response
+     * @param type target generic type
+     * @return decoded body
+     * @param <T> target type
+     */
+    public <T> T decode(HttpErrorResponse error, Type type) {
+        Objects.requireNonNull(type, "type must not be null");
+        HttpErrorResponse safeError = requireBody(error);
+        JavaType javaType = objectMapper.getTypeFactory().constructType(type);
+        try {
+            return objectMapper.readValue(safeError.body(), javaType);
+        } catch (JsonProcessingException exception) {
+            throw new HttpErrorBodyDecodingException(safeError, type.getTypeName(), exception);
         }
     }
 

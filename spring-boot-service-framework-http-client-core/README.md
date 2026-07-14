@@ -14,12 +14,22 @@ HTTP Client, Jackson, Micrometer, SSL stores, and property binding belongs in
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-http-client-core:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-http-client-core:0.2.0'
 }
 ```
 
 When used through the Spring Boot starter, consumers usually do not need to
 depend on this module directly because the starter exposes it transitively.
+
+## When to use
+
+Use this module directly when you are building or testing framework-level HTTP
+client adapters and need the neutral model, policies, ports, or exception types.
+
+Most Spring Boot applications should consume
+`spring-boot-service-framework-starter-rest-client` instead. The starter creates
+runtime `RestClient` instances, wires OAuth2, applies SSL, emits metrics/audit
+events, and exposes the core types transitively.
 
 ## Design goals
 
@@ -210,6 +220,7 @@ try {
 } catch (HttpClientResponseException exception) {
     int status = exception.statusCode();
     String completeBody = exception.responseBody();
+    String errorBody = exception.getErrorResponseAsString();
     Map<String, String> headers = exception.responseHeaders();
 
     exception.primaryNotification().ifPresent(notification -> {
@@ -224,6 +235,9 @@ Convenience methods:
 - `error()`
 - `statusCode()`
 - `responseBody()`
+- `getErrorResponseAsString()`
+- `getJsonErrorResponseAsObject(Class<T> type)`
+- `getJsonErrorResponseAsObject(Type type)`
 - `responseHeaders()`
 - `responseCharset()`
 - `responseContentType()`
@@ -231,6 +245,20 @@ Convenience methods:
 - `isResponseBodyTruncated()`
 - `notifications()`
 - `primaryNotification()`
+
+JSON decoding is exposed through the core `HttpErrorResponseBodyReader` port.
+The core module does not depend on Jackson or Spring. Runtime adapters can
+attach a reader when creating the exception:
+
+```java
+HttpClientResponseException exception = new HttpClientResponseException(error, notifications)
+        .withErrorResponseBodyReader(errorResponseBodyReader);
+
+DownstreamError payload = exception.getJsonErrorResponseAsObject(DownstreamError.class);
+```
+
+If no reader is attached, `getJsonErrorResponseAsObject(...)` raises
+`HttpErrorResponseBodyReaderNotConfiguredException`.
 
 ### `HttpErrorNotificationMapper`
 
@@ -392,8 +420,6 @@ Outbound ports are implemented by adapters.
 | `CredentialDefinitionSource` | Load configured credential definitions. |
 | `CredentialProvider` | Resolve secret values. |
 | `AccessTokenProvider` | Resolve access tokens for authenticated clients. |
-| `TokenCache` | Cache access tokens. |
-| `JwtAssertionProvider` | Create JWT bearer assertions. |
 | `KeyStoreDefinitionSource` | Load key/trust store definitions. |
 | `CorrelationHeadersProvider` | Provide trace/correlation headers. |
 | `HttpExchangeAuditSink` | Receive audit events. |

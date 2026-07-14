@@ -14,8 +14,10 @@ import com.smbtech.serviceframework.httpclient.domain.ResiliencePolicy;
 import com.smbtech.serviceframework.httpclient.domain.ObservabilityPolicy;
 import com.smbtech.serviceframework.httpclient.domain.TimeoutPolicy;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
+import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.error.HttpErrorResponseMapper;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.StandardErrorHandlingInterceptor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
@@ -80,6 +82,28 @@ class StandardErrorHandlingInterceptorTest {
         ))
                 .isInstanceOfSatisfying(HttpClientResponseException.class, exception ->
                         assertThat(exception.responseBody()).isEqualTo("1234567890"));
+    }
+
+    @Test
+    void injectsBodyReaderIntoStandardException() {
+        StandardErrorHandlingInterceptor interceptor = new StandardErrorHandlingInterceptor(
+                definition(new ErrorHandlingPolicy(true, true, 4096)),
+                new HttpErrorResponseMapper(),
+                new com.smbtech.serviceframework.httpclient.domain.HttpErrorNotificationMapper(),
+                new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules())
+        );
+
+        assertThatThrownBy(() -> interceptor.intercept(
+                request,
+                new byte[0],
+                (httpRequest, body) -> jsonResponse(400, "{\"code\":\"DOWNSTREAM_ERROR\",\"message\":\"boom\"}")
+        ))
+                .isInstanceOfSatisfying(HttpClientResponseException.class, exception -> {
+                    ErrorPayload payload = exception.getJsonErrorResponseAsObject(ErrorPayload.class);
+
+                    assertThat(payload.code()).isEqualTo("DOWNSTREAM_ERROR");
+                    assertThat(payload.message()).isEqualTo("boom");
+                });
     }
 
     @Test
@@ -186,5 +210,8 @@ class StandardErrorHandlingInterceptorTest {
                 AuditPolicy.disabled(),
                 Map.of()
         );
+    }
+
+    private record ErrorPayload(String code, String message) {
     }
 }

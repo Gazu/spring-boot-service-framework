@@ -12,11 +12,20 @@ interfaces.
 For the complete property reference, defaults, and deeper examples, see
 [../../docs/rest-client.md](../../docs/rest-client.md).
 
+## When to use
+
+Use this starter in Spring Boot services that need named outbound HTTP clients,
+declarative Spring HTTP interfaces, OAuth2 access tokens, SSL/keystore handling,
+audit logs, Micrometer metrics, or simple retry/circuit-breaker policies.
+
+Use `spring-boot-service-framework-http-client-core` directly only when building
+framework adapters or tests that should remain independent from Spring Boot.
+
 ## Quick start
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0'
 }
 ```
 
@@ -242,6 +251,25 @@ requested scopes, for example `payments-token::payments.read payments.write`.
 Scope validation is applied on every cached or newly fetched token before the
 token is returned to callers.
 
+The starter-managed Spring OAuth2 authorized client cache can be controlled per
+grant type:
+
+```yaml
+smbtech:
+  rest-clients:
+    authentication:
+      token-cache:
+        client-credentials: true
+        jwt-bearer: true
+```
+
+Both values default to `true`. Set `client-credentials` or `jwt-bearer` to
+`false` when that grant should always request a fresh access token. These flags
+control the returned OAuth2 `access_token`; signed `private_key_jwt` client
+assertions and JWT bearer grant assertions are generated for the token request.
+For JWT bearer requests with dynamic custom claims, equivalent claim sets share
+the same cache identity when JWT bearer caching is enabled.
+
 OAuth2 configuration checklist:
 
 - `credential-token-requestor-id` must match a Spring registration id.
@@ -323,9 +351,28 @@ response body for application decisions:
 try {
     paymentsApi.dummy();
 } catch (HttpClientResponseException exception) {
-    String fullBody = exception.responseBody();
+    String fullBody = exception.getErrorResponseAsString();
     int status = exception.statusCode();
 }
+```
+
+For clients created by this starter, JSON error body decoding is wired into the
+exception automatically through `HttpErrorBodyDecoder`:
+
+```java
+try {
+    paymentsApi.dummy();
+} catch (HttpClientResponseException exception) {
+    PaymentError error = exception.getJsonErrorResponseAsObject(PaymentError.class);
+    String fullBody = exception.getErrorResponseAsString();
+}
+```
+
+`responseBody()` remains available for compatibility. `HttpErrorBodyDecoder`
+can still be injected and used directly when optional decoding is preferred:
+
+```java
+Optional<PaymentError> error = errorBodyDecoder.decodeIfPresent(exception, PaymentError.class);
 ```
 
 Audit logging has a separate truncation control with `audit.max-body-size`.

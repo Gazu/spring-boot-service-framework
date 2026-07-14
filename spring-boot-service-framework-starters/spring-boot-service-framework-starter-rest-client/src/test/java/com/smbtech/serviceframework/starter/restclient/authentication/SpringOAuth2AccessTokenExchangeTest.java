@@ -4,6 +4,7 @@ import com.smbtech.serviceframework.httpclient.domain.AccessToken;
 import com.smbtech.serviceframework.httpclient.exception.AuthenticationException;
 import com.smbtech.serviceframework.httpclient.port.out.AccessTokenProvider;
 import com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient;
+import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -32,11 +33,12 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntFunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class OAuth2AccessTokenProviderTest {
+class SpringOAuth2AccessTokenExchangeTest {
 
     @TempDir
     Path tempDir;
@@ -88,7 +90,7 @@ class OAuth2AccessTokenProviderTest {
                     assertThat(first.value()).isEqualTo("token-client-123");
                     assertThat(first.tokenType()).isEqualTo("Bearer");
                     assertThat(first.scopes()).containsExactlyInAnyOrder("customer.read", "customer.write");
-                    assertThat(second).isSameAs(first);
+                    assertThat(second).isEqualTo(first);
                     assertThat(endpoint.requestCount()).isEqualTo(1);
                     assertThat(endpoint.authorizationHeader()).isEqualTo("Basic ZGVtby1jbGllbnQ6ZGVtby1zZWNyZXQ=");
                     assertThat(endpoint.formValues()).containsEntry("grant_type", "client_credentials");
@@ -133,11 +135,32 @@ class OAuth2AccessTokenProviderTest {
                     assertThat(first.value()).isEqualTo("spring-token-client-123");
                     assertThat(first.tokenType()).isEqualTo("Bearer");
                     assertThat(first.scopes()).containsExactlyInAnyOrder("customer.read", "customer.write");
-                    assertThat(second).isSameAs(first);
+                    assertThat(second).isEqualTo(first);
                     assertThat(endpoint.requestCount()).isEqualTo(1);
                     assertThat(endpoint.authorizationHeader()).isEqualTo("Basic ZGVtby1jbGllbnQ6ZGVtby1zZWNyZXQ=");
                     assertThat(endpoint.formValues()).containsEntry("grant_type", "client_credentials");
                     assertThat(endpoint.formValues()).containsEntry("scope", "customer.read customer.write");
+                });
+    }
+
+    @Test
+    void doesNotCacheClientCredentialsTokenWhenDisabled() throws Exception {
+        TokenEndpoint endpoint = startTokenEndpoint(requestNumber -> """
+                {"access_token":"client-credentials-token-%d","token_type":"Bearer","expires_in":3600,"scope":"customer.read customer.write"}
+                """.formatted(requestNumber));
+
+        springClientCredentialsContextRunner(endpoint.url())
+                .withPropertyValues("smbtech.rest-clients.authentication.token-cache.client-credentials=false")
+                .run(context -> {
+                    AccessTokenClient client = context.getBean(AccessTokenClient.class);
+
+                    AccessToken first = client.clientCredentials("customer-api", "customer.read");
+                    AccessToken second = client.clientCredentials("customer-api", "customer.read");
+
+                    assertThat(first.value()).isEqualTo("client-credentials-token-1");
+                    assertThat(second.value()).isEqualTo("client-credentials-token-2");
+                    assertThat(endpoint.requestCount()).isEqualTo(2);
+                    assertThat(endpoint.formValues()).containsEntry("grant_type", "client_credentials");
                 });
     }
 
@@ -158,6 +181,37 @@ class OAuth2AccessTokenProviderTest {
                     assertThat(second).isEqualTo("spring-token-without-scope-123");
                     assertThat(endpoint.requestCount()).isEqualTo(1);
                     assertThat(endpoint.formValues()).containsEntry("scope", "customer.read customer.write");
+                });
+    }
+
+    @Test
+    void configuredRestClientUsesSpringSecurityOAuth2Interceptor() throws Exception {
+        ProtectedResourceEndpoint endpoint = startProtectedResourceEndpoint("""
+                {"access_token":"resource-token-123","token_type":"Bearer","expires_in":3600,"scope":"customer.read customer.write"}
+                """);
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withBean(ClientRegistrationRepository.class, () -> clientRegistrationRepository(endpoint.tokenUrl()))
+                .withPropertyValues(
+                        "smbtech.rest-clients.clients.customer.base-url=" + endpoint.baseUrl(),
+                        "smbtech.rest-clients.clients.customer.authentication-type=CLIENT_CREDENTIALS",
+                        "smbtech.rest-clients.clients.customer.credential-token-requestor-id=customer-api",
+                        "smbtech.rest-clients.clients.customer.scopes=customer.read"
+                )
+                .run(context -> {
+                    RestClientRegistry registry = context.getBean(RestClientRegistry.class);
+
+                    String body = registry.get("customer")
+                            .get()
+                            .uri("/resource")
+                            .retrieve()
+                            .body(String.class);
+
+                    assertThat(body).isEqualTo("protected-ok");
+                    assertThat(endpoint.resourceAuthorizationHeader()).isEqualTo("Bearer resource-token-123");
+                    assertThat(endpoint.requestCount()).isEqualTo(1);
+                    assertThat(endpoint.formValues()).containsEntry("grant_type", "client_credentials");
                 });
     }
 
@@ -268,6 +322,229 @@ class OAuth2AccessTokenProviderTest {
                             .contains("\"aud\":\"https://auth.example/token\"")
                             .contains("\"tenant\":\"payments\"")
                             .contains("\"channel\":\"backend\"");
+                });
+    }
+
+    @Test
+    void obtainsJwtBearerGrantTokenWithPrivateKeyJwtClientAuthentication() throws Exception {
+        Path keyStore = createKeyStore();
+        TokenEndpoint endpoint = startTokenEndpoint("""
+                {"access_token":"jwt-bearer-private-key-jwt-token-123","token_type":"Bearer","expires_in":3600,"scope":"payments.write payments.read"}
+                """);
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withBean(
+                        ClientRegistrationRepository.class,
+                        () -> privateKeyJwtBearerClientRegistrationRepository(endpoint.url())
+                )
+                .withPropertyValues(
+                        "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
+                        "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
+                        "smbtech.rest-clients.clients.payments.credential-token-requestor-id=payments-api",
+                        "smbtech.rest-clients.clients.payments.scopes=payments.write",
+                        "smbtech.rest-clients.authentication.client-assertions.payments-api.key-store-id=auth-key",
+                        "smbtech.rest-clients.authentication.client-assertions.payments-api.token-lifetime=75s",
+                        "smbtech.rest-clients.authentication.client-assertions.payments-api.custom-claims.client-auth=true",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.key-store-id=auth-key",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.issuer=payments-issuer",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.subject=payments-subject",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.audience=https://auth.example/token",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.token-lifetime=2m",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.custom-claims.tenant=payments",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.location=file:" + keyStore,
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.type=PKCS12",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.password-ref=keystore-password",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-alias=auth",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-password-ref=key-password",
+                        "smbtech.rest-clients.authentication.credentials.keystore-password.base64=" + encoded("changeit"),
+                        "smbtech.rest-clients.authentication.credentials.key-password.base64=" + encoded("changeit")
+                )
+                .run(context -> {
+                    AccessTokenProvider provider = context.getBean(AccessTokenProvider.class);
+
+                    String token = provider.getAccessToken("payments-api", "payments.write");
+
+                    assertThat(token).isEqualTo("jwt-bearer-private-key-jwt-token-123");
+                    assertThat(endpoint.authorizationHeader()).isNull();
+                    assertThat(endpoint.formValues()).containsEntry(
+                            "grant_type",
+                            "urn:ietf:params:oauth:grant-type:jwt-bearer"
+                    );
+                    assertThat(endpoint.formValues()).containsEntry("client_id", "payments-client");
+                    assertThat(endpoint.formValues()).containsEntry(
+                            "client_assertion_type",
+                            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+                    );
+
+                    String grantAssertion = endpoint.formValues().get("assertion");
+                    String clientAssertion = endpoint.formValues().get("client_assertion");
+                    assertThat(grantAssertion).isNotBlank();
+                    assertThat(clientAssertion).isNotBlank();
+                    assertThat(clientAssertion).isNotEqualTo(grantAssertion);
+                    assertThat(verify(grantAssertion, keyStore)).isTrue();
+                    assertThat(verify(clientAssertion, keyStore)).isTrue();
+                    assertThat(decodePayload(grantAssertion))
+                            .contains("\"iss\":\"payments-issuer\"")
+                            .contains("\"sub\":\"payments-subject\"")
+                            .contains("\"aud\":\"https://auth.example/token\"")
+                            .contains("\"tenant\":\"payments\"");
+                    assertThat(decodePayload(clientAssertion))
+                            .contains("\"iss\":\"payments-client\"")
+                            .contains("\"sub\":\"payments-client\"")
+                            .contains("\"aud\":\"" + endpoint.url() + "\"")
+                            .contains("\"client-auth\":\"true\"");
+                });
+    }
+
+    @Test
+    void obtainsJwtBearerGrantTokenWithDynamicCustomClaims() throws Exception {
+        Path keyStore = createKeyStore();
+        TokenEndpoint endpoint = startTokenEndpoint("""
+                {"access_token":"spring-jwt-bearer-token-456","token_type":"Bearer","expires_in":3600,"scope":"payments.write payments.read"}
+                """);
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withBean(ClientRegistrationRepository.class, () -> jwtBearerClientRegistrationRepository(endpoint.url()))
+                .withPropertyValues(
+                        "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
+                        "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
+                        "smbtech.rest-clients.clients.payments.credential-token-requestor-id=payments-api",
+                        "smbtech.rest-clients.clients.payments.scopes=payments.write",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.key-store-id=auth-key",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.issuer=payments-issuer",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.subject=payments-subject",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.audience=https://auth.example/token",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.token-lifetime=2m",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.custom-claims.channel=backend",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.location=file:" + keyStore,
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.type=PKCS12",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.password-ref=keystore-password",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-alias=auth",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-password-ref=key-password",
+                        "smbtech.rest-clients.authentication.credentials.keystore-password.base64=" + encoded("changeit"),
+                        "smbtech.rest-clients.authentication.credentials.key-password.base64=" + encoded("changeit")
+                )
+                .run(context -> {
+                    AccessTokenClient client = context.getBean(AccessTokenClient.class);
+                    Map<String, Object> dynamicClaims = new LinkedHashMap<>();
+                    dynamicClaims.put("customer_id", "17952397-3");
+                    dynamicClaims.put("channel", "mobile");
+                    dynamicClaims.put("iss", "must-not-override-issuer");
+                    dynamicClaims.put("ignored", null);
+
+                    AccessToken token = client.jwtBearer(
+                            "payments-api",
+                            "payments.write",
+                            dynamicClaims
+                    );
+
+                    assertThat(token.value()).isEqualTo("spring-jwt-bearer-token-456");
+                    String assertion = endpoint.formValues().get("assertion");
+                    assertThat(assertion).isNotBlank();
+                    assertThat(verify(assertion, keyStore)).isTrue();
+                    assertThat(decodePayload(assertion))
+                            .contains("\"iss\":\"payments-issuer\"")
+                            .contains("\"sub\":\"payments-subject\"")
+                            .contains("\"aud\":\"https://auth.example/token\"")
+                            .contains("\"channel\":\"mobile\"")
+                            .contains("\"customer_id\":\"17952397-3\"")
+                            .doesNotContain("backend")
+                            .doesNotContain("must-not-override-issuer")
+                            .doesNotContain("ignored");
+                });
+    }
+
+    @Test
+    void cachesJwtBearerGrantTokensByResolvedDynamicClaims() throws Exception {
+        Path keyStore = createKeyStore();
+        TokenEndpoint endpoint = startTokenEndpoint(requestNumber -> """
+                {"access_token":"spring-jwt-bearer-token-%d","token_type":"Bearer","expires_in":3600,"scope":"payments.write payments.read"}
+                """.formatted(requestNumber));
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withBean(ClientRegistrationRepository.class, () -> jwtBearerClientRegistrationRepository(endpoint.url()))
+                .withPropertyValues(
+                        "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
+                        "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
+                        "smbtech.rest-clients.clients.payments.credential-token-requestor-id=payments-api",
+                        "smbtech.rest-clients.clients.payments.scopes=payments.write",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.key-store-id=auth-key",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.issuer=payments-issuer",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.subject=payments-subject",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.audience=https://auth.example/token",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.token-lifetime=2m",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.location=file:" + keyStore,
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.type=PKCS12",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.password-ref=keystore-password",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-alias=auth",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-password-ref=key-password",
+                        "smbtech.rest-clients.authentication.credentials.keystore-password.base64=" + encoded("changeit"),
+                        "smbtech.rest-clients.authentication.credentials.key-password.base64=" + encoded("changeit")
+                )
+                .run(context -> {
+                    AccessTokenClient client = context.getBean(AccessTokenClient.class);
+                    Map<String, Object> firstClaims = Map.of("a", "b&c=d");
+                    Map<String, Object> secondClaims = new LinkedHashMap<>();
+                    secondClaims.put("a", "b");
+                    secondClaims.put("c", "d");
+
+                    AccessToken first = client.jwtBearer("payments-api", "payments.write", firstClaims);
+                    AccessToken second = client.jwtBearer("payments-api", "payments.write", secondClaims);
+                    AccessToken firstAgain = client.jwtBearer("payments-api", "payments.write", firstClaims);
+
+                    assertThat(first.value()).isEqualTo("spring-jwt-bearer-token-1");
+                    assertThat(second.value()).isEqualTo("spring-jwt-bearer-token-2");
+                    assertThat(firstAgain.value()).isEqualTo("spring-jwt-bearer-token-1");
+                    assertThat(endpoint.requestCount()).isEqualTo(2);
+                });
+    }
+
+    @Test
+    void doesNotCacheJwtBearerGrantTokensWhenDisabled() throws Exception {
+        Path keyStore = createKeyStore();
+        TokenEndpoint endpoint = startTokenEndpoint(requestNumber -> """
+                {"access_token":"spring-jwt-bearer-token-%d","token_type":"Bearer","expires_in":3600,"scope":"payments.write payments.read"}
+                """.formatted(requestNumber));
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withBean(ClientRegistrationRepository.class, () -> jwtBearerClientRegistrationRepository(endpoint.url()))
+                .withPropertyValues(
+                        "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
+                        "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
+                        "smbtech.rest-clients.clients.payments.credential-token-requestor-id=payments-api",
+                        "smbtech.rest-clients.clients.payments.scopes=payments.write",
+                        "smbtech.rest-clients.authentication.token-cache.jwt-bearer=false",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.key-store-id=auth-key",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.issuer=payments-issuer",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.subject=payments-subject",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.audience=https://auth.example/token",
+                        "smbtech.rest-clients.authentication.jwt-bearer.payments-api.token-lifetime=2m",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.location=file:" + keyStore,
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.type=PKCS12",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.password-ref=keystore-password",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-alias=auth",
+                        "smbtech.rest-clients.authentication.key-stores.auth-key.key-password-ref=key-password",
+                        "smbtech.rest-clients.authentication.credentials.keystore-password.base64=" + encoded("changeit"),
+                        "smbtech.rest-clients.authentication.credentials.key-password.base64=" + encoded("changeit")
+                )
+                .run(context -> {
+                    AccessTokenClient client = context.getBean(AccessTokenClient.class);
+                    Map<String, Object> dynamicClaims = Map.of("customer_id", "17952397-3");
+
+                    AccessToken first = client.jwtBearer("payments-api", "payments.write", dynamicClaims);
+                    AccessToken second = client.jwtBearer("payments-api", "payments.write", dynamicClaims);
+
+                    assertThat(first.value()).isEqualTo("spring-jwt-bearer-token-1");
+                    assertThat(second.value()).isEqualTo("spring-jwt-bearer-token-2");
+                    assertThat(endpoint.requestCount()).isEqualTo(2);
+                    assertThat(endpoint.formValues()).containsEntry(
+                            "grant_type",
+                            "urn:ietf:params:oauth:grant-type:jwt-bearer"
+                    );
                 });
     }
 
@@ -398,17 +675,33 @@ class OAuth2AccessTokenProviderTest {
         return new InMemoryClientRegistrationRepository(paymentsApi);
     }
 
+    private ClientRegistrationRepository privateKeyJwtBearerClientRegistrationRepository(String tokenUri) {
+        ClientRegistration paymentsApi = ClientRegistration
+                .withRegistrationId("payments-api")
+                .tokenUri(tokenUri)
+                .clientId("payments-client")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
+                .authorizationGrantType(new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:jwt-bearer"))
+                .scope("payments.write", "payments.read")
+                .build();
+        return new InMemoryClientRegistrationRepository(paymentsApi);
+    }
+
     private TokenEndpoint startTokenEndpoint(String responseBody) throws IOException {
+        return startTokenEndpoint(ignored -> responseBody);
+    }
+
+    private TokenEndpoint startTokenEndpoint(IntFunction<String> responseBody) throws IOException {
         AtomicInteger requests = new AtomicInteger();
         AtomicReference<String> authorization = new AtomicReference<>();
         AtomicReference<Map<String, String>> form = new AtomicReference<>(Map.of());
 
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/token", exchange -> {
-            requests.incrementAndGet();
+            int requestNumber = requests.incrementAndGet();
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
             form.set(readForm(exchange));
-            byte[] response = responseBody.getBytes(StandardCharsets.UTF_8);
+            byte[] response = responseBody.apply(requestNumber).getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
@@ -422,6 +715,44 @@ class OAuth2AccessTokenProviderTest {
                 requests,
                 authorization,
                 form
+        );
+    }
+
+    private ProtectedResourceEndpoint startProtectedResourceEndpoint(String tokenResponseBody) throws IOException {
+        AtomicInteger requests = new AtomicInteger();
+        AtomicReference<String> authorization = new AtomicReference<>();
+        AtomicReference<Map<String, String>> form = new AtomicReference<>(Map.of());
+        AtomicReference<String> resourceAuthorization = new AtomicReference<>();
+
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/token", exchange -> {
+            requests.incrementAndGet();
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            form.set(readForm(exchange));
+            byte[] response = tokenResponseBody.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.createContext("/resource", exchange -> {
+            resourceAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] response = "protected-ok".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.setExecutor(Executors.newSingleThreadExecutor());
+        server.start();
+
+        String baseUrl = "http://localhost:" + server.getAddress().getPort();
+        return new ProtectedResourceEndpoint(
+                baseUrl,
+                baseUrl + "/token",
+                requests,
+                authorization,
+                form,
+                resourceAuthorization
         );
     }
 
@@ -512,6 +843,31 @@ class OAuth2AccessTokenProviderTest {
 
         public Map<String, String> formValues() {
             return form.get();
+        }
+    }
+
+    private record ProtectedResourceEndpoint(
+            String baseUrl,
+            String tokenUrl,
+            AtomicInteger requests,
+            AtomicReference<String> authorization,
+            AtomicReference<Map<String, String>> form,
+            AtomicReference<String> resourceAuthorization
+    ) {
+        public int requestCount() {
+            return requests.get();
+        }
+
+        public String authorizationHeader() {
+            return authorization.get();
+        }
+
+        public Map<String, String> formValues() {
+            return form.get();
+        }
+
+        public String resourceAuthorizationHeader() {
+            return resourceAuthorization.get();
         }
     }
 }

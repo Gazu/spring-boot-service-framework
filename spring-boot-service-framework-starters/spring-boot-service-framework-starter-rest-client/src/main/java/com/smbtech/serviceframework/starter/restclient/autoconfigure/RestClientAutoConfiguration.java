@@ -8,10 +8,9 @@ import com.smbtech.serviceframework.httpclient.port.out.CorrelationHeadersProvid
 import com.smbtech.serviceframework.httpclient.port.out.CredentialDefinitionSource;
 import com.smbtech.serviceframework.httpclient.port.out.CredentialProvider;
 import com.smbtech.serviceframework.httpclient.port.out.HttpClientDefinitionSource;
+import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 import com.smbtech.serviceframework.httpclient.port.out.HttpExchangeAuditSink;
-import com.smbtech.serviceframework.httpclient.port.out.JwtAssertionProvider;
 import com.smbtech.serviceframework.httpclient.port.out.KeyStoreDefinitionSource;
-import com.smbtech.serviceframework.httpclient.port.out.TokenCache;
 import com.smbtech.serviceframework.httpclient.service.DefaultHttpClientCatalog;
 import com.smbtech.serviceframework.httpclient.service.DefaultHttpClientDefinitionValidator;
 import com.smbtech.serviceframework.httpclient.service.ScopeValidator;
@@ -26,23 +25,19 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.Reques
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SocketConfigConfigurator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SslContextFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SslConnectionSocketFactoryConfigurator;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.CachedAccessTokenProvider;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.DefaultAccessTokenClient;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.InMemoryTokenCache;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.OAuth2AccessTokenProvider;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialDefinitionSource;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialProvider;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesKeyStoreDefinitionSource;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.jwt.JwtAssertionFactory;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.jwt.JwtBearerAccessTokenProvider;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreManager;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.PrivateKeyLoader;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.RsaKeyFactory;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientRegistrationResolver;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.ClientAssertionJwkResolver;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientCredentialsTokenResponseClientFactory;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityClientCredentialsAccessTokenProvider;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityJwtBearerAccessTokenProvider;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.GrantAwareOAuth2AuthorizedClientService;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2AuthorizationContextAttributesMapper;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SigningJwkResolver;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientRegistrationResolver;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringOAuth2TokenResponseClientFactory;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityAuthorizedClientTokenClient;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityJwtBearerAssertionResolver;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.error.HttpErrorResponseMapper;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.resilience.ResilienceStateRegistry;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.source.PropertiesHttpClientDefinitionSource;
@@ -68,6 +63,14 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Role;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.ClientCredentialsOAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.JwtBearerOAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.web.client.RestClient;
 
@@ -90,6 +93,14 @@ public class RestClientAutoConfiguration {
     @Role(ROLE_INFRASTRUCTURE)
     static RestClientBeanRegistrar restClientBeanRegistrar() {
         return new RestClientBeanRegistrar();
+    }
+
+    @Bean
+    static OAuth2AuthorizedClientServiceCachePolicyPostProcessor oAuth2AuthorizedClientServiceCachePolicyPostProcessor(
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+            ObjectProvider<RestClientProperties> properties
+    ) {
+        return new OAuth2AuthorizedClientServiceCachePolicyPostProcessor(clientRegistrationRepository, properties);
     }
 
     @Bean
@@ -178,12 +189,6 @@ public class RestClientAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    TokenCache tokenCache() {
-        return new InMemoryTokenCache();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
     ScopeValidator scopeValidator() {
         return new ScopeValidator();
     }
@@ -198,54 +203,97 @@ public class RestClientAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    SigningJwkResolver signingJwkResolver(PrivateKeyLoader privateKeyLoader) {
+        return new SigningJwkResolver(privateKeyLoader);
+    }
+
+    @Bean
     @ConditionalOnBean(SpringClientRegistrationResolver.class)
     @ConditionalOnMissingBean
     ClientAssertionJwkResolver clientAssertionJwkResolver(
             RestClientProperties properties,
-            KeyStoreManager keyStoreManager,
-            PrivateKeyLoader privateKeyLoader
+            SigningJwkResolver signingJwkResolver
     ) {
-        return new ClientAssertionJwkResolver(properties, keyStoreManager, privateKeyLoader);
+        return new ClientAssertionJwkResolver(properties, signingJwkResolver);
     }
 
     @Bean
     @ConditionalOnBean(ClientAssertionJwkResolver.class)
     @ConditionalOnMissingBean
-    SpringClientCredentialsTokenResponseClientFactory springClientCredentialsTokenResponseClientFactory(
+    SpringOAuth2TokenResponseClientFactory springOAuth2TokenResponseClientFactory(
             ClientAssertionJwkResolver clientAssertionJwkResolver,
             Clock clock
     ) {
-        return new SpringClientCredentialsTokenResponseClientFactory(clientAssertionJwkResolver, clock);
+        return new SpringOAuth2TokenResponseClientFactory(clientAssertionJwkResolver, clock);
     }
 
     @Bean
-    @ConditionalOnBean(SpringClientCredentialsTokenResponseClientFactory.class)
+    @ConditionalOnBean(SpringOAuth2TokenResponseClientFactory.class)
     @ConditionalOnMissingBean
-    SpringSecurityClientCredentialsAccessTokenProvider springSecurityClientCredentialsAccessTokenProvider(
-            SpringClientRegistrationResolver springClientRegistrationResolver,
-            SpringClientCredentialsTokenResponseClientFactory tokenResponseClientFactory,
+    OAuth2AuthorizedClientProvider springOAuth2AuthorizedClientProvider(
+            SpringOAuth2TokenResponseClientFactory tokenResponseClientFactory,
+            SpringSecurityJwtBearerAssertionResolver assertionResolver,
             Clock clock
     ) {
-        return new SpringSecurityClientCredentialsAccessTokenProvider(
-                springClientRegistrationResolver,
-                tokenResponseClientFactory,
-                clock
+        ClientCredentialsOAuth2AuthorizedClientProvider clientCredentials =
+                new ClientCredentialsOAuth2AuthorizedClientProvider();
+        clientCredentials.setAccessTokenResponseClient(tokenResponseClientFactory.createClientCredentials());
+        clientCredentials.setClock(clock);
+
+        JwtBearerOAuth2AuthorizedClientProvider jwtBearer = new JwtBearerOAuth2AuthorizedClientProvider();
+        jwtBearer.setAccessTokenResponseClient(tokenResponseClientFactory.createJwtBearer());
+        jwtBearer.setJwtAssertionResolver(assertionResolver::createAssertion);
+        jwtBearer.setClock(clock);
+
+        return OAuth2AuthorizedClientProviderBuilder.builder()
+                .provider(clientCredentials)
+                .provider(jwtBearer)
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    SpringSecurityJwtBearerAssertionResolver springSecurityJwtBearerAssertionResolver(
+            RestClientProperties properties,
+            SigningJwkResolver signingJwkResolver,
+            Clock clock
+    ) {
+        return new SpringSecurityJwtBearerAssertionResolver(properties, signingJwkResolver, clock);
+    }
+
+    @Bean
+    @ConditionalOnBean(ClientRegistrationRepository.class)
+    @ConditionalOnMissingBean
+    OAuth2AuthorizedClientService oAuth2AuthorizedClientService(
+            ClientRegistrationRepository clientRegistrationRepository,
+            RestClientProperties properties
+    ) {
+        OAuth2AuthorizedClientService delegate =
+                new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+        return new GrantAwareOAuth2AuthorizedClientService(
+                clientRegistrationRepository,
+                delegate,
+                properties
         );
     }
 
     @Bean
-    @ConditionalOnBean(SpringClientRegistrationResolver.class)
+    @ConditionalOnBean(OAuth2AuthorizedClientProvider.class)
     @ConditionalOnMissingBean
-    SpringSecurityJwtBearerAccessTokenProvider springSecurityJwtBearerAccessTokenProvider(
-            SpringClientRegistrationResolver springClientRegistrationResolver,
-            RestClientProperties properties,
-            OAuth2AccessTokenProvider oauth2AccessTokenProvider
+    OAuth2AuthorizedClientManager oAuth2AuthorizedClientManager(
+            ClientRegistrationRepository clientRegistrationRepository,
+            OAuth2AuthorizedClientService authorizedClientService,
+            OAuth2AuthorizedClientProvider authorizedClientProvider
     ) {
-        return new SpringSecurityJwtBearerAccessTokenProvider(
-                springClientRegistrationResolver,
-                properties,
-                oauth2AccessTokenProvider
-        );
+        AuthorizedClientServiceOAuth2AuthorizedClientManager manager =
+                new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+                        clientRegistrationRepository,
+                        authorizedClientService
+                );
+        manager.setAuthorizedClientProvider(authorizedClientProvider);
+        manager.setContextAttributesMapper(new OAuth2AuthorizationContextAttributesMapper());
+        return manager;
     }
 
     @Bean
@@ -264,70 +312,16 @@ public class RestClientAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean
-    RsaKeyFactory rsaKeyFactory(PrivateKeyLoader privateKeyLoader) {
-        return new RsaKeyFactory(privateKeyLoader);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    JwtAssertionFactory jwtAssertionFactory(RsaKeyFactory rsaKeyFactory) {
-        return new JwtAssertionFactory(rsaKeyFactory);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    JwtAssertionProvider jwtAssertionProvider(
-            JwtAssertionFactory jwtAssertionFactory,
-            Clock clock
+    @ConditionalOnMissingBean({AccessTokenProvider.class, AccessTokenClient.class})
+    SpringSecurityAuthorizedClientTokenClient springSecurityAuthorizedClientTokenClient(
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+            ObjectProvider<OAuth2AuthorizedClientManager> authorizedClientManager,
+            ScopeValidator scopeValidator
     ) {
-        return new JwtBearerAccessTokenProvider(jwtAssertionFactory, clock);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    OAuth2AccessTokenProvider oauth2AccessTokenProvider(
-            RestClient.Builder restClientBuilder,
-            JwtAssertionProvider jwtAssertionProvider,
-            ScopeValidator scopeValidator,
-            Clock clock
-    ) {
-        return new OAuth2AccessTokenProvider(restClientBuilder, jwtAssertionProvider, scopeValidator, clock);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    AccessTokenProvider accessTokenProvider(
-            TokenCache tokenCache,
-            ObjectProvider<SpringSecurityClientCredentialsAccessTokenProvider> springClientCredentialsProvider,
-            ObjectProvider<SpringSecurityJwtBearerAccessTokenProvider> springJwtBearerProvider,
-            ScopeValidator scopeValidator,
-            Clock clock
-    ) {
-        return new CachedAccessTokenProvider(
-                tokenCache,
-                springClientCredentialsProvider.getIfAvailable(),
-                springJwtBearerProvider.getIfAvailable(),
-                scopeValidator,
-                clock
-        );
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    AccessTokenClient accessTokenClient(
-            TokenCache tokenCache,
-            ObjectProvider<SpringSecurityClientCredentialsAccessTokenProvider> springClientCredentialsProvider,
-            ObjectProvider<SpringSecurityJwtBearerAccessTokenProvider> springJwtBearerProvider,
-            ScopeValidator scopeValidator,
-            Clock clock
-    ) {
-        return new DefaultAccessTokenClient(
-                tokenCache,
-                springClientCredentialsProvider.getIfAvailable(),
-                springJwtBearerProvider.getIfAvailable(),
-                scopeValidator,
-                clock
+        return new SpringSecurityAuthorizedClientTokenClient(
+                clientRegistrationRepository.getIfAvailable(),
+                authorizedClientManager.getIfAvailable(),
+                scopeValidator
         );
     }
 
@@ -459,22 +453,26 @@ public class RestClientAutoConfiguration {
     @ConditionalOnMissingBean
     ConfiguredRestClientFactory configuredRestClientFactory(
             RestClient.Builder restClientBuilder,
-            AccessTokenProvider accessTokenProvider,
+            ObjectProvider<OAuth2AuthorizedClientManager> authorizedClientManager,
+            ObjectProvider<OAuth2AuthorizedClientService> authorizedClientService,
             CorrelationHeadersProvider correlationHeadersProvider,
             HttpExchangeAuditSink auditSink,
             HttpClientConfigurator httpClientConfigurator,
             HttpErrorResponseMapper errorResponseMapper,
+            HttpErrorResponseBodyReader errorResponseBodyReader,
             ResilienceStateRegistry resilienceStateRegistry,
             ObjectProvider<MeterRegistry> meterRegistry,
             ObjectProvider<RestClientBuilderCustomizer> customizers
     ) {
         return new ConfiguredRestClientFactory(
                 restClientBuilder,
-                accessTokenProvider,
+                authorizedClientManager.getIfAvailable(),
+                authorizedClientService.getIfAvailable(),
                 correlationHeadersProvider,
                 auditSink,
                 httpClientConfigurator,
                 errorResponseMapper,
+                errorResponseBodyReader,
                 resilienceStateRegistry,
                 meterRegistry.getIfAvailable(),
                 orderedList(customizers)

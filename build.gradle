@@ -4,17 +4,161 @@ plugins {
 
 allprojects {
     group = 'com.smbtech'
-    version = '0.1.0-SNAPSHOT'
+    version = '0.2.0'
 
     repositories {
         mavenCentral()
     }
 }
 
+tasks.register('validateMarkdownLinks') {
+    group = 'verification'
+    description = 'Validates relative Markdown links in repository documentation.'
+
+    inputs.files(fileTree(rootDir) {
+        include '**/*.md'
+        exclude '**/.git/**'
+        exclude '**/.gradle/**'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def linkPattern = ~/\[[^\]]+]\(([^)]+)\)/
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                def matcher = line =~ linkPattern
+                matcher.each { match ->
+                    def rawTarget = match[1].trim()
+                    def target = rawTarget.split('#', 2)[0].trim()
+                    if (target.startsWith('<') && target.endsWith('>')) {
+                        target = target.substring(1, target.length() - 1)
+                    }
+                    def external = target.contains('://') || target.startsWith('mailto:')
+                    if (!target.isBlank() && !external) {
+                        def destination = new File(source.parentFile, target)
+                        if (!destination.exists()) {
+                            failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: broken link -> ${rawTarget}"
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Broken Markdown links found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateExampleSecrets') {
+    group = 'verification'
+    description = 'Scans example documentation and configuration for accidentally committed secrets.'
+
+    inputs.files(fileTree('examples') {
+        include '**/*.md'
+        include '**/*.gradle'
+        include '**/*.properties'
+        include '**/*.yml'
+        include '**/*.yaml'
+        exclude '**/.gradle/**'
+        exclude '**/.idea/**'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def rules = [
+                [
+                        name   : 'private key material',
+                        pattern: ~/(?i)-----BEGIN (RSA |EC |OPENSSH |)?PRIVATE KEY-----/
+                ],
+                [
+                        name   : 'internal endpoint',
+                        pattern: ~/(?i)https?:\/\/[^\s'"]*smb-tech\.[^\s'"]*/
+                ],
+                [
+                        name   : 'long inline secret-like value',
+                        pattern: ~/(?i)^\s*([A-Z0-9_]*(PASSWORD|SECRET|TOKEN|KEYSTORE|PRIVATE_KEY|KEY)[A-Z0-9_]*|base64|password|key-password|client-secret)\s*[:=]\s*(?!\$\{)[A-Za-z0-9+\/=]{40,}\s*$/
+                ],
+                [
+                        name   : 'literal secret property',
+                        pattern: ~/(?i)^\s*(client-secret|password|key-password|value)\s*[:=]\s*(?!\$\{)(?!change-me\b)(?!example\b)[^#\s].*$/
+                ]
+        ]
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                rules.each { rule ->
+                    if ((line =~ rule.pattern).find()) {
+                        failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: ${rule.name}"
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Potential secrets found in examples:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateExampleApplicationConfig') {
+    group = 'verification'
+    description = 'Ensures example application config files keep real values out of source control.'
+
+    inputs.files(fileTree('examples') {
+        include '**/src/main/resources/application*.properties'
+        include '**/src/main/resources/application*.yml'
+        include '**/src/main/resources/application*.yaml'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def topLevelEnvironmentAssignment = ~/^[A-Z][A-Z0-9_]+:\s+(?!\$\{).+/
+        def uuidClientId = ~/(?i)(client-id|CLIENT_ID)\s*[:=]\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                if ((line =~ topLevelEnvironmentAssignment).find()) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: top-level environment value must not be committed"
+                }
+                if ((line =~ uuidClientId).find()) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: literal client id must use an environment placeholder"
+                }
+                if (line.length() > 500) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: oversized line may contain encoded secret material"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Unsafe example application config found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('documentationCheck') {
+    group = 'verification'
+    description = 'Runs documentation link validation and example secret/config checks.'
+    dependsOn(
+            tasks.named('validateMarkdownLinks'),
+            tasks.named('validateExampleSecrets'),
+            tasks.named('validateExampleApplicationConfig')
+    )
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('documentationCheck')
+}
+
 tasks.register('baseline') {
     group = 'verification'
     description = 'Compiles and tests every framework module.'
     dependsOn(
+            tasks.named('documentationCheck'),
             ':spring-boot-service-framework-logging-core:check',
             ':spring-boot-service-framework-http-client-core:check',
             ':spring-boot-service-framework-mock-core:check',
@@ -61,5 +205,15 @@ tasks.register('consumerSmoke') {
     dependsOn(
             tasks.named('loggingConsumerSmoke'),
             tasks.named('restClientConsumerSmoke')
+    )
+}
+
+tasks.register('compatibilityCheck') {
+    group = 'verification'
+    description = 'Runs the framework baseline and standalone consumer smoke tests against published artifacts.'
+    dependsOn(
+            tasks.named('documentationCheck'),
+            tasks.named('baseline'),
+            tasks.named('consumerSmoke')
     )
 }

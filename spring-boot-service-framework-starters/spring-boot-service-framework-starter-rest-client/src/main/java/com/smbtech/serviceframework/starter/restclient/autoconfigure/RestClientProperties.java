@@ -659,6 +659,7 @@ public class RestClientProperties {
         private Map<String, ClientAssertion> clientAssertions = new LinkedHashMap<>();
         private Map<String, JwtBearer> jwtBearer = new LinkedHashMap<>();
         private Map<String, KeyStore> keyStores = new LinkedHashMap<>();
+        private TokenCache tokenCache = new TokenCache();
 
         public Map<String, Credential> getCredentials() {
             return credentials;
@@ -690,6 +691,35 @@ public class RestClientProperties {
 
         public void setKeyStores(Map<String, KeyStore> keyStores) {
             this.keyStores = keyStores;
+        }
+
+        public TokenCache getTokenCache() {
+            return tokenCache;
+        }
+
+        public void setTokenCache(TokenCache tokenCache) {
+            this.tokenCache = tokenCache;
+        }
+    }
+
+    public static class TokenCache {
+        private boolean clientCredentials = true;
+        private boolean jwtBearer = true;
+
+        public boolean isClientCredentials() {
+            return clientCredentials;
+        }
+
+        public void setClientCredentials(boolean clientCredentials) {
+            this.clientCredentials = clientCredentials;
+        }
+
+        public boolean isJwtBearer() {
+            return jwtBearer;
+        }
+
+        public void setJwtBearer(boolean jwtBearer) {
+            this.jwtBearer = jwtBearer;
         }
     }
 

@@ -1,0 +1,10 @@
+{
+  "status": 202,
+  "headers": {
+    "X-Mock": "true",
+    "Set-Cookie": ["a=1", "b=2"]
+  },
+  "body": {
+    "status": "ACCEPTED"
+  }
+}

@@ -11,8 +11,20 @@ provides:
   `MockResponder` beans;
 - a controller-friendly `MockService` bean for optional mock lookup by key or
   direct `404 Not Found` fallback responses;
+- a future-ready `MockRestClientInterceptor` bean for outbound Spring
+  `RestClient` calls;
 - JSON mock response loading from `classpath:` or `file:` locations;
 - optional artificial response delay.
+
+## When to use
+
+Use this starter when a Spring Boot service needs configured mock responses for
+controllers, integration tests, or outbound `RestClient` calls. It is useful for
+local development, contract exploration, and deterministic test fixtures.
+
+Use `spring-boot-service-framework-mock-core` directly only when building a
+framework-neutral adapter or test helper that should not depend on Spring,
+Jackson, Servlet, or `RestClient` APIs.
 
 ## Architecture
 
@@ -25,6 +37,7 @@ smbtech.mocks properties
   -> DefaultMockResponder
   -> ResourceMockResponseSource
   -> SpringMockService / MockResponseEntityMapper
+  -> MockRestClientInterceptor
 ```
 
 Core contracts remain in `spring-boot-service-framework-mock-core`:
@@ -36,14 +49,13 @@ Core contracts remain in `spring-boot-service-framework-mock-core`:
 - `MockResponseSource`
 
 Spring-specific conversion stays in this starter. This keeps the core reusable
-for future RestClient interceptors, controllers, test helpers, or custom
-clients.
+for RestClient interceptors, controllers, test helpers, or custom clients.
 
 ## Module coordinates
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.2.0'
 }
 ```
 
@@ -150,6 +162,70 @@ ResponseEntity<String> responseOrNotFound(String mockKey);
 
 `exchangeMock` remains available as the lower-level alias behind the facade.
 
+### Future RestClient integration
+
+The starter exposes a `MockRestClientInterceptor` bean. The interceptor adapts
+outbound Spring `RestClient` calls to the neutral core `MockResponder`.
+
+Resolution rules:
+
+1. If the outgoing request contains `X-Mock-Key`, that value is used as the mock
+   key.
+2. If `X-Mock-Key` is missing, the request path is used as fallback. For example
+   `/v1/payments` becomes `v1/payments`.
+3. If no enabled mock matches the resolved key, the real HTTP request continues.
+
+This keeps mocks opt-in and safe. Adding the starter does not automatically
+replace outbound HTTP calls.
+
+Manual `RestClient` usage:
+
+```java
+@Bean
+RestClient paymentsRestClient(
+        RestClient.Builder builder,
+        MockRestClientInterceptor mockInterceptor
+) {
+    return builder
+            .baseUrl("https://payments.example.test")
+            .defaultHeader("X-Mock-Key", "payments-success")
+            .requestInterceptor(mockInterceptor)
+            .build();
+}
+```
+
+When using `spring-boot-service-framework-starter-rest-client`, connect both
+starters with the existing customizer hook:
+
+```java
+@Bean
+RestClientBuilderCustomizer mockRestClientCustomizer(MockRestClientInterceptor mockInterceptor) {
+    return (definition, builder) -> builder.requestInterceptor(mockInterceptor);
+}
+```
+
+Then configure the mock key as a default header on the generated RestClient:
+
+```yaml
+smbtech:
+  rest-clients:
+    clients:
+      payments:
+        base-url: https://payments.example.test
+        default-headers:
+          X-Mock-Key: payments-success
+  mocks:
+    endpoints:
+      payments-success:
+        enabled: true
+        file: classpath:mocks/payments-success.json
+```
+
+The outgoing request still flows through the configured `RestClient` pipeline.
+If `payments-success` is enabled, the interceptor returns the configured mock
+response. If it is missing or disabled, the call continues to the real remote
+service.
+
 ## Current limitations
 
 The public `MockService` facade is intentionally Spring/Jackson oriented because
@@ -157,11 +233,14 @@ it returns `ResponseEntity<T>` and accepts Jackson `TypeReference<T>` for generi
 payloads.
 
 For framework-neutral integrations, depend on the core `MockResponder` bean
-instead. The next phases can add RestClient adapters on top of the same
-responder without changing the core contract.
+instead.
 
 ## Validation
 
 ```bash
 ./gradlew :spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check
 ```
+
+For the full mock guide, including architecture, property reference, RestClient
+integration, test matrix, and troubleshooting, see
+[../../docs/mock.md](../../docs/mock.md).

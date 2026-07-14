@@ -1,26 +1,24 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import org.springframework.security.oauth2.client.endpoint.AbstractOAuth2AuthorizationGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.NimbusJwtClientAuthenticationParametersConverter;
-import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientClientCredentialsTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.RestClientJwtBearerTokenResponseClient;
 
 import java.time.Clock;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Creates Spring Security token clients used for client_credentials.
- */
-public final class SpringClientCredentialsTokenResponseClientFactory {
+public final class SpringOAuth2TokenResponseClientFactory {
 
     private static final Set<String> REGISTERED_CLAIMS = Set.of("iss", "sub", "aud", "jti", "iat", "exp", "nbf");
 
     private final ClientAssertionJwkResolver jwkResolver;
     private final Clock clock;
 
-    public SpringClientCredentialsTokenResponseClientFactory(
+    public SpringOAuth2TokenResponseClientFactory(
             ClientAssertionJwkResolver jwkResolver,
             Clock clock
     ) {
@@ -28,11 +26,23 @@ public final class SpringClientCredentialsTokenResponseClientFactory {
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
-    public RestClientClientCredentialsTokenResponseClient create() {
+    public RestClientClientCredentialsTokenResponseClient createClientCredentials() {
         RestClientClientCredentialsTokenResponseClient tokenResponseClient =
                 new RestClientClientCredentialsTokenResponseClient();
+        tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
+        return tokenResponseClient;
+    }
 
-        NimbusJwtClientAuthenticationParametersConverter<OAuth2ClientCredentialsGrantRequest> converter =
+    public RestClientJwtBearerTokenResponseClient createJwtBearer() {
+        RestClientJwtBearerTokenResponseClient tokenResponseClient =
+                new RestClientJwtBearerTokenResponseClient();
+        tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
+        return tokenResponseClient;
+    }
+
+    public <T extends AbstractOAuth2AuthorizationGrantRequest> NimbusJwtClientAuthenticationParametersConverter<T>
+    clientAuthenticationParametersConverter() {
+        NimbusJwtClientAuthenticationParametersConverter<T> converter =
                 new NimbusJwtClientAuthenticationParametersConverter<>(jwkResolver::resolve);
         converter.setJwtClientAssertionCustomizer(context -> {
             String registrationId = context.getAuthorizationGrantRequest()
@@ -47,8 +57,7 @@ public final class SpringClientCredentialsTokenResponseClientFactory {
                 }
             }
         });
-        tokenResponseClient.addParametersConverter(converter);
-        return tokenResponseClient;
+        return converter;
     }
 
     private boolean isCustomClaim(Map.Entry<String, Object> entry) {

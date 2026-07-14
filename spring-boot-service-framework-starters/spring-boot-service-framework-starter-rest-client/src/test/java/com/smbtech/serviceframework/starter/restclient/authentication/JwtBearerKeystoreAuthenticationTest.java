@@ -95,8 +95,8 @@ class JwtBearerKeystoreAuthenticationTest {
                             .contains("\"exp\":")
                             .contains("\"tenant\":\"payments\"")
                             .contains("\"channel\":\"backend\"")
-                            .contains("\"priority\":7")
-                            .contains("\"audit\":true");
+                            .contains("\"priority\":\"7\"")
+                            .contains("\"audit\":\"true\"");
                 });
     }
 

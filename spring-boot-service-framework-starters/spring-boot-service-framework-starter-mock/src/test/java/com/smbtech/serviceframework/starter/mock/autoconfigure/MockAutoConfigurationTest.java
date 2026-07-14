@@ -1,17 +1,27 @@
 package com.smbtech.serviceframework.starter.mock.autoconfigure;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
 import com.smbtech.serviceframework.mock.port.out.MockDefinitionSource;
 import com.smbtech.serviceframework.mock.port.out.MockResponseSource;
+import com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockRestClientInterceptor;
+import com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockRestClientRequestMapper;
 import com.smbtech.serviceframework.starter.mock.adapter.in.spring.MockResponseEntityMapper;
 import com.smbtech.serviceframework.starter.mock.api.mock.MockService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpRequest;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +38,8 @@ class MockAutoConfigurationTest {
                 .hasSingleBean(MockCatalog.class)
                 .hasSingleBean(MockResponseSource.class)
                 .hasSingleBean(MockResponder.class)
+                .hasSingleBean(MockRestClientRequestMapper.class)
+                .hasSingleBean(MockRestClientInterceptor.class)
                 .hasSingleBean(MockResponseEntityMapper.class)
                 .hasSingleBean(MockService.class));
     }
@@ -134,6 +146,134 @@ class MockAutoConfigurationTest {
                     assertThat(mockService.exchangeMock("disabled", new TypeReference<Map<String, Object>>() {
                     })).isEmpty();
                 });
+    }
+
+    @Test
+    void restClientInterceptorReturnsConfiguredMockResponseWithoutExecutingRealRequest() {
+        contextRunner
+                .withPropertyValues(
+                        "smbtech.mocks.endpoints.payments-success.enabled=true",
+                        "smbtech.mocks.endpoints.payments-success.file=mocks/payments-success.json"
+                )
+                .run(context -> {
+                    MockRestClientInterceptor interceptor = context.getBean(MockRestClientInterceptor.class);
+                    AtomicBoolean executed = new AtomicBoolean(false);
+
+                    var response = interceptor.intercept(
+                            httpRequest(
+                                    HttpMethod.POST,
+                                    URI.create("https://payments.example.test/v1/payments?source=test"),
+                                    Map.of("X-Mock-Key", List.of("payments-success"))
+                            ),
+                            "{\"amount\":100}".getBytes(StandardCharsets.UTF_8),
+                            (request, body) -> {
+                                executed.set(true);
+                                return new com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockClientHttpResponse(
+                                        MockResponse.ok("real".getBytes(StandardCharsets.UTF_8))
+                                );
+                            }
+                    );
+
+                    assertThat(executed).isFalse();
+                    assertThat(response.getStatusCode().value()).isEqualTo(201);
+                    assertThat(response.getHeaders().getFirst("X-Mock")).isEqualTo("true");
+                    assertThat(new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8))
+                            .contains("\"id\":\"pay-123\"")
+                            .contains("\"status\":\"MOCKED\"");
+                });
+    }
+
+    @Test
+    void restClientInterceptorExecutesRealRequestWhenMockDoesNotApply() {
+        contextRunner.run(context -> {
+            MockRestClientInterceptor interceptor = context.getBean(MockRestClientInterceptor.class);
+            AtomicBoolean executed = new AtomicBoolean(false);
+
+            var response = interceptor.intercept(
+                    httpRequest(
+                            HttpMethod.GET,
+                            URI.create("https://payments.example.test/v1/missing"),
+                            Map.of()
+                    ),
+                    new byte[0],
+                    (request, body) -> {
+                        executed.set(true);
+                        return new com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockClientHttpResponse(
+                                new MockResponse(
+                                        202,
+                                        Map.of("X-Real", List.of("true")),
+                                        "real".getBytes(StandardCharsets.UTF_8)
+                                )
+                        );
+                    }
+            );
+
+            assertThat(executed).isTrue();
+            assertThat(response.getStatusCode().value()).isEqualTo(202);
+            assertThat(response.getHeaders().getFirst("X-Real")).isEqualTo("true");
+            assertThat(new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("real");
+        });
+    }
+
+    @Test
+    void restClientRequestMapperUsesHeaderKeyAndFallsBackToNormalizedPath() {
+        MockRestClientRequestMapper mapper = new MockRestClientRequestMapper();
+
+        var headerBased = mapper.toMockRequest(
+                httpRequest(
+                        HttpMethod.PUT,
+                        URI.create("https://api.example.test/v1/payments?id=123&id=456"),
+                        Map.of("X-Mock-Key", List.of("payments-success"))
+                ),
+                "request".getBytes(StandardCharsets.UTF_8)
+        );
+        var pathBased = mapper.toMockRequest(
+                httpRequest(HttpMethod.GET, URI.create("https://api.example.test/v1/payments"), Map.of()),
+                new byte[0]
+        );
+
+        assertThat(headerBased.key()).isEqualTo("payments-success");
+        assertThat(headerBased.method()).isEqualTo("PUT");
+        assertThat(headerBased.path()).isEqualTo("/v1/payments");
+        assertThat(headerBased.queryParams()).containsEntry("id", List.of("123", "456"));
+        assertThat(headerBased.attributes()).containsEntry("host", "api.example.test");
+        assertThat(pathBased.key()).isEqualTo("v1/payments");
+    }
+
+    private HttpRequest httpRequest(
+            HttpMethod method,
+            URI uri,
+            Map<String, List<String>> headers
+    ) {
+        return new HttpRequest() {
+            private final HttpHeaders httpHeaders = httpHeaders(headers);
+
+            @Override
+            public HttpMethod getMethod() {
+                return method;
+            }
+
+            @Override
+            public URI getURI() {
+                return uri;
+            }
+
+            @Override
+            public Map<String, Object> getAttributes() {
+                return Map.of("source", "test");
+            }
+
+            @Override
+            public HttpHeaders getHeaders() {
+                return httpHeaders;
+            }
+        };
+    }
+
+    private HttpHeaders httpHeaders(Map<String, List<String>> headers) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        headers.forEach((name, values) -> values.forEach(value -> httpHeaders.add(name, value)));
+        return httpHeaders;
     }
 
     private record PaymentMock(String id, String status) {

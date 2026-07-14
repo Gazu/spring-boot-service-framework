@@ -7,6 +7,8 @@ import com.smbtech.serviceframework.mock.port.out.MockDefinitionSource;
 import com.smbtech.serviceframework.mock.port.out.MockResponseSource;
 import com.smbtech.serviceframework.mock.service.DefaultMockCatalog;
 import com.smbtech.serviceframework.mock.service.DefaultMockResponder;
+import com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockRestClientInterceptor;
+import com.smbtech.serviceframework.starter.mock.adapter.in.restclient.MockRestClientRequestMapper;
 import com.smbtech.serviceframework.starter.mock.adapter.in.spring.MockResponseEntityMapper;
 import com.smbtech.serviceframework.starter.mock.adapter.in.spring.SpringMockService;
 import com.smbtech.serviceframework.starter.mock.adapter.out.properties.PropertiesMockDefinitionSource;
@@ -19,6 +21,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 @AutoConfiguration
 @ConditionalOnClass(ObjectMapper.class)
@@ -75,6 +78,23 @@ public class MockAutoConfiguration {
             MockResponseEntityMapper responseEntityMapper
     ) {
         return new SpringMockService(mockResponder, responseEntityMapper);
+    }
+
+    @Bean
+    @ConditionalOnClass(ClientHttpRequestInterceptor.class)
+    @ConditionalOnMissingBean
+    MockRestClientRequestMapper mockRestClientRequestMapper() {
+        return new MockRestClientRequestMapper();
+    }
+
+    @Bean
+    @ConditionalOnClass(ClientHttpRequestInterceptor.class)
+    @ConditionalOnMissingBean
+    MockRestClientInterceptor mockRestClientInterceptor(
+            MockResponder mockResponder,
+            MockRestClientRequestMapper requestMapper
+    ) {
+        return new MockRestClientInterceptor(mockResponder, requestMapper);
     }
 
     private ObjectMapper fallbackObjectMapper() {

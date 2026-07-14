@@ -50,13 +50,15 @@ class ApacheHttpClientConfiguratorTest {
 
     @Test
     void socketConfigUsesResponseTimeoutAndTcpKeepAlive() {
-        HttpClientDefinition definition = apacheDefinition(ConnectionReusePolicy.DEFAULT, true);
+        SocketConfig keepAliveSocketConfig = new SocketConfigConfigurator()
+                .build(apacheDefinition(ConnectionReusePolicy.DEFAULT, true));
+        SocketConfig nonKeepAliveSocketConfig = new SocketConfigConfigurator()
+                .build(apacheDefinition(ConnectionReusePolicy.DEFAULT, false));
 
-        SocketConfig socketConfig = new SocketConfigConfigurator().build(definition);
-
-        assertThat(socketConfig.getSoTimeout().toMilliseconds()).isEqualTo(3_000);
-        assertThat(socketConfig.isSoKeepAlive()).isTrue();
-        assertThat(socketConfig.isTcpNoDelay()).isTrue();
+        assertThat(keepAliveSocketConfig.getSoTimeout().toMilliseconds()).isEqualTo(3_000);
+        assertThat(keepAliveSocketConfig.isSoKeepAlive()).isTrue();
+        assertThat(keepAliveSocketConfig.isTcpNoDelay()).isTrue();
+        assertThat(nonKeepAliveSocketConfig.isSoKeepAlive()).isFalse();
     }
 
     @Test
@@ -97,7 +99,6 @@ class ApacheHttpClientConfiguratorTest {
 
         assertThat(connectionManager.getMaxTotal()).isEqualTo(50);
         assertThat(connectionManager.getDefaultMaxPerRoute()).isEqualTo(5);
-        assertThat(connectionManager.getDefaultSocketConfig().isSoKeepAlive()).isFalse();
 
         connectionManager.close();
     }

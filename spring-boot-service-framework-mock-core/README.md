@@ -10,12 +10,18 @@ integration belongs in `spring-boot-service-framework-starters/spring-boot-servi
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-mock-core:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-mock-core:0.2.0'
 }
 ```
 
+## When to use
+
 Most applications should consume the Spring Boot starter instead of depending on
 this module directly.
+
+Use this module directly when building framework-neutral mock adapters, tests,
+or custom clients that should not depend on Spring, Jackson, Servlet, or
+`RestClient` APIs.
 
 ## Package map
 
@@ -203,3 +209,9 @@ framework or adapter APIs.
 ```bash
 ./gradlew :spring-boot-service-framework-mock-core:check
 ```
+
+## Additional documentation
+
+The complete usage guide, Spring Boot starter configuration, RestClient
+integration, test matrix, and troubleshooting notes are available in
+[../docs/mock.md](../docs/mock.md).

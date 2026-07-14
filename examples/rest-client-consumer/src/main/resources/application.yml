@@ -1,19 +1,28 @@
 spring:
   application:
     name: rest-client-consumer-example
+
   security:
     oauth2:
       client:
         provider:
-          my-provider:
-            token-uri: ${TOKEN_URI}
+          core-oauth-gateway:
+            token-uri: ${OAUTH2_TOKEN_URI:http://localhost:8081/oauth2/token}
+
         registration:
-          payments-token:
-            provider: my-provider
-            client-id: ${CLIENT_ID}
-            client-secret: ${CLIENT_SECRET}
-            client-authentication-method: client_secret_basic
+          payments-client-credentials-token:
+            provider: core-oauth-gateway
+            client-id: ${PAYMENTS_CLIENT_CREDENTIALS_CLIENT_ID:}
+            client-authentication-method: private_key_jwt
             authorization-grant-type: client_credentials
+            scope:
+              - payment.read
+
+          payments-jwt-bearer-token:
+            provider: core-oauth-gateway
+            client-id: ${PAYMENTS_JWT_BEARER_CLIENT_ID:}
+            client-authentication-method: none
+            authorization-grant-type: urn:ietf:params:oauth:grant-type:jwt-bearer
             scope:
               - payment.read
 
@@ -29,11 +38,11 @@ smbtech:
   rest-clients:
     clients:
       payments:
-        base-url: http://localhost:9999
+        base-url: ${PAYMENTS_API_BASE_URL:http://localhost:9999}
         authentication-type: CLIENT_CREDENTIALS
-        credential-token-requestor-id: payments-token
+        credential-token-requestor-id: payments-client-credentials-token
         default-headers:
-          X-Application-Name: rest-client-consumer-example
+          X-Application-Name: ${spring.application.name}
         scopes: payment.read
         resilience:
           enabled: false
@@ -62,3 +71,67 @@ smbtech:
           include-headers: true
           include-body: true
           max-body-size: 4096
+
+      payments-jwt-bearer:
+        base-url: ${PAYMENTS_API_BASE_URL:http://localhost:9999}
+        authentication-type: JWT_BEARER
+        credential-token-requestor-id: payments-jwt-bearer-token
+        default-headers:
+          X-Application-Name: ${spring.application.name}
+        scopes: payment.read
+        resilience:
+          enabled: false
+        observability:
+          enabled: false
+        audit:
+          enabled: true
+          include-request: true
+          include-response: true
+          include-headers: true
+          include-body: true
+          max-body-size: 4096
+
+    authentication:
+      token-cache:
+        client-credentials: true
+        jwt-bearer: false
+
+      client-assertions:
+        payments-client-credentials-token:
+          key-store-id: payments-client-credentials-signing-key
+          token-lifetime: 60s
+
+      jwt-bearer:
+        payments-jwt-bearer-token:
+          key-store-id: payments-jwt-bearer-signing-key
+#          issuer: ${PAYMENTS_JWT_BEARER_ISSUER:${PAYMENTS_JWT_BEARER_CLIENT_ID:}}
+#          subject: ${PAYMENTS_JWT_BEARER_SUBJECT:${PAYMENTS_JWT_BEARER_CLIENT_ID:}}
+#          audience: ${PAYMENTS_JWT_BEARER_AUDIENCE:${OAUTH2_TOKEN_URI:http://localhost:8081/oauth2/token}}
+          token-lifetime: 5m
+          custom-claims:
+            customer_id: ${PAYMENTS_JWT_BEARER_CUSTOMER_ID:}
+
+      key-stores:
+        payments-client-credentials-signing-key:
+          base64: ${PAYMENTS_CLIENT_CREDENTIALS_KEYSTORE_BASE64:}
+          type: ${PAYMENTS_CLIENT_CREDENTIALS_KEYSTORE_TYPE:JKS}
+          password-ref: payments-client-credentials-keystore-password
+          key-alias: ${PAYMENTS_CLIENT_CREDENTIALS_KEY_ALIAS:}
+          key-password-ref: payments-client-credentials-key-password
+
+        payments-jwt-bearer-signing-key:
+          base64: ${PAYMENTS_JWT_BEARER_KEYSTORE_BASE64:}
+          type: ${PAYMENTS_JWT_BEARER_KEYSTORE_TYPE:JKS}
+          password-ref: payments-jwt-bearer-keystore-password
+          key-alias: ${PAYMENTS_JWT_BEARER_KEY_ALIAS:}
+          key-password-ref: payments-jwt-bearer-key-password
+
+      credentials:
+        payments-client-credentials-keystore-password:
+          base64: ${PAYMENTS_CLIENT_CREDENTIALS_KEYSTORE_PASSWORD_BASE64:}
+        payments-client-credentials-key-password:
+          base64: ${PAYMENTS_CLIENT_CREDENTIALS_KEY_PASSWORD_BASE64:}
+        payments-jwt-bearer-keystore-password:
+          base64: ${PAYMENTS_JWT_BEARER_KEYSTORE_PASSWORD_BASE64:}
+        payments-jwt-bearer-key-password:
+          base64: ${PAYMENTS_JWT_BEARER_KEY_PASSWORD_BASE64:}

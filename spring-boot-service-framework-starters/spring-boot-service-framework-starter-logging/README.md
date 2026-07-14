@@ -2,6 +2,8 @@
 
 Structured JSON logging starter for Spring Boot services on Java 21.
 
+## When to use
+
 Use this module in consuming services. It adapts the framework-neutral logging
 core to Spring Boot, SLF4J MDC, Logback, servlet transaction id propagation, and
 Spring Boot structured logging configuration.
@@ -20,7 +22,7 @@ Spring Boot structured logging configuration.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.1.0-SNAPSHOT'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.2.0'
 }
 ```
 
@@ -57,7 +59,7 @@ class ProjectService {
 ```
 
 The temporary `com.smbtech.serviceframework.commons.logging.Logger`
-compatibility API remains available only to make migrations easier.
+compatibility API remains available during the pre-1.0 development cycle.
 
 ## Transaction id and MDC
 
@@ -151,21 +153,6 @@ All properties are under `smbtech.logging`.
 | `transaction.accept-incoming` | `true` | Accepts a valid incoming transaction id. If disabled, always generates a new UUID. |
 | `transaction.max-length` | `128` | Maximum accepted incoming transaction id length. |
 
-## Migration from projects-service
-
-1. Add the starter dependency.
-2. Replace imports from
-   `com.smb_tech.projects_service.infrastructure.config.logging` with
-   `com.smbtech.serviceframework.logging`.
-3. Prefer `StructuredLoggerFactory#get(Class<?>)` for new code.
-4. Remove the local `infrastructure/config/logging` package after callers are
-   migrated.
-5. Remove the local `logback-spring.xml` file if the default starter
-   configuration is enough.
-6. Move local `logging.async.*` properties to `smbtech.logging.async.*`.
-
-See [../../docs/migration-logging.md](../../docs/migration-logging.md).
-
 ## Local validation
 
 ```bash
@@ -173,4 +160,3 @@ See [../../docs/migration-logging.md](../../docs/migration-logging.md).
 ./gradlew loggingConsumerSmoke
 ./gradlew consumerSmoke
 ```
-

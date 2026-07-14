@@ -10,9 +10,10 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.B
 import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.CorrelationHeadersInterceptor;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.DefaultHeadersInterceptor;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.ClientAssertionJwkResolver;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientCredentialsTokenResponseClientFactory;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.GrantAwareOAuth2AuthorizedClientService;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringOAuth2TokenResponseClientFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientRegistrationResolver;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityClientCredentialsAccessTokenProvider;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityAuthorizedClientTokenClient;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
 import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
@@ -25,6 +26,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
@@ -137,8 +140,8 @@ class RestClientAutoConfigurationTest {
                     assertThat(context).doesNotHaveBean(ClientRegistrationRepository.class);
                     assertThat(context).doesNotHaveBean(SpringClientRegistrationResolver.class);
                     assertThat(context).doesNotHaveBean(ClientAssertionJwkResolver.class);
-                    assertThat(context).doesNotHaveBean(SpringClientCredentialsTokenResponseClientFactory.class);
-                    assertThat(context).doesNotHaveBean(SpringSecurityClientCredentialsAccessTokenProvider.class);
+                    assertThat(context).doesNotHaveBean(SpringOAuth2TokenResponseClientFactory.class);
+                    assertThat(context).doesNotHaveBean(OAuth2AuthorizedClientManager.class);
                 });
     }
 
@@ -200,8 +203,12 @@ class RestClientAutoConfigurationTest {
                     assertThat(context).hasSingleBean(ClientRegistrationRepository.class);
                     assertThat(context).hasSingleBean(SpringClientRegistrationResolver.class);
                     assertThat(context).hasSingleBean(ClientAssertionJwkResolver.class);
-                    assertThat(context).hasSingleBean(SpringClientCredentialsTokenResponseClientFactory.class);
-                    assertThat(context).hasSingleBean(SpringSecurityClientCredentialsAccessTokenProvider.class);
+                    assertThat(context).hasSingleBean(SpringOAuth2TokenResponseClientFactory.class);
+                    assertThat(context).hasSingleBean(OAuth2AuthorizedClientManager.class);
+                    assertThat(context).hasSingleBean(OAuth2AuthorizedClientService.class);
+                    assertThat(context.getBean(OAuth2AuthorizedClientService.class))
+                            .isInstanceOf(GrantAwareOAuth2AuthorizedClientService.class);
+                    assertThat(context).hasSingleBean(SpringSecurityAuthorizedClientTokenClient.class);
                     assertThat(context).hasSingleBean(AccessTokenProvider.class);
 
                     SpringClientRegistrationResolver resolver =
@@ -217,6 +224,17 @@ class RestClientAutoConfigurationTest {
                     assertThat(registration.getClientAuthenticationMethod())
                             .isEqualTo(ClientAuthenticationMethod.PRIVATE_KEY_JWT);
                     assertThat(registration.getScopes()).containsExactly("cl:core:profile:read");
+                });
+    }
+
+    @Test
+    void createsGrantAwareAuthorizedClientServiceWhenSpringBootDoesNotProvideOne() {
+        contextRunner
+                .withUserConfiguration(OAuth2ClientRegistrationConfiguration.class)
+                .run(context -> {
+                    assertThat(context).hasSingleBean(OAuth2AuthorizedClientService.class);
+                    assertThat(context.getBean(OAuth2AuthorizedClientService.class))
+                            .isInstanceOf(GrantAwareOAuth2AuthorizedClientService.class);
                 });
     }
 
@@ -284,6 +302,8 @@ class RestClientAutoConfigurationTest {
                         "smbtech.rest-clients.authentication.jwt-bearer.jwt-bearer-token.audience=https://my-provider.example/oauth2/v1/token",
                         "smbtech.rest-clients.authentication.jwt-bearer.jwt-bearer-token.token-lifetime=2m",
                         "smbtech.rest-clients.authentication.jwt-bearer.jwt-bearer-token.custom-claims.tenant=payments",
+                        "smbtech.rest-clients.authentication.token-cache.client-credentials=false",
+                        "smbtech.rest-clients.authentication.token-cache.jwt-bearer=true",
                         "smbtech.rest-clients.authentication.key-stores.payments-signing-key.base64=ZmFrZS1qa3M=",
                         "smbtech.rest-clients.authentication.key-stores.payments-signing-key.type=JKS",
                         "smbtech.rest-clients.authentication.key-stores.payments-signing-key.password-ref=signing-store-password",
@@ -313,6 +333,8 @@ class RestClientAutoConfigurationTest {
                     assertThat(jwtBearer.getAudience()).isEqualTo("https://my-provider.example/oauth2/v1/token");
                     assertThat(jwtBearer.getTokenLifetime()).hasMinutes(2);
                     assertThat(jwtBearer.getCustomClaims()).containsEntry("tenant", "payments");
+                    assertThat(authentication.getTokenCache().isClientCredentials()).isFalse();
+                    assertThat(authentication.getTokenCache().isJwtBearer()).isTrue();
 
                     RestClientProperties.KeyStore signingKey =
                             authentication.getKeyStores().get("payments-signing-key");
@@ -322,6 +344,16 @@ class RestClientAutoConfigurationTest {
                     assertThat(signingKey.getKeyAlias()).isEqualTo("auth");
                     assertThat(signingKey.getKeyPasswordRef()).isEqualTo("signing-key-password");
                 });
+    }
+
+    @Test
+    void defaultsOAuth2TokenCachePropertiesToEnabled() {
+        contextRunner.run(context -> {
+            RestClientProperties properties = context.getBean(RestClientProperties.class);
+
+            assertThat(properties.getAuthentication().getTokenCache().isClientCredentials()).isTrue();
+            assertThat(properties.getAuthentication().getTokenCache().isJwtBearer()).isTrue();
+        });
     }
 
     @Test
