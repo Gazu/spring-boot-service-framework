@@ -5,28 +5,31 @@ import com.smbtech.serviceframework.logging.domain.LogLevel;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
 import com.smbtech.serviceframework.logging.port.in.StructuredLogger;
 import com.smbtech.serviceframework.logging.port.out.LogEventSink;
-
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
-/**
- * Application service that applies logging policies before invoking the output port.
- */
+/** Application service that applies logging policies before invoking the output port. */
 public final class StructuredLoggingService implements StructuredLogger {
     private final LogEventSink sink;
     private final BooleanSupplier production;
 
-    public StructuredLoggingService(
-            LogEventSink sink,
-            boolean production
-    ) {
+    /**
+     * Creates a logging service with a fixed environment policy.
+     *
+     * @param sink output sink
+     * @param production whether production-only restrictions apply
+     */
+    public StructuredLoggingService(LogEventSink sink, boolean production) {
         this(sink, () -> production);
     }
 
-    public StructuredLoggingService(
-            LogEventSink sink,
-            BooleanSupplier production
-    ) {
+    /**
+     * Creates a logging service with a dynamically evaluated environment policy.
+     *
+     * @param sink output sink
+     * @param production supplier indicating whether production restrictions apply
+     */
+    public StructuredLoggingService(LogEventSink sink, BooleanSupplier production) {
         this.sink = Objects.requireNonNull(sink);
         this.production = Objects.requireNonNull(production);
     }
@@ -48,7 +51,6 @@ public final class StructuredLoggingService implements StructuredLogger {
     }
 
     private boolean isProductionMetric(EventType eventType) {
-        return production.getAsBoolean()
-                && EventType.METRIC.equals(eventType);
+        return production.getAsBoolean() && EventType.METRIC.equals(eventType);
     }
 }

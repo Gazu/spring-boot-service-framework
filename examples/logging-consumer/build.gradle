@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.smbtech.examples'
-version = '0.2.0'
+version = '0.3.0'
 
 java {
     toolchain {
@@ -37,7 +37,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-micrometer-tracing-brave'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'org.springframework.boot:spring-boot-starter-jackson'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.2.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.3.0'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

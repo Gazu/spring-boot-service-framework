@@ -1,0 +1,14 @@
+pluginManagement {
+    def frameworkProperties = new Properties()
+    file('../../gradle.properties').withInputStream { frameworkProperties.load(it) }
+    plugins {
+        id 'org.springframework.boot' version frameworkProperties.getProperty('springBootVersion')
+        id 'io.spring.dependency-management' version frameworkProperties.getProperty('springDependencyManagementVersion')
+    }
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'error-handling-consumer-example'

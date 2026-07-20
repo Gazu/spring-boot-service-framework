@@ -12,7 +12,7 @@ or restricted code.
 | `spring-boot-service-framework-logging-core` | New implementation based on requirements documented in `ROADMAP.md` | Technically publishable; ownership confirmation pending |
 | `commons.logging` compatibility API | Migrated from the local `projects-service` project | Restricted until authorship/license is confirmed |
 | Encoder and appenders migrated from `projects-service` | Removed in Phase 2 and replaced by new adapters | Not part of the current artifacts |
-| `Slf4jLogEventSink`, `SmbStructuredLogFormatter`, and `MdcCorrelationContext` adapters | New implementation based on core ports and public APIs | Technically publishable; ownership confirmation pending |
+| `Slf4jLogEventSink`, `ServiceFrameworkStructuredLogFormatter`, and `MdcCorrelationContext` adapters | New implementation based on core ports and public APIs | Technically publishable; ownership confirmation pending |
 | Chassis structure shown in screenshots | Conceptual reference for modular organization; not a license | Do not copy code, text, or assets |
 | Maven dependencies | Third-party artifacts declared in Gradle | Keep and review licenses before distribution |
 

@@ -1,18 +1,19 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class JwtBearerAuthorizedClientCacheKeyTest {
 
     @Test
     void keepsBasePrincipalWhenClaimsAreEmpty() {
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", Map.of()))
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", Map.of()))
                 .isEqualTo("spring-boot-service-framework");
     }
 
@@ -25,8 +26,12 @@ class JwtBearerAuthorizedClientCacheKeyTest {
         second.put("channel", "mobile");
         second.put("customer_id", "17952397-3");
 
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", first))
-                .isEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", second));
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", first))
+                .isEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", second));
     }
 
     @Test
@@ -36,8 +41,12 @@ class JwtBearerAuthorizedClientCacheKeyTest {
         second.put("a", "b");
         second.put("c", "d");
 
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", first))
-                .isNotEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", second));
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", first))
+                .isNotEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", second));
     }
 
     @Test
@@ -45,8 +54,12 @@ class JwtBearerAuthorizedClientCacheKeyTest {
         Map<String, Object> stringClaim = Map.of("priority", "7");
         Map<String, Object> numberClaim = Map.of("priority", 7);
 
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", stringClaim))
-                .isNotEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", numberClaim));
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", stringClaim))
+                .isNotEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", numberClaim));
     }
 
     @Test
@@ -55,19 +68,31 @@ class JwtBearerAuthorizedClientCacheKeyTest {
         Map<String, Object> second = Map.of("metadata", Map.of("roles", List.of("payer", "admin")));
         Map<String, Object> third = Map.of("metadata", Map.of("roles", List.of("admin", "payer")));
 
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", first))
-                .isEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", second))
-                .isNotEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", third));
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", first))
+                .isEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", second))
+                .isNotEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", third));
     }
 
     @Test
     void canonicalizesArrayClaims() {
-        Map<String, Object> first = Map.of("roles", new String[]{"payer", "admin"});
-        Map<String, Object> second = Map.of("roles", new String[]{"payer", "admin"});
-        Map<String, Object> third = Map.of("roles", new String[]{"admin", "payer"});
+        Map<String, Object> first = Map.of("roles", new String[] {"payer", "admin"});
+        Map<String, Object> second = Map.of("roles", new String[] {"payer", "admin"});
+        Map<String, Object> third = Map.of("roles", new String[] {"admin", "payer"});
 
-        assertThat(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", first))
-                .isEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", second))
-                .isNotEqualTo(JwtBearerAuthorizedClientCacheKey.principalName("spring-boot-service-framework", third));
+        assertThat(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", first))
+                .isEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", second))
+                .isNotEqualTo(
+                        JwtBearerAuthorizedClientCacheKey.principalName(
+                                "spring-boot-service-framework", third));
     }
 }

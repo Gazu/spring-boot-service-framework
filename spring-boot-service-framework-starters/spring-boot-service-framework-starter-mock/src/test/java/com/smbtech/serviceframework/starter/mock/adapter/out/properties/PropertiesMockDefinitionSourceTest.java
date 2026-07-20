@@ -1,13 +1,12 @@
 package com.smbtech.serviceframework.starter.mock.adapter.out.properties;
 
-import com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class PropertiesMockDefinitionSourceTest {
 
@@ -39,7 +38,8 @@ class PropertiesMockDefinitionSourceTest {
         assertThat(definitions).containsOnlyKeys("payments-success");
         assertThat(definitions.get("payments-success").key()).isEqualTo("payments-success");
         assertThat(definitions.get("payments-success").enabled()).isTrue();
-        assertThat(definitions.get("payments-success").file()).isEqualTo("classpath:mocks/payments-success.json");
+        assertThat(definitions.get("payments-success").file())
+                .isEqualTo("classpath:mocks/payments-success.json");
         assertThat(definitions.get("payments-success").delay()).isEqualTo(Duration.ofMillis(25));
     }
 }

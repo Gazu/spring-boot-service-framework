@@ -14,26 +14,26 @@ final class OAuth2AuthorizedClientServiceCachePolicyPostProcessor implements Bea
 
     OAuth2AuthorizedClientServiceCachePolicyPostProcessor(
             ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
-            ObjectProvider<RestClientProperties> properties
-    ) {
+            ObjectProvider<RestClientProperties> properties) {
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.properties = properties;
     }
 
     @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+    public Object postProcessAfterInitialization(Object bean, String beanName)
+            throws BeansException {
         if (!(bean instanceof OAuth2AuthorizedClientService authorizedClientService)
                 || bean instanceof GrantAwareOAuth2AuthorizedClientService) {
             return bean;
         }
-        ClientRegistrationRepository registrationRepository = clientRegistrationRepository.getIfAvailable();
+        ClientRegistrationRepository registrationRepository =
+                clientRegistrationRepository.getIfAvailable();
         if (registrationRepository == null) {
             return bean;
         }
         return new GrantAwareOAuth2AuthorizedClientService(
                 registrationRepository,
                 authorizedClientService,
-                properties.getIfAvailable(RestClientProperties::new)
-        );
+                properties.getIfAvailable(RestClientProperties::new));
     }
 }

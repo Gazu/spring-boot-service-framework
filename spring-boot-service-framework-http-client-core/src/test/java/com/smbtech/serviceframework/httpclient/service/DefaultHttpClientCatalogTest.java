@@ -1,8 +1,11 @@
 package com.smbtech.serviceframework.httpclient.service;
 
-import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.smbtech.serviceframework.httpclient.domain.ApacheHttpClientPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuditPolicy;
+import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
 import com.smbtech.serviceframework.httpclient.domain.BasicAuthentication;
 import com.smbtech.serviceframework.httpclient.domain.ClientType;
 import com.smbtech.serviceframework.httpclient.domain.ErrorHandlingPolicy;
@@ -12,37 +15,37 @@ import com.smbtech.serviceframework.httpclient.domain.PoolingPolicy;
 import com.smbtech.serviceframework.httpclient.domain.ResiliencePolicy;
 import com.smbtech.serviceframework.httpclient.domain.TimeoutPolicy;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientConfigurationException;
-import org.junit.jupiter.api.Test;
-
 import java.net.URI;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 class DefaultHttpClientCatalogTest {
 
     @Test
     void loadsAndValidatesConfiguredDefinitions() {
-        HttpClientDefinition definition = definition("projects", URI.create("https://projects.example"));
+        HttpClientDefinition definition =
+                definition("projects", URI.create("https://projects.example"));
 
-        DefaultHttpClientCatalog catalog = new DefaultHttpClientCatalog(
-                () -> Map.of("projects", definition),
-                new DefaultHttpClientDefinitionValidator()
-        );
+        DefaultHttpClientCatalog catalog =
+                new DefaultHttpClientCatalog(
+                        () -> Map.of("projects", definition),
+                        new DefaultHttpClientDefinitionValidator());
 
         assertEquals("projectsRestClient", catalog.requireByName("projects").beanName());
-        assertEquals("https://projects.example", catalog.requireByName("projects").baseUrl().toString());
+        assertEquals(
+                "https://projects.example", catalog.requireByName("projects").baseUrl().toString());
     }
 
     @Test
     void failsWhenBaseUrlIsMissing() {
         HttpClientDefinition definition = definition("broken", null);
 
-        assertThrows(HttpClientConfigurationException.class, () -> new DefaultHttpClientCatalog(
-                () -> Map.of("broken", definition),
-                new DefaultHttpClientDefinitionValidator()
-        ));
+        assertThrows(
+                HttpClientConfigurationException.class,
+                () ->
+                        new DefaultHttpClientCatalog(
+                                () -> Map.of("broken", definition),
+                                new DefaultHttpClientDefinitionValidator()));
     }
 
     private HttpClientDefinition definition(String name, URI baseUrl) {
@@ -62,7 +65,6 @@ class DefaultHttpClientCatalogTest {
                 ObservabilityPolicy.defaults(),
                 ResiliencePolicy.disabled(),
                 AuditPolicy.disabled(),
-                Map.of()
-        );
+                Map.of());
     }
 }

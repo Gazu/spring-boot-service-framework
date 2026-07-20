@@ -20,8 +20,7 @@ public class DummyController {
     public DummyController(
             ProjectApplicationService projectService,
             CorrelationContext correlationContext,
-            Tracer tracer
-    ) {
+            Tracer tracer) {
         this.projectService = projectService;
         this.correlationContext = correlationContext;
         this.tracer = tracer;
@@ -34,25 +33,17 @@ public class DummyController {
             throw new IllegalStateException("No active tracing span for HTTP request");
         }
 
-        DummyResponse response = new DummyResponse(
-                "ok",
-                correlationContext.find(TRANSACTION_ID).orElseThrow(),
-                currentSpan.context().traceId(),
-                currentSpan.context().spanId()
-        );
+        DummyResponse response =
+                new DummyResponse(
+                        "ok",
+                        correlationContext.find(TRANSACTION_ID).orElseThrow(),
+                        currentSpan.context().traceId(),
+                        currentSpan.context().spanId());
         projectService.logDummyRequest(
-                response.transactionId(),
-                response.traceId(),
-                response.spanId()
-        );
+                response.transactionId(), response.traceId(), response.spanId());
         return response;
     }
 
     public record DummyResponse(
-            String status,
-            String transactionId,
-            String traceId,
-            String spanId
-    ) {
-    }
+            String status, String transactionId, String traceId, String spanId) {}
 }

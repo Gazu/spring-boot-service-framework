@@ -1,15 +1,14 @@
 package com.smbtech.serviceframework.starter.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.serviceframework.httpclient.domain.AccessToken;
 import com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient;
 import com.smbtech.serviceframework.starter.restclient.api.JwtBearerTokenRequest;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class AccessTokenClientTest {
 
@@ -17,11 +16,11 @@ class AccessTokenClientTest {
     void dynamicJwtBearerMethodsAreBackwardCompatibleDefaults() {
         RecordingAccessTokenClient client = new RecordingAccessTokenClient();
 
-        AccessToken token = client.jwtBearer(
-                "payments-jwt-bearer-token",
-                "payment.read",
-                Map.of("customer_id", "17952397-3")
-        );
+        AccessToken token =
+                client.jwtBearer(
+                        "payments-jwt-bearer-token",
+                        "payment.read",
+                        Map.of("customer_id", "17952397-3"));
 
         assertThat(token.value()).isEqualTo("jwt-token");
         assertThat(client.tokenRequestId).isEqualTo("payments-jwt-bearer-token");
@@ -32,11 +31,11 @@ class AccessTokenClientTest {
     void explicitJwtBearerRequestUsesDefaultDelegation() {
         RecordingAccessTokenClient client = new RecordingAccessTokenClient();
 
-        client.jwtBearer(new JwtBearerTokenRequest(
-                "payments-jwt-bearer-token",
-                "payment.write",
-                Map.of("customer_id", "17952397-3")
-        ));
+        client.jwtBearer(
+                new JwtBearerTokenRequest(
+                        "payments-jwt-bearer-token",
+                        "payment.write",
+                        Map.of("customer_id", "17952397-3")));
 
         assertThat(client.tokenRequestId).isEqualTo("payments-jwt-bearer-token");
         assertThat(client.expectedScopes).isEqualTo("payment.write");
@@ -70,7 +69,8 @@ class AccessTokenClientTest {
         }
 
         private AccessToken token(String value) {
-            return new AccessToken(value, "Bearer", Instant.now().plusSeconds(60), Set.of("payment.read"));
+            return new AccessToken(
+                    value, "Bearer", Instant.now().plusSeconds(60), Set.of("payment.read"));
         }
     }
 }

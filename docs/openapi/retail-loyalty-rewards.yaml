@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: retail-loyalty-rewards
+  version: '1.0.0'
+paths:
+  /members/{memberId}/summary:
+    get:
+      operationId: getMemberRewardsSummary
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member rewards summary found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardsSummaryResponse'
+  /members/{memberId}/vouchers/{voucherId}:
+    get:
+      operationId: getVoucher
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: voucherId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Loyalty voucher found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoucherResponse'
+components:
+  schemas:
+    RewardsSummaryResponse:
+      type: object
+      required:
+        - memberId
+        - pointsBalance
+        - tier
+      properties:
+        memberId:
+          type: string
+        pointsBalance:
+          type: integer
+        tier:
+          type: string
+        lastActivityAt:
+          type: string
+          format: date-time
+    VoucherResponse:
+      type: object
+      required:
+        - voucherId
+        - status
+        - discountAmount
+      properties:
+        voucherId:
+          type: string
+        status:
+          type: string
+        discountAmount:
+          type: number
+        expiresOn:
+          type: string
+          format: date
+        customerVisible:
+          type: boolean

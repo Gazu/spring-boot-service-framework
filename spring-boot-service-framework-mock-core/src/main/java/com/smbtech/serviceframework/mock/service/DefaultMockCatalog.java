@@ -4,7 +4,6 @@ import com.smbtech.serviceframework.mock.domain.MockDefinition;
 import com.smbtech.serviceframework.mock.exception.MockException;
 import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.out.MockDefinitionSource;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -12,10 +11,16 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+/** Provides default mock catalog behavior. */
 public final class DefaultMockCatalog implements MockCatalog {
 
     private final Map<String, MockDefinition> definitions;
 
+    /**
+     * Creates a default mock catalog instance.
+     *
+     * @param source source value
+     */
     public DefaultMockCatalog(MockDefinitionSource source) {
         Map<String, MockDefinition> loaded = new LinkedHashMap<>();
         Objects.requireNonNullElseGet(source.loadDefinitions(), Map::<String, MockDefinition>of)
@@ -44,7 +49,8 @@ public final class DefaultMockCatalog implements MockCatalog {
         return definitions;
     }
 
-    private void register(Map<String, MockDefinition> loaded, String key, MockDefinition definition) {
+    private void register(
+            Map<String, MockDefinition> loaded, String key, MockDefinition definition) {
         if (definition == null) {
             return;
         }

@@ -1,14 +1,12 @@
 package com.smbtech.serviceframework.starter.logging.adapter.out.logback;
 
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
-
 import java.util.Arrays;
 import java.util.Optional;
 
 final class StructuredEventExtractor {
 
-    private StructuredEventExtractor() {
-    }
+    private StructuredEventExtractor() {}
 
     static Optional<StructuredEvent> from(Object[] arguments) {
         if (arguments == null) {

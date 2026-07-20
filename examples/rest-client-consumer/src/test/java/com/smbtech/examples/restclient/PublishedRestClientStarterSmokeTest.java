@@ -1,21 +1,12 @@
 package com.smbtech.examples.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.examples.restclient.application.PaymentsService;
 import com.smbtech.serviceframework.starter.restclient.api.ApiClientFactory;
 import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.web.client.RestClient;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -35,8 +26,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PublishedRestClientStarterSmokeTest {
@@ -47,28 +46,23 @@ class PublishedRestClientStarterSmokeTest {
     private static String paymentsBaseUrl;
     private static Path keyStore;
     private static String keyStoreBase64;
-    private static final AtomicReference<Map<String, String>> tokenRequestForm = new AtomicReference<>(Map.of());
+    private static final AtomicReference<Map<String, String>> tokenRequestForm =
+            new AtomicReference<>(Map.of());
     private static final AtomicReference<String> tokenAuthorizationHeader = new AtomicReference<>();
     private static final AtomicReference<String> applicationNameHeader = new AtomicReference<>();
     private static final AtomicReference<String> authorizationHeader = new AtomicReference<>();
 
-    @LocalServerPort
-    private int port;
+    @LocalServerPort private int port;
 
-    @Autowired
-    private PaymentsService paymentsService;
+    @Autowired private PaymentsService paymentsService;
 
-    @Autowired
-    private ApiClientFactory apiClientFactory;
+    @Autowired private ApiClientFactory apiClientFactory;
 
-    @Autowired
-    private RestClientRegistry restClientRegistry;
+    @Autowired private RestClientRegistry restClientRegistry;
 
-    @Autowired
-    private RestClient paymentsRestClient;
+    @Autowired private RestClient paymentsRestClient;
 
-    @Autowired
-    private ClientRegistrationRepository clientRegistrationRepository;
+    @Autowired private ClientRegistrationRepository clientRegistrationRepository;
 
     @BeforeAll
     static void startServers() throws Exception {
@@ -100,66 +94,55 @@ class PublishedRestClientStarterSmokeTest {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.security.oauth2.client.provider.core-oauth-gateway.token-uri", () -> tokenUrl);
+        registry.add(
+                "spring.security.oauth2.client.provider.core-oauth-gateway.token-uri",
+                () -> tokenUrl);
         registry.add(
                 "spring.security.oauth2.client.registration.payments-client-credentials-token.client-id",
-                () -> "smoke-client"
-        );
+                () -> "smoke-client");
         registry.add(
                 "spring.security.oauth2.client.registration.payments-client-credentials-token.client-authentication-method",
-                () -> "private_key_jwt"
-        );
+                () -> "private_key_jwt");
         registry.add(
                 "spring.security.oauth2.client.registration.payments-jwt-bearer-token.client-id",
-                () -> "smoke-jwt-bearer-client"
-        );
+                () -> "smoke-jwt-bearer-client");
         registry.add(
                 "spring.security.oauth2.client.registration.payments-jwt-bearer-token.client-authentication-method",
-                () -> "none"
-        );
+                () -> "none");
         registry.add("smbtech.rest-clients.clients.payments.base-url", () -> paymentsBaseUrl);
-        registry.add("smbtech.rest-clients.clients.payments-jwt-bearer.base-url", () -> paymentsBaseUrl);
+        registry.add(
+                "smbtech.rest-clients.clients.payments-jwt-bearer.base-url", () -> paymentsBaseUrl);
         registry.add("smbtech.rest-clients.clients.payments.resilience.enabled", () -> "false");
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-client-credentials-signing-key.base64",
-                () -> keyStoreBase64
-        );
+                () -> keyStoreBase64);
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-client-credentials-signing-key.type",
-                () -> "PKCS12"
-        );
+                () -> "PKCS12");
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-client-credentials-signing-key.key-alias",
-                () -> "auth"
-        );
+                () -> "auth");
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-jwt-bearer-signing-key.base64",
-                () -> keyStoreBase64
-        );
+                () -> keyStoreBase64);
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-jwt-bearer-signing-key.type",
-                () -> "PKCS12"
-        );
+                () -> "PKCS12");
         registry.add(
                 "smbtech.rest-clients.authentication.key-stores.payments-jwt-bearer-signing-key.key-alias",
-                () -> "auth"
-        );
+                () -> "auth");
         registry.add(
                 "smbtech.rest-clients.authentication.credentials.payments-client-credentials-keystore-password.base64",
-                () -> encoded("changeit")
-        );
+                () -> encoded("changeit"));
         registry.add(
                 "smbtech.rest-clients.authentication.credentials.payments-client-credentials-key-password.base64",
-                () -> encoded("changeit")
-        );
+                () -> encoded("changeit"));
         registry.add(
                 "smbtech.rest-clients.authentication.credentials.payments-jwt-bearer-keystore-password.base64",
-                () -> encoded("changeit")
-        );
+                () -> encoded("changeit"));
         registry.add(
                 "smbtech.rest-clients.authentication.credentials.payments-jwt-bearer-key-password.base64",
-                () -> encoded("changeit")
-        );
+                () -> encoded("changeit"));
         registry.add("PAYMENTS_JWT_BEARER_ISSUER", () -> "smoke-jwt-bearer-client");
         registry.add("PAYMENTS_JWT_BEARER_SUBJECT", () -> "smoke-jwt-bearer-client");
         registry.add("PAYMENTS_JWT_BEARER_AUDIENCE", () -> tokenUrl);
@@ -168,20 +151,29 @@ class PublishedRestClientStarterSmokeTest {
     }
 
     @Test
-    void exposesDummyEndpointWithoutLoginAndUsesSpringBootOAuth2ClientRegistration() throws Exception {
+    void exposesDummyEndpointWithoutLoginAndUsesSpringBootOAuth2ClientRegistration()
+            throws Exception {
         assertThat(apiClientFactory).isNotNull();
         assertThat(paymentsRestClient).isNotNull();
-        assertThat(clientRegistrationRepository.findByRegistrationId("payments-client-credentials-token")).isNotNull();
-        assertThat(clientRegistrationRepository.findByRegistrationId("payments-jwt-bearer-token")).isNotNull();
+        assertThat(
+                        clientRegistrationRepository.findByRegistrationId(
+                                "payments-client-credentials-token"))
+                .isNotNull();
+        assertThat(clientRegistrationRepository.findByRegistrationId("payments-jwt-bearer-token"))
+                .isNotNull();
         assertThat(restClientRegistry.names()).contains("payments", "payments-jwt-bearer");
 
-        HttpResponse<String> response = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build()
-                .send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/dummy")).GET().build(),
-                        HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-                );
+        HttpResponse<String> response =
+                HttpClient.newBuilder()
+                        .followRedirects(HttpClient.Redirect.NEVER)
+                        .build()
+                        .send(
+                                HttpRequest.newBuilder(
+                                                URI.create(
+                                                        "http://localhost:" + port + "/api/dummy"))
+                                        .GET()
+                                        .build(),
+                                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo("ok-from-payments");
@@ -203,9 +195,11 @@ class PublishedRestClientStarterSmokeTest {
     private static void token(HttpExchange exchange) throws IOException {
         tokenAuthorizationHeader.set(exchange.getRequestHeaders().getFirst("Authorization"));
         tokenRequestForm.set(readForm(exchange));
-        byte[] body = """
+        byte[] body =
+                """
                 {"access_token":"smoke-token","token_type":"Bearer","expires_in":3600,"scope":"payment.read"}
-                """.getBytes(StandardCharsets.UTF_8);
+                """
+                        .getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(200, body.length);
         try (OutputStream response = exchange.getResponseBody()) {
@@ -232,29 +226,42 @@ class PublishedRestClientStarterSmokeTest {
         for (String pair : body.split("&")) {
             String[] parts = pair.split("=", 2);
             String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
-            String value = parts.length > 1 ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "";
+            String value =
+                    parts.length > 1 ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "";
             values.put(key, value);
         }
         return values;
     }
 
     private static Path createKeyStore() throws Exception {
-        Path keyStorePath = Files.createTempDirectory("payments-jwt-bearer-signing-key").resolve("auth.p12");
+        Path keyStorePath =
+                Files.createTempDirectory("payments-jwt-bearer-signing-key").resolve("auth.p12");
         Path keytool = Path.of(System.getProperty("java.home"), "bin", executable("keytool"));
-        Process process = new ProcessBuilder(
-                keytool.toString(),
-                "-genkeypair",
-                "-alias", "auth",
-                "-keyalg", "RSA",
-                "-keysize", "2048",
-                "-storetype", "PKCS12",
-                "-keystore", keyStorePath.toString(),
-                "-storepass", "changeit",
-                "-keypass", "changeit",
-                "-dname", "CN=Smoke Test",
-                "-validity", "365",
-                "-noprompt"
-        ).redirectErrorStream(true).start();
+        Process process =
+                new ProcessBuilder(
+                                keytool.toString(),
+                                "-genkeypair",
+                                "-alias",
+                                "auth",
+                                "-keyalg",
+                                "RSA",
+                                "-keysize",
+                                "2048",
+                                "-storetype",
+                                "PKCS12",
+                                "-keystore",
+                                keyStorePath.toString(),
+                                "-storepass",
+                                "changeit",
+                                "-keypass",
+                                "changeit",
+                                "-dname",
+                                "CN=Smoke Test",
+                                "-validity",
+                                "365",
+                                "-noprompt")
+                        .redirectErrorStream(true)
+                        .start();
 
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int exitCode = process.waitFor();
@@ -285,6 +292,8 @@ class PublishedRestClientStarterSmokeTest {
     }
 
     private static String executable(String name) {
-        return System.getProperty("os.name", "").toLowerCase().contains("win") ? name + ".exe" : name;
+        return System.getProperty("os.name", "").toLowerCase().contains("win")
+                ? name + ".exe"
+                : name;
     }
 }

@@ -3,7 +3,7 @@ package com.smbtech.serviceframework.starter.logging.autoconfigure;
 import com.smbtech.serviceframework.logging.port.in.StructuredLoggerFactory;
 import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
 import com.smbtech.serviceframework.starter.logging.StructuredLoggers;
-import com.smbtech.serviceframework.starter.logging.adapter.in.servlet.TransactionalIdFilter;
+import com.smbtech.serviceframework.starter.logging.adapter.in.servlet.TransactionIdFilter;
 import com.smbtech.serviceframework.starter.logging.adapter.out.context.MdcCorrelationContext;
 import com.smbtech.serviceframework.starter.logging.adapter.out.slf4j.Slf4jStructuredLoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -15,10 +15,16 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** Provides logging auto configuration behavior. */
 @AutoConfiguration
 @EnableConfigurationProperties(LoggingProperties.class)
 public class LoggingAutoConfiguration {
 
+    /**
+     * Creates a logging auto configuration instance.
+     *
+     * @param properties properties value
+     */
     public LoggingAutoConfiguration(LoggingProperties properties) {
         StructuredLoggers.setProduction(properties.isProduction());
     }
@@ -37,10 +43,11 @@ public class LoggingAutoConfiguration {
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    @ConditionalOnClass(name = {
-            "jakarta.servlet.Filter",
-            "org.springframework.web.filter.OncePerRequestFilter"
-    })
+    @ConditionalOnClass(
+            name = {
+                "jakarta.servlet.Filter",
+                "org.springframework.web.filter.OncePerRequestFilter"
+            })
     static class ServletLoggingConfiguration {
 
         @Bean
@@ -49,19 +56,15 @@ public class LoggingAutoConfiguration {
                 prefix = "smbtech.logging.transaction",
                 name = "enabled",
                 havingValue = "true",
-                matchIfMissing = true
-        )
-        TransactionalIdFilter transactionalIdFilter(
-                LoggingProperties properties,
-                CorrelationContext correlationContext
-        ) {
+                matchIfMissing = true)
+        TransactionIdFilter transactionIdFilter(
+                LoggingProperties properties, CorrelationContext correlationContext) {
             LoggingProperties.Transaction transaction = properties.getTransaction();
-            return new TransactionalIdFilter(
+            return new TransactionIdFilter(
                     transaction.getHeaderName(),
                     correlationContext,
                     transaction.isAcceptIncoming(),
-                    transaction.getMaxLength()
-            );
+                    transaction.getMaxLength());
         }
     }
 }

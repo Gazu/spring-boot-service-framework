@@ -1,31 +1,30 @@
 package com.smbtech.serviceframework.starter.mock.adapter.in.spring;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.exception.MockException;
-import org.junit.jupiter.api.Test;
-
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class MockResponseEntityMapperTest {
 
-    private final MockResponseEntityMapper mapper = new MockResponseEntityMapper(
-            new ObjectMapper().findAndRegisterModules()
-    );
+    private final MockResponseEntityMapper mapper =
+            new MockResponseEntityMapper(new ObjectMapper().findAndRegisterModules());
 
     @Test
     void mapsHeadersStatusAndTypedBody() {
-        MockResponse response = new MockResponse(
-                201,
-                Map.of("X-Mock", List.of("true")),
-                "{\"id\":\"pay-123\",\"status\":\"MOCKED\"}".getBytes(StandardCharsets.UTF_8)
-        );
+        MockResponse response =
+                new MockResponse(
+                        201,
+                        Map.of("X-Mock", List.of("true")),
+                        "{\"id\":\"pay-123\",\"status\":\"MOCKED\"}"
+                                .getBytes(StandardCharsets.UTF_8));
 
         var entity = mapper.toResponseEntity(response, PaymentMock.class);
 
@@ -36,15 +35,15 @@ class MockResponseEntityMapperTest {
 
     @Test
     void mapsGenericBodyWithTypeReference() {
-        MockResponse response = MockResponse.ok(
-                "{\"items\":[{\"id\":\"pay-123\"}]}".getBytes(StandardCharsets.UTF_8)
-        );
+        MockResponse response =
+                MockResponse.ok(
+                        "{\"items\":[{\"id\":\"pay-123\"}]}".getBytes(StandardCharsets.UTF_8));
 
-        var entity = mapper.toResponseEntity(response, new TypeReference<Map<String, List<Map<String, String>>>>() {
-        });
+        var entity =
+                mapper.toResponseEntity(
+                        response, new TypeReference<Map<String, List<Map<String, String>>>>() {});
 
-        assertThat(entity.getBody())
-                .containsEntry("items", List.of(Map.of("id", "pay-123")));
+        assertThat(entity.getBody()).containsEntry("items", List.of(Map.of("id", "pay-123")));
     }
 
     @Test
@@ -77,6 +76,5 @@ class MockResponseEntityMapperTest {
                 .hasMessage("Error converting mock response body");
     }
 
-    private record PaymentMock(String id, String status) {
-    }
+    private record PaymentMock(String id, String status) {}
 }

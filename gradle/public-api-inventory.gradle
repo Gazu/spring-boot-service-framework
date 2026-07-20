@@ -1,0 +1,467 @@
+// Generated public surface inventory and drift validation.
+
+def publicApiArtifacts = [
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-commons',
+                sourceDirectory      : 'spring-boot-service-framework-commons/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.commons.notification'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-logging-core',
+                sourceDirectory      : 'spring-boot-service-framework-logging-core/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-http-client-core',
+                sourceDirectory      : 'spring-boot-service-framework-http-client-core/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.httpclient.exception'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-mock-core',
+                sourceDirectory      : 'spring-boot-service-framework-mock-core/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.mock.exception'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-error-core',
+                sourceDirectory      : 'spring-boot-service-framework-error-core/src/main/java',
+                publicPackageExceptions: [
+                        'com.smbtech.serviceframework.error',
+                        'com.smbtech.serviceframework.error.metadata'
+                ],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-openapi-generator',
+                sourceDirectory      : 'spring-boot-service-framework-openapi-generator/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.openapi.generator'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-openapi-contract-testing',
+                sourceDirectory      : 'spring-boot-service-framework-openapi-contract-testing/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.openapi.contract'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-starter-logging',
+                sourceDirectory      : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [
+                        'com.smbtech.serviceframework.starter.logging.StructuredLoggers'
+                ],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties'
+                ],
+                buildLogic           : false,
+                propertyReference    : 'docs/logging/property-reference.md',
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-starter-rest-client',
+                sourceDirectory      : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties'
+                ],
+                buildLogic           : false,
+                propertyReference    : 'docs/rest-client/property-reference.md',
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-starter-mock',
+                sourceDirectory      : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.mock.autoconfigure.MockAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties'
+                ],
+                buildLogic           : false,
+                propertyReference    : 'docs/mock/property-reference.md',
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'com.smbtech:spring-boot-service-framework-starter-error-handling',
+                sourceDirectory      : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties'
+                ],
+                buildLogic           : false,
+                propertyReference    : 'docs/error-handling/property-reference.md',
+                configurationProperties: []
+        ],
+        [
+                artifact             : 'Gradle plugin com.smbtech.service-framework.openapi-generator',
+                sourceDirectory      : 'build-logic/openapi-generator-plugin/src/main/java',
+                publicPackageExceptions: [],
+                publicTypeExceptions : [
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiExtension',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiSpec'
+                ],
+                infrastructureTypes  : [],
+                buildLogic           : true,
+                propertyReference    : null,
+                configurationProperties: [
+                        'smbtechOpenApi.groupId',
+                        'smbtechOpenApi.outputDirectory',
+                        'smbtechOpenApi.repositoryDirectory',
+                        'smbtechOpenApi.specs.<name>.artifactBaseName',
+                        'smbtechOpenApi.specs.<name>.basePackage',
+                        'smbtechOpenApi.specs.<name>.groupId',
+                        'smbtechOpenApi.specs.<name>.input',
+                        'smbtechOpenApi.specs.<name>.version'
+                ]
+        ]
+]
+
+def supportedPackageSegments = ['domain', 'port', 'api'] as Set
+def implementationPackageSegments = ['adapter', 'autoconfigure', 'serialization', 'internal'] as Set
+
+def publicTypePattern = ~/(?m)^public\s+(?:(?:final|abstract|sealed|non-sealed)\s+)*(class|interface|record|enum|@interface)\s+([A-Za-z_$][A-Za-z0-9_$]*)/
+def packagePattern = ~/(?m)^package\s+([A-Za-z_$][A-Za-z0-9_$.]*)\s*;/
+
+def scanPublicTypes = { Map artifact ->
+    def sourceDirectory = file(artifact.sourceDirectory)
+    if (!sourceDirectory.isDirectory()) {
+        throw new GradleException("Missing public API source directory: ${artifact.sourceDirectory}")
+    }
+
+    fileTree(sourceDirectory) { include '**/*.java' }.files.sort().collectMany { source ->
+        def text = source.getText('UTF-8')
+        def packageMatcher = text =~ packagePattern
+        if (!packageMatcher.find()) {
+            return []
+        }
+        def packageName = packageMatcher.group(1)
+        def typeMatcher = text =~ publicTypePattern
+        if (!typeMatcher.find()) {
+            return []
+        }
+        def kind = typeMatcher.group(1) == '@interface' ? 'annotation' : typeMatcher.group(1)
+        def simpleName = typeMatcher.group(2)
+        [[
+                packageName: packageName,
+                simpleName : simpleName,
+                qualifiedName: "${packageName}.${simpleName}".toString(),
+                kind       : kind
+        ]]
+    }.sort { left, right -> left.qualifiedName <=> right.qualifiedName }
+}
+
+def readConfigurationProperties = { Map artifact ->
+    def properties = new TreeSet<String>()
+    properties.addAll(artifact.configurationProperties as Collection<String>)
+    if (artifact.propertyReference) {
+        def reference = file(artifact.propertyReference)
+        if (!reference.isFile()) {
+            throw new GradleException("Missing property reference: ${artifact.propertyReference}")
+        }
+        reference.eachLine('UTF-8') { line ->
+            def matcher = line =~ /^\|\s*`([^`]+)`\s*\|/
+            if (matcher.find()) {
+                properties.add(matcher.group(1))
+            }
+        }
+    }
+    properties.toList()
+}
+
+def markdownList = { Collection<String> values ->
+    values.isEmpty() ? '- None.' : values.collect { "- `${it}`" }.join('\n')
+}
+
+def markdownTypeList = { Collection<Map<String, String>> types ->
+    types.isEmpty()
+            ? '- None.'
+            : types.collect { "- `${it.qualifiedName}` (${it.kind})" }.join('\n')
+}
+
+def hasPackageSegment = { String packageName, Set<String> segments ->
+    packageName.split(/\./).any { segments.contains(it) }
+}
+
+def isConventionPublicPackage = { Map artifact, String packageName ->
+    !artifact.buildLogic &&
+            !hasPackageSegment(packageName, implementationPackageSegments) &&
+            hasPackageSegment(packageName, supportedPackageSegments)
+}
+
+ext.serviceFrameworkPublicApiModel = [
+        artifacts                  : publicApiArtifacts,
+        scanPublicTypes            : scanPublicTypes,
+        readConfigurationProperties: readConfigurationProperties,
+        isConventionPublicPackage  : isConventionPublicPackage
+]
+
+def renderPublicApiInventory = {
+    def inventories = publicApiArtifacts.collect { artifact ->
+        def types = scanPublicTypes(artifact)
+        def conventionPublicPackages = types.findAll {
+            isConventionPublicPackage(artifact, it.packageName)
+        }.collect { it.packageName }.toSet().sort()
+        def publicTypes = types.findAll {
+            isConventionPublicPackage(artifact, it.packageName) ||
+                    artifact.publicPackageExceptions.contains(it.packageName) ||
+                    artifact.publicTypeExceptions.contains(it.qualifiedName)
+        }
+        def infrastructureTypes = types.findAll { artifact.infrastructureTypes.contains(it.qualifiedName) }
+        def internalPublicTypes = types.findAll {
+            !publicTypes.contains(it) &&
+                    !artifact.infrastructureTypes.contains(it.qualifiedName)
+        }
+        def discoveredNames = types.collect { it.qualifiedName } as Set
+        def missingTypeDefinitions = (artifact.publicTypeExceptions + artifact.infrastructureTypes)
+                .findAll { !discoveredNames.contains(it) }
+        def discoveredPackages = types.collect { it.packageName } as Set
+        def missingPackageDefinitions = artifact.publicPackageExceptions
+                .findAll { !discoveredPackages.contains(it) }
+        def supportedPublicPackages = (conventionPublicPackages + artifact.publicPackageExceptions)
+                .toSet()
+                .sort()
+        def missingPackageInfo = supportedPublicPackages.findAll { packageName ->
+            !new File(
+                    file(artifact.sourceDirectory),
+                    "${packageName.replace('.', '/')}/package-info.java"
+            ).isFile()
+        }
+        def overlappingTypeDefinitions = artifact.publicTypeExceptions.intersect(artifact.infrastructureTypes)
+        if (!missingTypeDefinitions.isEmpty() || !missingPackageDefinitions.isEmpty() ||
+                !missingPackageInfo.isEmpty() || !overlappingTypeDefinitions.isEmpty()) {
+            throw new GradleException(
+                    "Invalid public boundary definition for ${artifact.artifact}: " +
+                            "missing types ${missingTypeDefinitions}, missing packages ${missingPackageDefinitions}, " +
+                            "missing package-info.java ${missingPackageInfo}, " +
+                            "overlapping public/infrastructure types ${overlappingTypeDefinitions}"
+            )
+        }
+        def extensionPoints = publicTypes.findAll { it.kind in ['interface', 'annotation'] }
+                .collect { it.qualifiedName }
+        def exceptions = publicTypes.findAll { it.simpleName.endsWith('Exception') }
+                .collect { it.qualifiedName }
+        [
+                definition          : artifact,
+                types               : types,
+                conventionPublicPackages: conventionPublicPackages,
+                publicTypes         : publicTypes,
+                infrastructureTypes : infrastructureTypes,
+                internalPublicTypes : internalPublicTypes,
+                extensionPoints     : extensionPoints,
+                exceptions          : exceptions,
+                properties          : readConfigurationProperties(artifact)
+        ]
+    }
+
+    def output = new StringBuilder()
+    output << '# Public API Inventory\n\n'
+    output << '<!-- Generated by ./gradlew generatePublicApiInventory. Do not edit manually. -->\n\n'
+    output << 'This file freezes the currently visible source-level contract per published artifact using '
+    output << 'the [Public API Boundaries](public-api-boundaries.md). '
+    output << 'Packages containing `domain`, `port`, `api`, or descendants of those segments are supported by convention. '
+    output << '`adapter`, `autoconfigure`, `serialization`, `internal`, and build logic are implementation by default. '
+    output << 'Documented package and type exceptions are consumer API. Infrastructure types are public for framework wiring. '
+    output << 'Public internal types require review and are not supported extension points.\n\n'
+    output << '## Summary\n\n'
+    output << '| Artifact | Public types | Extension points | Properties | Exceptions | Public internal types |\n'
+    output << '|---|---:|---:|---:|---:|---:|\n'
+    inventories.each { inventory ->
+        output << "| `${inventory.definition.artifact}` | ${inventory.publicTypes.size()} | "
+        output << "${inventory.extensionPoints.size()} | ${inventory.properties.size()} | "
+        output << "${inventory.exceptions.size()} | ${inventory.internalPublicTypes.size()} |\n"
+    }
+
+    inventories.each { inventory ->
+        output << "\n## ${inventory.definition.artifact}\n\n"
+        output << "Discovered top-level public types: **${inventory.types.size()}**.\n\n"
+        output << '### Convention Public Packages\n\n'
+        output << markdownList(inventory.conventionPublicPackages) << '\n\n'
+        output << '### Documented Public Package Exceptions\n\n'
+        output << markdownList(inventory.definition.publicPackageExceptions) << '\n\n'
+        output << '### Documented Public Type Exceptions\n\n'
+        output << markdownList(inventory.definition.publicTypeExceptions) << '\n\n'
+        output << '### Public Types\n\n'
+        output << markdownTypeList(inventory.publicTypes) << '\n\n'
+        output << '### Extension Points\n\n'
+        output << markdownList(inventory.extensionPoints) << '\n\n'
+        output << '### Configuration Properties\n\n'
+        output << markdownList(inventory.properties) << '\n\n'
+        output << '### Supported Public Exceptions\n\n'
+        output << markdownList(inventory.exceptions) << '\n\n'
+        output << '### Public Infrastructure Types\n\n'
+        output << markdownTypeList(inventory.infrastructureTypes) << '\n\n'
+        output << '### Public Internal Types To Review\n\n'
+        output << markdownTypeList(inventory.internalPublicTypes) << '\n'
+    }
+
+    output << '\n## Maintenance\n\n'
+    output << 'Regenerate after an intentional public surface change:\n\n'
+    output << '```bash\n./gradlew generatePublicApiInventory\n```\n\n'
+    output << 'Validate that the checked-in baseline matches the source and property references:\n\n'
+    output << '```bash\n./gradlew validatePublicApiInventory\n```\n'
+    output.toString()
+}
+
+def inventoryInputs = files(publicApiArtifacts.collectMany { artifact ->
+    def paths = [fileTree(artifact.sourceDirectory) { include '**/*.java' }]
+    if (artifact.propertyReference) {
+        paths << file(artifact.propertyReference)
+    }
+    paths
+})
+def inventoryOutput = file('docs/public-api-inventory.md')
+
+tasks.register('generatePublicApiInventory') {
+    group = 'documentation'
+    description = 'Generates the public API inventory for every published framework artifact.'
+    inputs.files(inventoryInputs)
+    outputs.file(inventoryOutput)
+
+    doLast {
+        inventoryOutput.parentFile.mkdirs()
+        inventoryOutput.setText(renderPublicApiInventory(), 'UTF-8')
+    }
+}
+
+tasks.register('validatePublicApiInventory') {
+    group = 'verification'
+    description = 'Fails when the checked-in public API inventory differs from the current source surface.'
+    mustRunAfter tasks.named('generatePublicApiInventory')
+    inputs.files(inventoryInputs)
+    inputs.file(inventoryOutput)
+
+    doLast {
+        def expected = renderPublicApiInventory().replace('\r\n', '\n')
+        def actual = inventoryOutput.getText('UTF-8').replace('\r\n', '\n')
+        if (actual != expected) {
+            throw new GradleException(
+                    'Public API inventory is outdated. Run ./gradlew generatePublicApiInventory and review the changes.'
+            )
+        }
+    }
+}
+
+tasks.register('validatePublicApiBoundaryRules') {
+    group = 'verification'
+    description = 'Validates supported and implementation package classification rules.'
+
+    doLast {
+        def standardArtifact = [buildLogic: false]
+        def buildLogicArtifact = [buildLogic: true]
+        def expectations = [
+                'com.example.domain'        : true,
+                'com.example.domain.value'  : true,
+                'com.example.port.in'       : true,
+                'com.example.api'           : true,
+                'com.example.api.oauth2'    : true,
+                'com.example.apiclient'     : false,
+                'com.example.adapter.out'   : false,
+                'com.example.adapter.api'   : false,
+                'com.example.autoconfigure' : false,
+                'com.example.serialization' : false,
+                'com.example.internal'      : false
+        ]
+        def failures = expectations.findAll { packageName, expected ->
+            isConventionPublicPackage(standardArtifact, packageName) != expected
+        }.collect { packageName, expected -> "${packageName}: expected supported=${expected}" }
+
+        if (isConventionPublicPackage(buildLogicArtifact, 'com.example.api')) {
+            failures << 'build logic must remain implementation even when its package contains api'
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException("Public API boundary rule failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+def frameworkMainSources = fileTree(rootDir) {
+    include 'spring-boot-service-framework-*/src/main/java/**/*.java'
+    include 'spring-boot-service-framework-starters/*/src/main/java/**/*.java'
+    include 'build-logic/*/src/main/java/**/*.java'
+    exclude '**/build/**'
+}
+def moduleBoundaryDocuments = files(
+        'spring-boot-service-framework-error-core/src/main/java/com/smbtech/serviceframework/error/package-info.java',
+        'spring-boot-service-framework-error-core/README.md',
+        'spring-boot-service-framework-openapi-generator/src/main/java/com/smbtech/serviceframework/openapi/generator/package-info.java',
+        'spring-boot-service-framework-openapi-generator/README.md',
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/src/main/java/com/smbtech/serviceframework/starter/errorhandling/package-info.java',
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md'
+)
+
+tasks.register('validateNoMarkerModuleTypes') {
+    group = 'verification'
+    description = 'Prevents empty Java *Module marker types and verifies their package documentation replacements.'
+    inputs.files(frameworkMainSources, moduleBoundaryDocuments)
+
+    doLast {
+        def markerPattern = ~/(?m)^(?:public\s+)?(?:(?:final|abstract|sealed|non-sealed)\s+)*class\s+[A-Za-z_$][A-Za-z0-9_$]*Module\b/
+        def failures = frameworkMainSources.files.sort().findAll { source ->
+            (source.getText('UTF-8') =~ markerPattern).find()
+        }.collect { source ->
+            "${rootDir.toPath().relativize(source.toPath())}: replace the *Module marker with package-info.java and README documentation"
+        }
+        failures.addAll(moduleBoundaryDocuments.files.findAll { !it.isFile() }.collect { source ->
+            "missing module boundary document ${rootDir.toPath().relativize(source.toPath())}"
+        })
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Module marker convention failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+tasks.matching { it.name in ['documentationCheck', 'check', 'baseline'] }.configureEach {
+    dependsOn(
+            tasks.named('validateNoMarkerModuleTypes'),
+            tasks.named('validatePublicApiBoundaryRules'),
+            tasks.named('validatePublicApiInventory')
+    )
+}
+
+tasks.matching {
+    it.name in [
+            'validateMarkdownLinks',
+            'validateMarkdownStructure',
+            'validateDocumentationCatalog',
+            'validateDocumentationVersions'
+    ]
+}.configureEach {
+    mustRunAfter tasks.named('generatePublicApiInventory')
+}

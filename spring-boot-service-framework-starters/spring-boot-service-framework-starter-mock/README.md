@@ -1,65 +1,32 @@
 # Spring Boot Service Framework Mock Starter
 
-Spring Boot starter for loading mock responses from configuration and resource
-files.
-
-This starter adapts `spring-boot-service-framework-mock-core` to Spring Boot. It currently
-provides:
-
-- `smbtech.mocks` configuration properties;
-- core `MockDefinitionSource`, `MockCatalog`, `MockResponseSource`, and
-  `MockResponder` beans;
-- a controller-friendly `MockService` bean for optional mock lookup by key or
-  direct `404 Not Found` fallback responses;
-- a future-ready `MockRestClientInterceptor` bean for outbound Spring
-  `RestClient` calls;
-- JSON mock response loading from `classpath:` or `file:` locations;
-- optional artificial response delay.
+Spring Boot starter for configured mock responses loaded from classpath or file
+resources. It adapts `spring-boot-service-framework-mock-core` to Spring Boot,
+Jackson, Spring MVC `ResponseEntity`, and opt-in Spring `RestClient`
+interceptors.
 
 ## When to use
 
-Use this starter when a Spring Boot service needs configured mock responses for
-controllers, integration tests, or outbound `RestClient` calls. It is useful for
-local development, contract exploration, and deterministic test fixtures.
+Use this starter when a Spring Boot service needs configured mock responses for:
+
+- controllers;
+- integration tests;
+- local development;
+- contract exploration;
+- outbound `RestClient` calls.
 
 Use `spring-boot-service-framework-mock-core` directly only when building a
-framework-neutral adapter or test helper that should not depend on Spring,
-Jackson, Servlet, or `RestClient` APIs.
+framework-neutral adapter or test helper.
 
-## Architecture
-
-The starter is a Spring adapter over the framework-neutral mock core:
-
-```text
-smbtech.mocks properties
-  -> PropertiesMockDefinitionSource
-  -> DefaultMockCatalog
-  -> DefaultMockResponder
-  -> ResourceMockResponseSource
-  -> SpringMockService / MockResponseEntityMapper
-  -> MockRestClientInterceptor
-```
-
-Core contracts remain in `spring-boot-service-framework-mock-core`:
-
-- `MockRequest`
-- `MockResponse`
-- `MockResponder`
-- `MockDefinitionSource`
-- `MockResponseSource`
-
-Spring-specific conversion stays in this starter. This keeps the core reusable
-for RestClient interceptors, controllers, test helpers, or custom clients.
-
-## Module coordinates
+## Dependency
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.2.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-mock:0.3.0'
 }
 ```
 
-## Configuration
+## Quick start
 
 ```yaml
 smbtech:
@@ -68,179 +35,40 @@ smbtech:
       payments-success:
         enabled: true
         file: classpath:mocks/payments-success.json
-        delay: 100ms
 ```
 
-If `file` does not start with `classpath:` or `file:`, it is treated as a
-classpath resource.
+## Public API
 
-## Mock file format
+- `com.smbtech.serviceframework.starter.mock.api.MockService`
+- Core `domain` and `port.*` contracts exposed through the `mock-core`
+  dependency.
 
-```json
-{
-  "status": 200,
-  "headers": {
-    "Content-Type": "application/json",
-    "X-Mock": "true"
-  },
-  "body": {
-    "id": "pay-123",
-    "status": "MOCKED"
-  }
-}
-```
+`MockRestClientInterceptor`, mock adapters, `MockAutoConfiguration`, and
+`MockProperties` are framework implementation or infrastructure. See
+[Public API Boundaries](../../docs/public-api-boundaries.md).
 
-## Usage
+## What this module does not do
 
-### Controller-friendly response
+- It does not automatically replace outbound HTTP calls.
+- It does not put Spring, Jackson, Servlet, or `RestClient` APIs into
+  `mock-core`.
+- It does not store business-specific mock scenarios in the framework.
 
-Use `responseOrNotFound` when the endpoint should return the configured mock or
-`404 Not Found` when the mock key is missing or disabled.
+## Main documentation
 
-```java
-@RestController
-class PaymentsController {
+| Topic | Document |
+|---|---|
+| Mock guide | [Mock Core and Starter](../../docs/mock.md) |
+| Mock property reference | [Mock Property Reference](../../docs/mock/property-reference.md) |
+| Names and packages migration | [Migration Guide](../../docs/guides/migrate-public-names-and-properties.md) |
+| Troubleshooting | [Troubleshooting](../../docs/troubleshooting.md#mock) |
+| Mock core README | [Mock Core README](../../spring-boot-service-framework-mock-core/README.md) |
+| Module README rules | [Module README Convention](../../docs/module-readme-convention.md) |
 
-    private final MockService mocks;
-
-    PaymentsController(MockService mocks) {
-        this.mocks = mocks;
-    }
-
-    @GetMapping("/api/dummy")
-    ResponseEntity<PaymentResponse> dummy() {
-        return mocks.responseOrNotFound("payments-success", PaymentResponse.class);
-    }
-}
-```
-
-Use the no-argument variant when the controller should return the raw JSON
-payload as a `String`.
-
-```java
-@GetMapping("/api/dummy/raw")
-ResponseEntity<String> rawDummy() {
-    return mocks.responseOrNotFound("payments-success");
-}
-```
-
-### Optional response
-
-Use `response` or `exchangeMock` when the controller wants to decide the fallback
-itself.
-
-```java
-class PaymentsController {
-
-    private final MockService mocks;
-
-    PaymentsController(MockService mocks) {
-        this.mocks = mocks;
-    }
-
-    ResponseEntity<Map<String, Object>> dummy() {
-        return mocks.response(
-                "payments-success",
-                new TypeReference<Map<String, Object>>() {
-                }
-        ).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-}
-```
-
-### Available `MockService` methods
-
-```java
-Optional<ResponseEntity<String>> response(String mockKey);
-<T> Optional<ResponseEntity<T>> response(String mockKey, Class<T> responseType);
-<T> Optional<ResponseEntity<T>> response(String mockKey, TypeReference<T> responseType);
-
-ResponseEntity<String> responseOrNotFound(String mockKey);
-<T> ResponseEntity<T> responseOrNotFound(String mockKey, Class<T> responseType);
-<T> ResponseEntity<T> responseOrNotFound(String mockKey, TypeReference<T> responseType);
-```
-
-`exchangeMock` remains available as the lower-level alias behind the facade.
-
-### Future RestClient integration
-
-The starter exposes a `MockRestClientInterceptor` bean. The interceptor adapts
-outbound Spring `RestClient` calls to the neutral core `MockResponder`.
-
-Resolution rules:
-
-1. If the outgoing request contains `X-Mock-Key`, that value is used as the mock
-   key.
-2. If `X-Mock-Key` is missing, the request path is used as fallback. For example
-   `/v1/payments` becomes `v1/payments`.
-3. If no enabled mock matches the resolved key, the real HTTP request continues.
-
-This keeps mocks opt-in and safe. Adding the starter does not automatically
-replace outbound HTTP calls.
-
-Manual `RestClient` usage:
-
-```java
-@Bean
-RestClient paymentsRestClient(
-        RestClient.Builder builder,
-        MockRestClientInterceptor mockInterceptor
-) {
-    return builder
-            .baseUrl("https://payments.example.test")
-            .defaultHeader("X-Mock-Key", "payments-success")
-            .requestInterceptor(mockInterceptor)
-            .build();
-}
-```
-
-When using `spring-boot-service-framework-starter-rest-client`, connect both
-starters with the existing customizer hook:
-
-```java
-@Bean
-RestClientBuilderCustomizer mockRestClientCustomizer(MockRestClientInterceptor mockInterceptor) {
-    return (definition, builder) -> builder.requestInterceptor(mockInterceptor);
-}
-```
-
-Then configure the mock key as a default header on the generated RestClient:
-
-```yaml
-smbtech:
-  rest-clients:
-    clients:
-      payments:
-        base-url: https://payments.example.test
-        default-headers:
-          X-Mock-Key: payments-success
-  mocks:
-    endpoints:
-      payments-success:
-        enabled: true
-        file: classpath:mocks/payments-success.json
-```
-
-The outgoing request still flows through the configured `RestClient` pipeline.
-If `payments-success` is enabled, the interceptor returns the configured mock
-response. If it is missing or disabled, the call continues to the real remote
-service.
-
-## Current limitations
-
-The public `MockService` facade is intentionally Spring/Jackson oriented because
-it returns `ResponseEntity<T>` and accepts Jackson `TypeReference<T>` for generic
-payloads.
-
-For framework-neutral integrations, depend on the core `MockResponder` bean
-instead.
-
-## Validation
+## Local validation
 
 ```bash
 ./gradlew :spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check
+./gradlew :spring-boot-service-framework-mock-core:check
+./gradlew mockCompatibilityCheck
 ```
-
-For the full mock guide, including architecture, property reference, RestClient
-integration, test matrix, and troubleshooting, see
-[../../docs/mock.md](../../docs/mock.md).

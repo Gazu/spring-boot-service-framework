@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info:
+  title: contract-test-inventory
+  version: '1.0.0'
+paths:
+  /inventory/{sku}:
+    get:
+      operationId: getInventoryItem
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventory item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '404':
+          description: Inventory item not found
+    post:
+      operationId: createInventoryItem
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 3
+        - name: dryRun
+          in: query
+          required: true
+          schema:
+            type: boolean
+        - name: X-Tenant
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 3
+        - name: session
+          in: cookie
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInventoryItem'
+      responses:
+        '201':
+          description: Inventory item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+components:
+  schemas:
+    CreateInventoryItem:
+      type: object
+      required:
+        - status
+        - quantity
+      properties:
+        status:
+          type: string
+          enum:
+            - available
+            - reserved
+        quantity:
+          type: integer
+          minimum: 1
+    InventoryItem:
+      type: object
+      required:
+        - sku
+        - status
+        - quantity
+      properties:
+        sku:
+          type: string
+        status:
+          type: string
+          enum:
+            - available
+            - reserved
+        quantity:
+          type: integer

@@ -5,44 +5,62 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.exception.MockException;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-
+/** Provides mock response entity mapper behavior. */
 public final class MockResponseEntityMapper {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a mock response entity mapper instance.
+     *
+     * @param objectMapper object mapper value
+     */
     public MockResponseEntityMapper(ObjectMapper objectMapper) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     }
 
-    public <T> ResponseEntity<T> toResponseEntity(MockResponse response, TypeReference<T> responseType) {
+    /**
+     * Performs the to response entity operation.
+     *
+     * @param response response value
+     * @param responseType response type value
+     * @return to response entity result
+     * @param <T> generic value type
+     */
+    public <T> ResponseEntity<T> toResponseEntity(
+            MockResponse response, TypeReference<T> responseType) {
         return toResponseEntity(
-                response,
-                objectMapper.getTypeFactory().constructType(responseType)
-        );
+                response, objectMapper.getTypeFactory().constructType(responseType));
     }
 
+    /**
+     * Performs the to response entity operation.
+     *
+     * @param response response value
+     * @param responseType response type value
+     * @return to response entity result
+     * @param <T> generic value type
+     */
     public <T> ResponseEntity<T> toResponseEntity(MockResponse response, Class<T> responseType) {
         return toResponseEntity(
-                response,
-                objectMapper.getTypeFactory().constructType(responseType)
-        );
+                response, objectMapper.getTypeFactory().constructType(responseType));
     }
 
     private <T> ResponseEntity<T> toResponseEntity(MockResponse response, JavaType responseType) {
-        return ResponseEntity
-                .status(response.status())
+        return ResponseEntity.status(response.status())
                 .headers(toHttpHeaders(response))
                 .body(toBody(response, responseType));
     }
 
     private HttpHeaders toHttpHeaders(MockResponse response) {
         HttpHeaders headers = new HttpHeaders();
-        response.headers().forEach((name, values) -> values.forEach(value -> headers.add(name, value)));
+        response.headers()
+                .forEach((name, values) -> values.forEach(value -> headers.add(name, value)));
         return headers;
     }
 

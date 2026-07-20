@@ -6,14 +6,28 @@ import org.apache.hc.client5.http.socket.PlainConnectionSocketFactory;
 import org.apache.hc.core5.http.config.Registry;
 import org.apache.hc.core5.http.config.RegistryBuilder;
 
+/** Provides registry configurator behavior. */
 public final class RegistryConfigurator {
 
     private final SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator;
 
-    public RegistryConfigurator(SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator) {
+    /**
+     * Creates a registry configurator instance.
+     *
+     * @param sslConnectionSocketFactoryConfigurator ssl connection socket factory configurator
+     *     value
+     */
+    public RegistryConfigurator(
+            SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator) {
         this.sslConnectionSocketFactoryConfigurator = sslConnectionSocketFactoryConfigurator;
     }
 
+    /**
+     * Creates the result.
+     *
+     * @param definition definition value
+     * @return build result
+     */
     public Registry<ConnectionSocketFactory> build(HttpClientDefinition definition) {
         return RegistryBuilder.<ConnectionSocketFactory>create()
                 .register("http", PlainConnectionSocketFactory.getSocketFactory())

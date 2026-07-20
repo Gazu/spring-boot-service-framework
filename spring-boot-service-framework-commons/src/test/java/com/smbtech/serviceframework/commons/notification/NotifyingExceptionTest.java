@@ -1,23 +1,22 @@
 package com.smbtech.serviceframework.commons.notification;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
 class NotifyingExceptionTest {
 
     @Test
     void usesPrimaryNotificationMessageAsExceptionMessage() {
-        Notification notification = Notification.error(
-                "E_SERVICE_FRAMEWORK_HTTP_CLIENT_0500",
-                "Internal Server Error received from HTTP client"
-        );
+        Notification notification =
+                Notification.error(
+                        "E_SERVICE_FRAMEWORK_HTTP_CLIENT_0500",
+                        "Internal Server Error received from HTTP client");
 
         NotifyingException exception = new NotifyingException(notification);
 
@@ -31,7 +30,8 @@ class NotifyingExceptionTest {
         RuntimeException cause = new RuntimeException("backend failed");
         Notification notification = Notification.error("E_SERVICE_FRAMEWORK_0001", "Failure");
 
-        NotifyingException exception = new NotifyingException(List.of(notification), "HTTP client failed", cause);
+        NotifyingException exception =
+                new NotifyingException(List.of(notification), "HTTP client failed", cause);
 
         assertEquals("HTTP client failed", exception.getMessage());
         assertSame(cause, exception.getCause());
@@ -48,7 +48,9 @@ class NotifyingExceptionTest {
         notifications.clear();
 
         assertEquals(List.of(notification), exception.notifications());
-        assertThrows(UnsupportedOperationException.class, () -> exception.notifications().add(notification));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> exception.notifications().add(notification));
     }
 
     @Test

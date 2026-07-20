@@ -1,0 +1,33 @@
+openapi: 3.0.3
+info:
+  title: merchant-order-status
+  version: '1.0.0'
+paths:
+  /orders/{orderId}/status:
+    get:
+      operationId: getOrderStatus
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Merchant order status found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderStatusResponse'
+components:
+  schemas:
+    OrderStatusResponse:
+      type: object
+      required:
+        - orderId
+        - status
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string

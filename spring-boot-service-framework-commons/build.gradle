@@ -1,68 +1,22 @@
 plugins {
-    id 'java-library'
-    id 'maven-publish'
+    id 'com.smbtech.service-framework.java-library'
 }
 
 description = 'Shared, framework-agnostic utilities for SMB Tech services'
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-    withSourcesJar()
-    withJavadocJar()
-}
 
 dependencies {
     api project(':spring-boot-service-framework-logging-core')
     api 'org.slf4j:slf4j-api:2.0.17'
     api 'org.slf4j:slf4j-ext:2.0.17'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
     testImplementation 'ch.qos.logback:logback-classic:1.5.21'
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.compilerArgs += ['-parameters']
-}
-
-tasks.withType(Test).configureEach {
-    useJUnitPlatform()
 }
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
-            from components.java
+        named('mavenJava', MavenPublication) {
             pom {
                 name = 'Spring Boot Service Framework - Commons'
-                description = project.description
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = 'localBuild'
-            url = layout.buildDirectory.dir('repository')
-        }
-
-        def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
-                .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
-                .orNull
-        if (privateRepositoryUrl) {
-            maven {
-                name = 'privateRegistry'
-                url = uri(privateRepositoryUrl)
-                credentials {
-                    username = providers.gradleProperty('privateMavenUsername')
-                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
-                            .getOrElse('')
-                    password = providers.gradleProperty('privateMavenPassword')
-                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
-                            .getOrElse('')
-                }
             }
         }
     }

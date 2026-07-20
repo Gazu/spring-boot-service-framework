@@ -1,0 +1,618 @@
+// Documentation and example safety checks extracted from the root build.
+
+def markdownDocumentationFiles = {
+    fileTree(rootDir) {
+        include '**/*.md'
+        exclude '**/.git/**'
+        exclude '**/.gradle/**'
+        exclude '**/build/**'
+    }
+}
+
+String relativePath(File source) {
+    rootDir.toPath().relativize(source.toPath()).toString()
+}
+
+String extractMarkdownTarget(String rawTarget) {
+    def target = rawTarget.trim()
+    if (target.startsWith('<') && target.contains('>')) {
+        return target.substring(1, target.indexOf('>')).trim()
+    }
+    target.split(/\s+/, 2)[0].trim()
+}
+
+String markdownAnchor(String heading) {
+    def anchor = java.text.Normalizer.normalize(heading, java.text.Normalizer.Form.NFD)
+            .replaceAll(/\p{M}/, '')
+            .replaceAll(/`([^`]+)`/, '$1')
+            .replaceAll(/<[^>]+>/, '')
+            .replaceAll(/\[([^\]]+)]\([^)]+\)/, '$1')
+            .replaceAll(/#+\s*$/, '')
+            .toLowerCase(Locale.ROOT)
+            .replaceAll(/&[a-z0-9#]+;/, '')
+            .replaceAll(/[^\p{Alnum}\s-]/, '')
+            .trim()
+            .replaceAll(/\s+/, '-')
+            .replaceAll(/-+/, '-')
+    anchor
+}
+
+Set<String> markdownAnchors(File source) {
+    def anchors = [] as Set
+    def counts = [:].withDefault { 0 }
+    def inFence = false
+
+    source.eachLine { line ->
+        if (line.trim().startsWith('```')) {
+            inFence = !inFence
+        } else if (!inFence) {
+            def matcher = line =~ /^(#{1,6})\s+(.+?)\s*$/
+            if (matcher.matches()) {
+                def baseAnchor = markdownAnchor(matcher[0][2])
+                if (!baseAnchor.isBlank()) {
+                    def count = counts[baseAnchor]
+                    anchors << (count == 0 ? baseAnchor : "${baseAnchor}-${count}".toString())
+                    counts[baseAnchor] = count + 1
+                }
+            }
+        }
+    }
+
+    anchors
+}
+
+tasks.register('validateMarkdownLinks') {
+    group = 'verification'
+    description = 'Validates relative Markdown links and anchors in repository documentation.'
+
+    inputs.files(markdownDocumentationFiles())
+
+    doLast {
+        def failures = []
+        def linkPattern = ~/\[[^\]]+]\(([^)]+)\)/
+        def anchorsByFile = [:]
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                def matcher = line =~ linkPattern
+                matcher.each { match ->
+                    def rawTarget = match[1].trim()
+                    def extractedTarget = extractMarkdownTarget(rawTarget)
+                    def targetParts = extractedTarget.split('#', 2)
+                    def target = targetParts[0].trim()
+                    def anchor = targetParts.length > 1 ? targetParts[1].trim() : ''
+                    def external = target.contains('://') || target.startsWith('mailto:')
+                    if (!external) {
+                        def destination = target.isBlank() ? source : new File(source.parentFile, target)
+                        if (!destination.exists()) {
+                            failures << "${relativePath(source)}:${number}: broken link -> ${rawTarget}"
+                        } else if (!anchor.isBlank() && destination.name.endsWith('.md')) {
+                            def destinationAnchors = anchorsByFile.computeIfAbsent(destination.canonicalFile) {
+                                markdownAnchors(destination)
+                            }
+                            def normalizedAnchor = java.net.URLDecoder.decode(anchor, java.nio.charset.StandardCharsets.UTF_8)
+                                    .toLowerCase(Locale.ROOT)
+                            if (!destinationAnchors.contains(normalizedAnchor)) {
+                                failures << "${relativePath(source)}:${number}: broken anchor -> ${rawTarget}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Broken Markdown links found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateMarkdownStructure') {
+    group = 'verification'
+    description = 'Validates basic Markdown document structure.'
+
+    inputs.files(markdownDocumentationFiles())
+
+    doLast {
+        def failures = []
+
+        inputs.files.files.sort().each { source ->
+            def h1Count = 0
+            def inFence = false
+            source.eachLine { line, number ->
+                if (line.trim().startsWith('```')) {
+                    inFence = !inFence
+                } else if (!inFence && line ==~ /^#\s+.+/) {
+                    h1Count++
+                }
+                if (line ==~ /.*\s+$/) {
+                    failures << "${relativePath(source)}:${number}: trailing whitespace"
+                }
+            }
+            if (h1Count != 1) {
+                failures << "${relativePath(source)}: expected exactly one top-level '# ' heading, found ${h1Count}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Markdown structure issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateDocumentationCatalog') {
+    group = 'verification'
+    description = 'Validates canonical documentation files and index coverage.'
+
+    def requiredDocuments = [
+            'README.md',
+            'CHANGELOG.md',
+            'CONTRIBUTING.md',
+            'CODE_OF_CONDUCT.md',
+            'PROVENANCE.md',
+            'docs/index.md',
+            'docs/documentation-architecture.md',
+            'docs/code-conventions.md',
+            'docs/public-api-boundaries.md',
+            'docs/module-readme-convention.md',
+            'docs/public-api-inventory.md',
+            'docs/openapi-codegen.md',
+            'docs/openapi-breaking-changes.md',
+            'docs/openapi-contract-testing.md',
+            'docs/openapi-evolution.md',
+            'docs/compatibility.md',
+            'docs/releasing.md',
+            'docs/troubleshooting.md',
+            'docs/logging.md',
+            'docs/logging/property-reference.md',
+            'docs/error-handling.md',
+            'docs/error-handling/security.md',
+            'docs/error-handling/json-contract.md',
+            'docs/error-handling/property-reference.md',
+            'docs/error-handling-extension-points.md',
+            'docs/guides/migrate-shared-exception.md',
+            'docs/rest-client.md',
+            'docs/rest-client/property-reference.md',
+            'docs/rest-client-extension-points.md',
+            'docs/mock.md',
+            'docs/mock/property-reference.md',
+            'docs/guides/index.md'
+    ]
+
+    inputs.files(requiredDocuments.collect { file(it) })
+
+    doLast {
+        def failures = []
+
+        requiredDocuments.each { path ->
+            if (!file(path).isFile()) {
+                failures << "missing required documentation file: ${path}"
+            }
+        }
+
+        def readme = file('README.md').text
+        [
+                'CHANGELOG.md',
+                'docs/index.md',
+                'docs/documentation-architecture.md',
+                'docs/code-conventions.md',
+                'docs/public-api-boundaries.md',
+                'docs/module-readme-convention.md',
+                'docs/public-api-inventory.md',
+                'docs/openapi-codegen.md',
+                'docs/openapi-breaking-changes.md',
+                'docs/openapi-contract-testing.md',
+                'docs/openapi-evolution.md',
+                'docs/compatibility.md',
+                'docs/releasing.md',
+                'docs/troubleshooting.md',
+                'docs/logging.md',
+                'docs/error-handling.md',
+                'docs/error-handling/security.md',
+                'docs/error-handling/json-contract.md',
+                'docs/error-handling/property-reference.md',
+                'docs/error-handling-extension-points.md',
+                'docs/guides/migrate-shared-exception.md',
+                'docs/rest-client.md',
+                'docs/rest-client-extension-points.md',
+                'docs/mock.md'
+        ].each { path ->
+            if (!readme.contains("](${path})")) {
+                failures << "README.md documentation map must link to ${path}"
+            }
+        }
+
+        def index = file('docs/index.md').text
+        [
+                '../README.md',
+                '../CHANGELOG.md',
+                'compatibility.md',
+                'documentation-architecture.md',
+                'code-conventions.md',
+                'public-api-boundaries.md',
+                'module-readme-convention.md',
+                'public-api-inventory.md',
+                'openapi-codegen.md',
+                'openapi-breaking-changes.md',
+                'openapi-contract-testing.md',
+                'openapi-evolution.md',
+                'releasing.md',
+                'troubleshooting.md',
+                'logging.md',
+                'error-handling.md',
+                'error-handling/security.md',
+                'error-handling/json-contract.md',
+                'error-handling/property-reference.md',
+                'error-handling-extension-points.md',
+                'guides/migrate-shared-exception.md',
+                'rest-client.md',
+                'rest-client-extension-points.md',
+                'mock.md',
+                'guides/index.md'
+        ].each { target ->
+            if (!index.contains(target)) {
+                failures << "docs/index.md must link to ${target}"
+            }
+        }
+
+        def architecture = file('docs/documentation-architecture.md').text
+        [
+                'CHANGELOG.md',
+                'docs/code-conventions.md',
+                'docs/public-api-boundaries.md',
+                'docs/module-readme-convention.md',
+                'docs/public-api-inventory.md',
+                'docs/openapi-codegen.md',
+                'docs/openapi-breaking-changes.md',
+                'docs/openapi-contract-testing.md',
+                'docs/openapi-evolution.md',
+                'docs/releasing.md',
+                'docs/troubleshooting.md',
+                'docs/rest-client/property-reference.md',
+                'docs/logging/property-reference.md',
+                'docs/error-handling.md',
+                'docs/error-handling/security.md',
+                'docs/error-handling/json-contract.md',
+                'docs/error-handling/property-reference.md',
+                'docs/error-handling-extension-points.md',
+                'docs/guides/migrate-shared-exception.md',
+                'docs/mock/property-reference.md'
+        ].each { path ->
+            if (!architecture.contains("`${path}`")) {
+                failures << "docs/documentation-architecture.md must list canonical source ${path}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Documentation catalog issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateChangelogAndReleaseDocs') {
+    group = 'verification'
+    description = 'Validates changelog and release process documentation.'
+
+    inputs.files(
+            file('CHANGELOG.md'),
+            file('docs/releasing.md'),
+            file('CONTRIBUTING.md')
+    )
+
+    doLast {
+        def failures = []
+        def currentVersion = rootProject.version.toString()
+        def changelog = file('CHANGELOG.md').text
+        def releasing = file('docs/releasing.md').text
+        def contributing = file('CONTRIBUTING.md').text
+
+        if (!changelog.startsWith('# Changelog')) {
+            failures << 'CHANGELOG.md must start with "# Changelog"'
+        }
+        if (!changelog.contains('## Unreleased')) {
+            failures << 'CHANGELOG.md must contain "## Unreleased"'
+        }
+        if (!(changelog =~ /(?m)^## ${java.util.regex.Pattern.quote(currentVersion)} - \d{4}-\d{2}-\d{2}$/).find()) {
+            failures << "CHANGELOG.md must contain a dated section for ${currentVersion}"
+        }
+        if (!changelog.contains('[docs/releasing.md](docs/releasing.md)')) {
+            failures << 'CHANGELOG.md must link to docs/releasing.md'
+        }
+        if (!releasing.contains("v${currentVersion}")) {
+            failures << "docs/releasing.md must include tag examples for v${currentVersion}"
+        }
+        if (!releasing.contains('./gradlew documentationCheck') || !releasing.contains('./gradlew compatibilityCheck')) {
+            failures << 'docs/releasing.md must include documentationCheck and compatibilityCheck'
+        }
+        if (!contributing.contains('[Releasing](docs/releasing.md)')) {
+            failures << 'CONTRIBUTING.md must link to docs/releasing.md'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Changelog/release documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateDocumentationVersions') {
+    group = 'verification'
+    description = 'Validates framework version references in documentation and examples.'
+
+    inputs.files(fileTree(rootDir) {
+        include 'README.md'
+        include 'CHANGELOG.md'
+        include 'docs/**/*.md'
+        include 'examples/**/*.md'
+        include 'examples/**/*.gradle'
+        include 'spring-boot-service-framework-*/README.md'
+        include 'spring-boot-service-framework-starters/*/README.md'
+        include 'build.gradle'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def currentVersion = rootProject.version.toString()
+        def artifactPattern = ~/com\.smbtech:(spring-boot-service-framework-(commons|logging-core|http-client-core|mock-core|error-core|starter-logging|starter-rest-client|starter-mock|starter-error-handling)):([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)/
+        def versionAssignmentPattern = ~/version\s*=\s*['"]([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)['"]/
+        def currentStatusPattern = ~/framework is in `([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)`/
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                def artifactMatcher = line =~ artifactPattern
+                artifactMatcher.each { match ->
+                    def referencedVersion = match[3]
+                    if (referencedVersion != currentVersion) {
+                        failures << "${relativePath(source)}:${number}: expected framework version ${currentVersion}, found ${referencedVersion}"
+                    }
+                }
+
+                if (source.name.endsWith('.gradle') || relativePath(source) == 'docs/releasing.md') {
+                    def assignmentMatcher = line =~ versionAssignmentPattern
+                    assignmentMatcher.each { match ->
+                        def referencedVersion = match[1]
+                        if (referencedVersion != currentVersion) {
+                            failures << "${relativePath(source)}:${number}: expected framework version ${currentVersion}, found ${referencedVersion}"
+                        }
+                    }
+                }
+
+                def statusMatcher = line =~ currentStatusPattern
+                statusMatcher.each { match ->
+                    def referencedVersion = match[1]
+                    if (referencedVersion != currentVersion) {
+                        failures << "${relativePath(source)}:${number}: expected framework version ${currentVersion}, found ${referencedVersion}"
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Documentation version issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateModuleReadmes') {
+    group = 'verification'
+    description = 'Validates the required module README convention.'
+
+    def moduleReadmePaths = [
+            'spring-boot-service-framework-commons/README.md',
+            'spring-boot-service-framework-logging-core/README.md',
+            'spring-boot-service-framework-http-client-core/README.md',
+            'spring-boot-service-framework-mock-core/README.md',
+            'spring-boot-service-framework-error-core/README.md',
+            'spring-boot-service-framework-openapi-generator/README.md',
+            'spring-boot-service-framework-openapi-contract-testing/README.md',
+            'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md',
+            'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/README.md',
+            'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md',
+            'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md'
+    ]
+
+    inputs.files(moduleReadmePaths.collect { file(it) })
+
+    doLast {
+        def failures = []
+        def requiredSections = [
+                'When to use',
+                'Dependency',
+                'Public API',
+                'What this module does not do',
+                'Main documentation',
+                'Local validation'
+        ]
+        def currentVersion = rootProject.version.toString()
+
+        moduleReadmePaths.each { path ->
+            def source = file(path)
+            if (!source.isFile()) {
+                failures << "missing module README: ${path}"
+                return
+            }
+
+            def lines = source.readLines()
+            def h1Lines = []
+            def h2Sections = [:]
+            def firstH2Index = -1
+            def inFence = false
+
+            lines.eachWithIndex { line, index ->
+                if (line.trim().startsWith('```')) {
+                    inFence = !inFence
+                } else if (!inFence) {
+                    if (line ==~ /^#\s+.+/) {
+                        h1Lines << index
+                    } else {
+                        def matcher = line =~ /^##\s+(.+?)\s*$/
+                        if (matcher.matches()) {
+                            if (firstH2Index < 0) {
+                                firstH2Index = index
+                            }
+                            h2Sections[matcher[0][1]] = index
+                        }
+                    }
+                }
+            }
+
+            if (h1Lines.size() != 1) {
+                failures << "${path}: expected exactly one H1 heading, found ${h1Lines.size()}"
+            }
+            if (firstH2Index <= 1 || lines.subList(1, Math.max(1, firstH2Index)).join('\n').trim().isBlank()) {
+                failures << "${path}: expected an introductory paragraph before the first H2"
+            }
+
+            def previousIndex = -1
+            requiredSections.each { section ->
+                def index = h2Sections[section]
+                if (index == null) {
+                    failures << "${path}: missing required section '## ${section}'"
+                } else if (index <= previousIndex) {
+                    failures << "${path}: section '## ${section}' must appear after the previous required section"
+                } else {
+                    previousIndex = index
+                }
+            }
+
+            def text = source.text
+            def artifactMatches = text =~ /com\.smbtech:[A-Za-z0-9_.-]+:([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)/
+            if (!artifactMatches.find()) {
+                failures << "${path}: dependency section must include a com.smbtech artifact version"
+            } else {
+                artifactMatches.reset()
+                artifactMatches.each { match ->
+                    if (match[1] != currentVersion) {
+                        failures << "${path}: dependency version must be ${currentVersion}, found ${match[1]}"
+                    }
+                }
+            }
+
+            if (!text.contains('./gradlew')) {
+                failures << "${path}: local validation section must include a Gradle command"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Module README convention issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+
+tasks.register('validateExampleSecrets') {
+    group = 'verification'
+    description = 'Scans example documentation and configuration for accidentally committed secrets.'
+
+    inputs.files(fileTree('examples') {
+        include '**/*.md'
+        include '**/*.gradle'
+        include '**/*.properties'
+        include '**/*.yml'
+        include '**/*.yaml'
+        exclude '**/.gradle/**'
+        exclude '**/.idea/**'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def rules = [
+                [
+                        name   : 'private key material',
+                        pattern: ~/(?i)-----BEGIN (RSA |EC |OPENSSH |)?PRIVATE KEY-----/
+                ],
+                [
+                        name   : 'internal endpoint',
+                        pattern: ~/(?i)https?:\/\/[^\s'"]*smb-tech\.[^\s'"]*/
+                ],
+                [
+                        name   : 'long inline secret-like value',
+                        pattern: ~/(?i)^\s*([A-Z0-9_]*(PASSWORD|SECRET|TOKEN|KEYSTORE|PRIVATE_KEY|KEY)[A-Z0-9_]*|base64|password|key-password|client-secret)\s*[:=]\s*(?!\$\{)[A-Za-z0-9+\/=]{40,}\s*$/
+                ],
+                [
+                        name   : 'literal secret property',
+                        pattern: ~/(?i)^\s*(client-secret|password|key-password|value)\s*[:=]\s*(?!\$\{)(?!change-me\b)(?!example\b)[^#\s].*$/
+                ]
+        ]
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                rules.each { rule ->
+                    if ((line =~ rule.pattern).find()) {
+                        failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: ${rule.name}"
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Potential secrets found in examples:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateExampleApplicationConfig') {
+    group = 'verification'
+    description = 'Ensures example application config files keep real values out of source control.'
+
+    inputs.files(fileTree('examples') {
+        include '**/src/main/resources/application*.properties'
+        include '**/src/main/resources/application*.yml'
+        include '**/src/main/resources/application*.yaml'
+        exclude '**/build/**'
+    })
+
+    doLast {
+        def failures = []
+        def topLevelEnvironmentAssignment = ~/^[A-Z][A-Z0-9_]+:\s+(?!\$\{).+/
+        def uuidClientId = ~/(?i)(client-id|CLIENT_ID)\s*[:=]\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+
+        inputs.files.files.sort().each { source ->
+            source.eachLine { line, number ->
+                if ((line =~ topLevelEnvironmentAssignment).find()) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: top-level environment value must not be committed"
+                }
+                if ((line =~ uuidClientId).find()) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: literal client id must use an environment placeholder"
+                }
+                if (line.length() > 500) {
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${number}: oversized line may contain encoded secret material"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Unsafe example application config found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('documentationCheck') {
+    group = 'verification'
+    description = 'Runs public API inventory, documentation, OpenAPI, property reference, and example safety checks.'
+    dependsOn(
+            tasks.named('validatePropertyReferences'),
+            tasks.named('validateMarkdownStructure'),
+            tasks.named('validateMarkdownLinks'),
+            tasks.named('validateDocumentationCatalog'),
+            tasks.named('validateChangelogAndReleaseDocs'),
+            tasks.named('validateDocumentationVersions'),
+            tasks.named('validateModuleReadmes'),
+            tasks.named('validateOpenApiNameNormalization'),
+            tasks.named('validateOpenApiSpecs'),
+            tasks.named('validateOpenApiSpecVersionCatalog'),
+            tasks.named('validateOpenApiMetadata'),
+            tasks.named('validateOpenApiAdvancedModelGeneration'),
+            tasks.named('validateOpenApiModelsJar'),
+            tasks.named('validateOpenApiServerApiJar'),
+            tasks.named('validateOpenApiClientJar'),
+            tasks.named('validateOpenApiArtifactSeparation'),
+            tasks.named('validateOpenApiReproducibleGeneration'),
+            tasks.named('validateOpenApiCompilationTests'),
+            tasks.named('openApiBreakingChangeCheck'),
+            tasks.named('validateOpenApiTaskCompatibility'),
+            tasks.named('validateExampleSecrets'),
+            tasks.named('validateExampleApplicationConfig')
+    )
+}

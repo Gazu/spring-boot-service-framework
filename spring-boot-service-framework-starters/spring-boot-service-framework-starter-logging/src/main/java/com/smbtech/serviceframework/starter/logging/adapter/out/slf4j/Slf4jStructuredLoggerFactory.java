@@ -5,12 +5,15 @@ import com.smbtech.serviceframework.logging.port.in.StructuredLogger;
 import com.smbtech.serviceframework.logging.port.in.StructuredLoggerFactory;
 import org.slf4j.LoggerFactory;
 
-/**
- * Creates core logging services backed by class-scoped SLF4J loggers.
- */
+/** Creates core logging services backed by class-scoped SLF4J loggers. */
 public final class Slf4jStructuredLoggerFactory implements StructuredLoggerFactory {
     private final boolean production;
 
+    /**
+     * Creates a slf4j structured logger factory instance.
+     *
+     * @param production production value
+     */
     public Slf4jStructuredLoggerFactory(boolean production) {
         this.production = production;
     }
@@ -18,8 +21,6 @@ public final class Slf4jStructuredLoggerFactory implements StructuredLoggerFacto
     @Override
     public StructuredLogger get(Class<?> source) {
         return new StructuredLoggingService(
-                new Slf4jLogEventSink(LoggerFactory.getLogger(source)),
-                production
-        );
+                new Slf4jLogEventSink(LoggerFactory.getLogger(source)), production);
     }
 }

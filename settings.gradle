@@ -1,7 +1,10 @@
 pluginManagement {
+    includeBuild 'build-logic'
+
     plugins {
         id 'org.springframework.boot' version providers.gradleProperty('springBootVersion').get()
         id 'io.spring.dependency-management' version providers.gradleProperty('springDependencyManagementVersion').get()
+        id 'com.diffplug.spotless' version providers.gradleProperty('spotlessVersion').get()
     }
     repositories {
         gradlePluginPortal()
@@ -15,6 +18,10 @@ include 'spring-boot-service-framework-commons'
 include 'spring-boot-service-framework-logging-core'
 include 'spring-boot-service-framework-http-client-core'
 include 'spring-boot-service-framework-mock-core'
+include 'spring-boot-service-framework-error-core'
+include 'spring-boot-service-framework-openapi-generator'
+include 'spring-boot-service-framework-openapi-contract-testing'
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging'
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock'
+include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling'

@@ -1,0 +1,46 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+description = 'Internal Gradle plugin for SMB Tech OpenAPI contract artifact generation'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+gradlePlugin {
+    plugins {
+        smbtechOpenApiGenerator {
+            id = 'com.smbtech.service-framework.openapi-generator'
+            implementationClass = 'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGeneratorPlugin'
+            displayName = 'SMB Tech Service Framework OpenAPI Generator'
+            description = project.description
+        }
+    }
+}
+
+dependencies {
+    testImplementation gradleTestKit()
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PUBLIC
+    options.addBooleanOption('Werror', true)
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('javadoc')
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

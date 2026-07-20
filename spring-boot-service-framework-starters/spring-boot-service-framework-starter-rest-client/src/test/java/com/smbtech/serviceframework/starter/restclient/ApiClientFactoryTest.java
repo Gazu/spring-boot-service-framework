@@ -1,8 +1,15 @@
 package com.smbtech.serviceframework.starter.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
 import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.DefaultApiClientFactory;
 import com.smbtech.serviceframework.starter.restclient.api.HttpApiClient;
 import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -10,14 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
-
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class ApiClientFactoryTest {
 
@@ -64,9 +63,9 @@ class ApiClientFactoryTest {
 
     @Test
     void rejectsAnnotationBasedCreationWithoutClientNameAnnotation() {
-        DefaultApiClientFactory factory = new DefaultApiClientFactory(
-                registry(RestClient.builder().baseUrl("https://projects.example").build())
-        );
+        DefaultApiClientFactory factory =
+                new DefaultApiClientFactory(
+                        registry(RestClient.builder().baseUrl("https://projects.example").build()));
 
         assertThatThrownBy(() -> factory.create(UnnamedApi.class))
                 .isInstanceOf(IllegalArgumentException.class)

@@ -1,24 +1,36 @@
 package com.smbtech.serviceframework.starter.restclient.autoconfigure;
 
 import com.smbtech.serviceframework.httpclient.domain.CredentialDefinition;
-import com.smbtech.serviceframework.httpclient.exception.AuthenticationException;
-
+import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/** Provides credential properties mapper behavior. */
 public final class CredentialPropertiesMapper {
+    /** Creates a credential properties mapper instance. */
+    public CredentialPropertiesMapper() {}
 
+    /**
+     * Performs the map operation.
+     *
+     * @param properties properties value
+     * @return map result
+     */
     public Map<String, CredentialDefinition> map(RestClientProperties properties) {
         Map<String, CredentialDefinition> definitions = new LinkedHashMap<>();
         RestClientProperties.Authentication authentication =
-                Objects.requireNonNullElseGet(properties.getAuthentication(), RestClientProperties.Authentication::new);
+                Objects.requireNonNullElseGet(
+                        properties.getAuthentication(), RestClientProperties.Authentication::new);
 
-        authentication.getCredentials().forEach((id, credential) ->
-                definitions.put(id, new CredentialDefinition(id, value(id, credential)))
-        );
+        authentication
+                .getCredentials()
+                .forEach(
+                        (id, credential) ->
+                                definitions.put(
+                                        id, new CredentialDefinition(id, value(id, credential))));
 
         return definitions;
     }
@@ -29,10 +41,12 @@ public final class CredentialPropertiesMapper {
         }
         if (credential.getBase64() != null && !credential.getBase64().isBlank()) {
             try {
-                byte[] decoded = Base64.getDecoder().decode(normalizedBase64(credential.getBase64()));
+                byte[] decoded =
+                        Base64.getDecoder().decode(normalizedBase64(credential.getBase64()));
                 return new String(decoded, StandardCharsets.UTF_8);
             } catch (IllegalArgumentException exception) {
-                throw new AuthenticationException("Invalid base64 credential value: " + id, exception);
+                throw new HttpClientAuthenticationException(
+                        "Invalid base64 credential value: " + id, exception);
             }
         }
         return credential.getValue();

@@ -1,0 +1,22 @@
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+description = 'Internal convention plugins for SMB Tech service framework modules'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def frameworkProperties = new Properties()
+rootProject.file('../gradle.properties').withInputStream { frameworkProperties.load(it) }
+
+dependencies {
+    implementation "io.spring.gradle:dependency-management-plugin:${frameworkProperties.getProperty('springDependencyManagementVersion')}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

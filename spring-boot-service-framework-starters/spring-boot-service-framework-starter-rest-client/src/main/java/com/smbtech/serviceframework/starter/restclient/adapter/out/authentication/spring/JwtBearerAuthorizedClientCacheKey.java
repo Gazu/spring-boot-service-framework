@@ -13,8 +13,7 @@ import java.util.stream.StreamSupport;
 
 final class JwtBearerAuthorizedClientCacheKey {
 
-    private JwtBearerAuthorizedClientCacheKey() {
-    }
+    private JwtBearerAuthorizedClientCacheKey() {}
 
     static String principalName(String principalName, Map<String, Object> customClaims) {
         if (customClaims == null || customClaims.isEmpty()) {
@@ -26,7 +25,11 @@ final class JwtBearerAuthorizedClientCacheKey {
     static String canonicalize(Map<?, ?> claims) {
         return claims.entrySet().stream()
                 .sorted(Comparator.comparing(entry -> String.valueOf(entry.getKey())))
-                .map(entry -> text(String.valueOf(entry.getKey())) + "=" + canonicalizeValue(entry.getValue()))
+                .map(
+                        entry ->
+                                text(String.valueOf(entry.getKey()))
+                                        + "="
+                                        + canonicalizeValue(entry.getValue()))
                 .collect(Collectors.joining(";", "m{", "}"));
     }
 

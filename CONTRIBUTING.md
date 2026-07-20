@@ -28,6 +28,11 @@ docs/contributing-guidelines
 - Link related issues when available.
 - Add or update tests for behavior changes.
 - Update documentation when public APIs, configuration, or usage changes.
+- Regenerate `docs/public-api-inventory.md` when the public surface changes.
+- Keep consumer contracts inside the packages defined by
+  [Public API Boundaries](docs/public-api-boundaries.md).
+- Follow the repository documentation ownership rules in
+  [Documentation Architecture](docs/documentation-architecture.md).
 - Do not include unrelated refactors in the same pull request.
 
 ## Commit Message Rules
@@ -107,23 +112,39 @@ v1.1.1
 A release pull request should include:
 
 - the version update;
-- release notes or changelog updates, when available;
-- a tag created for the final released version.
+- `CHANGELOG.md` updates;
+- documentation updates for public behavior changes;
+- the validation required by [Releasing](docs/releasing.md);
+- a tag created for the final released version after approval.
 
 ## Code Style
 
-- Follow the existing project structure and naming conventions.
+- Follow the canonical [Code Conventions](docs/code-conventions.md).
+- Run `./gradlew spotlessApply` before committing and `./gradlew spotlessCheck`
+  to verify Java imports, formatting, whitespace, and line endings.
 - Keep core modules independent from Spring and infrastructure libraries unless
   the module is explicitly a Spring Boot starter.
 - Prefer clear, small APIs over broad abstractions.
 - Keep business-specific logic out of the framework.
+
+## Documentation Style
+
+- Keep long-form feature guides under `docs/`.
+- Keep module READMEs short: purpose, dependency, public API summary, links, and
+  local validation.
+- Keep example READMEs focused on runnable behavior and required environment
+  variables.
+- Do not duplicate full property references, OAuth2 flows, troubleshooting
+  catalogs, or compatibility rules across multiple files.
+- When a feature changes public behavior, update the canonical document in the
+  same pull request.
 
 ## Tests
 
 Before opening a pull request, run the relevant checks:
 
 ```bash
-./gradlew test
+./gradlew codeQualityCheck test
 ```
 
 For broader changes, run the full build:

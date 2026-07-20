@@ -3,22 +3,30 @@ package com.smbtech.serviceframework.httpclient.domain;
 import java.time.Duration;
 import java.util.Objects;
 
+/**
+ * Carries immutable timeout policy data.
+ *
+ * @param connectTimeout connect timeout value
+ * @param connectionRequestTimeout connection request timeout value
+ * @param responseTimeout response timeout value
+ */
 public record TimeoutPolicy(
-        Duration connectTimeout,
-        Duration connectionRequestTimeout,
-        Duration responseTimeout
-) {
+        Duration connectTimeout, Duration connectionRequestTimeout, Duration responseTimeout) {
+    /**
+     * Performs the defaults operation.
+     *
+     * @return defaults result
+     */
     public static TimeoutPolicy defaults() {
         return new TimeoutPolicy(
-                Duration.ofSeconds(2),
-                Duration.ofSeconds(2),
-                Duration.ofSeconds(15)
-        );
+                Duration.ofSeconds(2), Duration.ofSeconds(2), Duration.ofSeconds(15));
     }
 
+    /** Creates and validates the record components. */
     public TimeoutPolicy {
         connectTimeout = positiveOrDefault(connectTimeout, defaultsConnectTimeout());
-        connectionRequestTimeout = positiveOrDefault(connectionRequestTimeout, defaultsConnectionRequestTimeout());
+        connectionRequestTimeout =
+                positiveOrDefault(connectionRequestTimeout, defaultsConnectionRequestTimeout());
         responseTimeout = positiveOrDefault(responseTimeout, defaultsResponseTimeout());
     }
 

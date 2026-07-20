@@ -1,217 +1,61 @@
 # Spring Boot Service Framework Mock Core
 
-Framework-independent mock domain and exceptions for SMB Tech services.
+Framework-neutral mock domain, ports, and default services. It is the
+hexagonal core for mock response behavior without Spring, Jackson, Servlet,
+`RestClient`, SLF4J, Apache, or other adapter APIs.
 
-This module is the future hexagonal core for mock behavior. It must remain free
-from Spring, Jackson, Servlet, RestClient, and other adapter APIs. Spring Boot
-integration belongs in `spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock`.
-
-## Module coordinates
-
-```groovy
-dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-mock-core:0.2.0'
-}
-```
+Runtime integration belongs in
+`spring-boot-service-framework-starter-mock`.
 
 ## When to use
 
-Most applications should consume the Spring Boot starter instead of depending on
-this module directly.
+Most applications should consume
+`spring-boot-service-framework-starter-mock`.
 
 Use this module directly when building framework-neutral mock adapters, tests,
 or custom clients that should not depend on Spring, Jackson, Servlet, or
 `RestClient` APIs.
 
-## Package map
+## Dependency
 
-```text
-com.smbtech.serviceframework.mock
-├── domain      # Framework-neutral mock definitions, requests, and responses
-├── exception   # Core mock exceptions
-├── port.in     # Inbound mock catalog and responder APIs
-├── port.out    # Outbound definition and response source ports
-└── service     # Default core services
-```
-
-## Current model
-
-### `MockDefinition`
-
-`MockDefinition` describes one configured mock endpoint:
-
-- `key`: logical mock key, for example `payments-success`;
-- `enabled`: whether the mock can be used;
-- `file`: location of the response definition;
-- `delay`: optional artificial delay.
-
-```java
-MockDefinition definition = new MockDefinition(
-        "payments-success",
-        true,
-        "classpath:mocks/payments-success.json",
-        Duration.ofMillis(100)
-);
-
-boolean usable = definition.isUsable();
-```
-
-### `MockException`
-
-`MockException` is the base runtime exception for mock configuration and loading
-errors.
-
-### `MockRequest`
-
-`MockRequest` is the framework-neutral request passed to a mock responder. It is
-designed to be created by different adapters, such as Spring MVC controllers,
-RestClient interceptors, or custom test clients.
-
-It contains:
-
-- `key`: logical mock key, for example `payments-success`;
-- `method`: optional HTTP method or operation name;
-- `path`: optional path or resource name;
-- `headers`: request headers as a multi-value map;
-- `queryParams`: query parameters as a multi-value map;
-- `body`: raw request body bytes;
-- `attributes`: adapter-specific metadata.
-
-```java
-MockRequest request = new MockRequest(
-        "payments-success",
-        "GET",
-        "/v1/payments",
-        Map.of("X-Application-Name", List.of("orders-service")),
-        Map.of("status", List.of("active")),
-        new byte[0],
-        Map.of("source", "rest-client")
-);
-```
-
-### `MockResponse`
-
-`MockResponse` is the framework-neutral response returned by a mock responder.
-Adapters convert it to their runtime response type, such as Spring
-`ResponseEntity`, `ClientHttpResponse`, or another custom response object.
-
-It contains:
-
-- `status`: HTTP-like status code, defaulting to `200` when invalid;
-- `headers`: response headers as a multi-value map;
-- `body`: raw response body bytes;
-- `delay`: optional artificial delay;
-- `metadata`: adapter-specific metadata.
-
-```java
-MockResponse response = new MockResponse(
-        200,
-        Map.of("Content-Type", List.of("application/json")),
-        "{\"status\":\"MOCKED\"}".getBytes(StandardCharsets.UTF_8)
-);
-```
-
-Both `MockRequest` and `MockResponse` defensively copy byte arrays and expose
-immutable maps/lists.
-
-## Inbound port
-
-### `MockCatalog`
-
-`MockCatalog` exposes configured mock definitions by key:
-
-```java
-Optional<MockDefinition> definition = catalog.findByKey("payments-success");
-MockDefinition required = catalog.requireByKey("payments-success");
-Set<String> keys = catalog.keys();
-```
-
-### `MockResponder`
-
-`MockResponder` is the neutral entry point for asking the mock engine whether a
-mock response exists for a request:
-
-```java
-public interface MockResponder {
-    Optional<MockResponse> respond(MockRequest request);
+```groovy
+dependencies {
+    implementation 'com.smbtech:spring-boot-service-framework-mock-core:0.3.0'
 }
 ```
 
-Return `Optional.empty()` when no mock applies and the caller should continue
-with its normal behavior.
+## Public API
 
-This contract allows integrations such as:
+- Domain types: `MockDefinition`, `MockRequest`, `MockResponse`, and
+  related value objects.
+- Inbound ports: `MockCatalog` and `MockResponder`.
+- Outbound ports: `MockDefinitionSource` and `MockResponseSource`.
+- Public exception: `MockException`.
 
-- Spring MVC controllers returning mock responses;
-- RestClient interceptors returning mock downstream responses;
-- custom clients or tests using the same mock engine without Spring APIs.
+`DefaultMockCatalog` and `DefaultMockResponder` are framework implementations,
+not supported extension points. See
+[Public API Boundaries](../docs/public-api-boundaries.md).
 
-## Outbound ports
+## What this module does not do
 
-### `MockDefinitionSource`
+- It does not load Spring resources or Jackson JSON by itself.
+- It does not expose Spring MVC `ResponseEntity` helpers.
+- It does not add `RestClient` interceptors.
+- It does not contain business-specific mock scenarios.
 
-`MockDefinitionSource` loads configured mock definitions from an adapter source,
-for example Spring Boot properties, a database, or a static test map.
+## Main documentation
 
-```java
-public interface MockDefinitionSource {
-    Map<String, MockDefinition> loadDefinitions();
-}
-```
+| Topic | Document |
+|---|---|
+| Mock guide | [Mock Core and Starter](../docs/mock.md) |
+| Mock property reference | [Mock Property Reference](../docs/mock/property-reference.md) |
+| Mock starter README | [Mock Starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md) |
+| Names and packages migration | [Migration Guide](../docs/guides/migrate-public-names-and-properties.md) |
+| Module README rules | [Module README Convention](../docs/module-readme-convention.md) |
 
-### `MockResponseSource`
-
-`MockResponseSource` loads the actual mock response for a definition and
-request. A Spring adapter may read JSON from `classpath:` resources, while a
-test adapter may return an in-memory response.
-
-```java
-public interface MockResponseSource {
-    MockResponse load(MockDefinition definition, MockRequest request);
-}
-```
-
-## Core services
-
-### `DefaultMockCatalog`
-
-`DefaultMockCatalog` loads definitions from `MockDefinitionSource`, normalizes
-keys, exposes immutable collections, and fails with `MockException` when a
-required key is missing.
-
-```java
-MockCatalog catalog = new DefaultMockCatalog(definitionSource);
-```
-
-### `DefaultMockResponder`
-
-`DefaultMockResponder` implements the neutral `MockResponder` use case.
-
-Behavior:
-
-- returns `Optional.empty()` when the request has no key;
-- returns `Optional.empty()` when the key is missing;
-- returns `Optional.empty()` when the definition exists but is disabled;
-- throws `MockException` when a mock is enabled but has no response file;
-- applies the definition delay before loading the response;
-- delegates response loading to `MockResponseSource`.
-
-```java
-MockResponder responder = new DefaultMockResponder(catalog, responseSource);
-Optional<MockResponse> response = responder.respond(new MockRequest("payments-success"));
-```
-
-## Hexagonal boundary
-
-The `check` task runs `verifyHexagonalBoundaries` and rejects imports from
-framework or adapter APIs.
+## Local validation
 
 ```bash
 ./gradlew :spring-boot-service-framework-mock-core:check
+./gradlew mockCompatibilityCheck
 ```
-
-## Additional documentation
-
-The complete usage guide, Spring Boot starter configuration, RestClient
-integration, test matrix, and troubleshooting notes are available in
-[../docs/mock.md](../docs/mock.md).

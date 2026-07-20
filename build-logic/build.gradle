@@ -1,0 +1,13 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = 'com.smbtech.serviceframework.buildlogic'
+version = '0.3.0'
+
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}

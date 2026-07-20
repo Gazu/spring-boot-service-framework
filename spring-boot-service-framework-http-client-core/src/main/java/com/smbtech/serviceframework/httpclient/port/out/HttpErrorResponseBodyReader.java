@@ -1,12 +1,9 @@
 package com.smbtech.serviceframework.httpclient.port.out;
 
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
-
 import java.lang.reflect.Type;
 
-/**
- * Reads downstream HTTP error response bodies into application-specific objects.
- */
+/** Reads downstream HTTP error response bodies into application-specific objects. */
 public interface HttpErrorResponseBodyReader {
 
     /**

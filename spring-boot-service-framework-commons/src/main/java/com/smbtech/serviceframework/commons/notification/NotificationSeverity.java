@@ -2,13 +2,15 @@ package com.smbtech.serviceframework.commons.notification;
 
 import java.util.Locale;
 
-/**
- * Describes how a notification should be interpreted by callers.
- */
+/** Describes how a notification should be interpreted by callers. */
 public enum NotificationSeverity {
+    /** Error that prevents the requested operation from completing. */
     ERROR('E'),
+    /** Warning that callers may handle without treating the operation as failed. */
     WARNING('W'),
+    /** Informational notification. */
     INFO('I'),
+    /** Severity used when the notification code has no recognized prefix. */
     UNSPECIFIED('U');
 
     private final char codePrefix;
@@ -18,8 +20,7 @@ public enum NotificationSeverity {
     }
 
     /**
-     * Returns the single-character prefix commonly used in structured error
-     * codes.
+     * Returns the single-character prefix commonly used in structured error codes.
      *
      * @return code prefix
      */

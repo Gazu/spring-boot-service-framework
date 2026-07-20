@@ -5,6 +5,17 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Carries immutable http exchange audit response data.
+ *
+ * @param method method value
+ * @param uri uri value
+ * @param statusCode status code value
+ * @param statusText status text value
+ * @param headers headers value
+ * @param body body value
+ * @param duration duration value
+ */
 public record HttpExchangeAuditResponse(
         String method,
         String uri,
@@ -12,8 +23,8 @@ public record HttpExchangeAuditResponse(
         String statusText,
         Map<String, String> headers,
         String body,
-        Duration duration
-) {
+        Duration duration) {
+    /** Creates and validates the record components. */
     public HttpExchangeAuditResponse {
         method = Objects.requireNonNullElse(method, "");
         uri = Objects.requireNonNullElse(uri, "");

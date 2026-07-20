@@ -1,15 +1,14 @@
 package com.smbtech.serviceframework.starter.logging.adapter.out.context;
 
 import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
-import org.slf4j.MDC;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.MDC;
 
-/**
- * SLF4J MDC adapter that restores the previous thread context after each scope.
- */
+/** SLF4J MDC adapter that restores the previous thread context after each scope. */
 public final class MdcCorrelationContext implements CorrelationContext {
+    /** Creates a mdc correlation context instance. */
+    public MdcCorrelationContext() {}
 
     @Override
     public Map<String, String> snapshot() {

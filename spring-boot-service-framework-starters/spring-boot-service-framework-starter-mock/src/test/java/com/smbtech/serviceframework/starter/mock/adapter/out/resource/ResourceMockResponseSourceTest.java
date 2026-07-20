@@ -1,33 +1,31 @@
 package com.smbtech.serviceframework.starter.mock.adapter.out.resource;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockDefinition;
 import com.smbtech.serviceframework.mock.domain.MockRequest;
 import com.smbtech.serviceframework.mock.exception.MockException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class ResourceMockResponseSourceTest {
 
-    private final ResourceMockResponseSource source = new ResourceMockResponseSource(
-            new DefaultResourceLoader(),
-            new ObjectMapper().findAndRegisterModules()
-    );
+    private final ResourceMockResponseSource source =
+            new ResourceMockResponseSource(
+                    new DefaultResourceLoader(), new ObjectMapper().findAndRegisterModules());
 
     @Test
     void loadsResponseWithDefaultStatusAndMetadata() {
-        MockDefinition definition = new MockDefinition(
-                "default-response",
-                true,
-                "mocks/default-response.json",
-                Duration.ofMillis(10)
-        );
+        MockDefinition definition =
+                new MockDefinition(
+                        "default-response",
+                        true,
+                        "mocks/default-response.json",
+                        Duration.ofMillis(10));
 
         var response = source.load(definition, new MockRequest("default-response"));
 
@@ -42,12 +40,12 @@ class ResourceMockResponseSourceTest {
 
     @Test
     void loadsSingleAndMultiValueHeaders() {
-        MockDefinition definition = new MockDefinition(
-                "headers-response",
-                true,
-                "classpath:mocks/headers-response.json",
-                Duration.ZERO
-        );
+        MockDefinition definition =
+                new MockDefinition(
+                        "headers-response",
+                        true,
+                        "classpath:mocks/headers-response.json",
+                        Duration.ZERO);
 
         var response = source.load(definition, new MockRequest("headers-response"));
 
@@ -55,17 +53,14 @@ class ResourceMockResponseSourceTest {
         assertThat(response.headers())
                 .containsEntry("X-Mock", java.util.List.of("true"))
                 .containsEntry("Set-Cookie", java.util.List.of("a=1", "b=2"));
-        assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("{\"status\":\"ACCEPTED\"}");
+        assertThat(new String(response.body(), StandardCharsets.UTF_8))
+                .isEqualTo("{\"status\":\"ACCEPTED\"}");
     }
 
     @Test
     void failsWhenFileIsMissing() {
-        MockDefinition definition = new MockDefinition(
-                "missing",
-                true,
-                "mocks/missing.json",
-                Duration.ZERO
-        );
+        MockDefinition definition =
+                new MockDefinition("missing", true, "mocks/missing.json", Duration.ZERO);
 
         assertThatThrownBy(() -> source.load(definition, new MockRequest("missing")))
                 .isInstanceOf(MockException.class)

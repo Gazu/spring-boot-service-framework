@@ -1,19 +1,18 @@
 package com.smbtech.serviceframework.starter.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.serviceframework.httpclient.domain.KeyStoreDefinition;
 import com.smbtech.serviceframework.httpclient.port.out.CredentialProvider;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialResolver;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.KeyStorePropertiesMapper;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
-import org.junit.jupiter.api.Test;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class KeyStorePropertiesMapperTest {
 
@@ -37,15 +36,21 @@ class KeyStorePropertiesMapperTest {
         keyPassword.setBase64(encoded("key-secret"));
         properties.getAuthentication().getCredentials().put("key-password", keyPassword);
 
-        Map<String, String> decodedCredentials = new CredentialPropertiesMapper().map(properties)
-                .values()
-                .stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        com.smbtech.serviceframework.httpclient.domain.CredentialDefinition::id,
-                        com.smbtech.serviceframework.httpclient.domain.CredentialDefinition::value
-                ));
-        CredentialProvider credentialProvider = key -> Optional.ofNullable(decodedCredentials.get(key));
-        KeyStorePropertiesMapper mapper = new KeyStorePropertiesMapper(new CredentialResolver(credentialProvider));
+        Map<String, String> decodedCredentials =
+                new CredentialPropertiesMapper()
+                        .map(properties).values().stream()
+                                .collect(
+                                        java.util.stream.Collectors.toMap(
+                                                com.smbtech.serviceframework.httpclient.domain
+                                                                .CredentialDefinition
+                                                        ::id,
+                                                com.smbtech.serviceframework.httpclient.domain
+                                                                .CredentialDefinition
+                                                        ::value));
+        CredentialProvider credentialProvider =
+                key -> Optional.ofNullable(decodedCredentials.get(key));
+        KeyStorePropertiesMapper mapper =
+                new KeyStorePropertiesMapper(new CredentialResolver(credentialProvider));
 
         Map<String, KeyStoreDefinition> definitions = mapper.map(properties);
 

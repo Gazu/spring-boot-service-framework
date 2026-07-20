@@ -1,5 +1,7 @@
 package com.smbtech.serviceframework.starter.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.serviceframework.httpclient.domain.ApacheHttpClientPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuditPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
@@ -14,27 +16,23 @@ import com.smbtech.serviceframework.httpclient.domain.PoolingPolicy;
 import com.smbtech.serviceframework.httpclient.domain.ResiliencePolicy;
 import com.smbtech.serviceframework.httpclient.domain.TimeoutPolicy;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.error.HttpErrorResponseMapper;
+import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
 
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 class HttpErrorResponseMapperTest {
 
     private final HttpErrorResponseMapper mapper = new HttpErrorResponseMapper();
-    private final MockClientHttpRequest request = new MockClientHttpRequest(
-            HttpMethod.POST,
-            URI.create("https://payments.example/v1/orders")
-    );
+    private final MockClientHttpRequest request =
+            new MockClientHttpRequest(
+                    HttpMethod.POST, URI.create("https://payments.example/v1/orders"));
 
     @Test
     void decodesBodyUsingCharsetDeclaredInContentType() throws Exception {
@@ -52,8 +50,10 @@ class HttpErrorResponseMapperTest {
 
     @Test
     void keepsRawMalformedContentTypeAndFallsBackToUtf8() throws Exception {
-        MockClientHttpResponse response = response(502, "{\"message\":\"ñ\"}", StandardCharsets.UTF_8);
-        response.getHeaders().set(HttpHeaders.CONTENT_TYPE, "application/json; charset=NO_SUCH_CHARSET");
+        MockClientHttpResponse response =
+                response(502, "{\"message\":\"ñ\"}", StandardCharsets.UTF_8);
+        response.getHeaders()
+                .set(HttpHeaders.CONTENT_TYPE, "application/json; charset=NO_SUCH_CHARSET");
 
         HttpErrorResponse error = mapper.map(definition(true), request, response);
 
@@ -64,7 +64,8 @@ class HttpErrorResponseMapperTest {
 
     @Test
     void defaultsToUtf8WhenContentTypeIsMissing() throws Exception {
-        MockClientHttpResponse response = response(500, "{\"message\":\"boom\"}", StandardCharsets.UTF_8);
+        MockClientHttpResponse response =
+                response(500, "{\"message\":\"boom\"}", StandardCharsets.UTF_8);
 
         HttpErrorResponse error = mapper.map(definition(true), request, response);
 
@@ -127,23 +128,20 @@ class HttpErrorResponseMapperTest {
                 "",
                 "",
                 new TimeoutPolicy(
-                        Duration.ofSeconds(1),
-                        Duration.ofSeconds(1),
-                        Duration.ofSeconds(1)
-                ),
+                        Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)),
                 new PoolingPolicy(
-                        ConnectionReusePolicy.DEFAULT,
-                        Duration.ofSeconds(30),
-                        100,
-                        20,
-                        false
-                ),
+                        ConnectionReusePolicy.DEFAULT, Duration.ofSeconds(30), 100, 20, false),
                 ApacheHttpClientPolicy.defaults(),
-                new ErrorHandlingPolicy(true, includeBody, 1, includeHeaders, true, "E_SERVICE_FRAMEWORK_HTTP_CLIENT_"),
+                new ErrorHandlingPolicy(
+                        true,
+                        includeBody,
+                        1,
+                        includeHeaders,
+                        true,
+                        "E_SERVICE_FRAMEWORK_HTTP_CLIENT_"),
                 ObservabilityPolicy.defaults(),
                 ResiliencePolicy.disabled(),
                 AuditPolicy.disabled(),
-                Map.of()
-        );
+                Map.of());
     }
 }

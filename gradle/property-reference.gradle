@@ -1,0 +1,425 @@
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
+import java.net.URLClassLoader
+import java.time.Duration
+
+class PropertyReferenceSpec {
+    String projectPath
+    String configurationPropertiesClass
+    String prefix
+    String outputPath
+    String title
+    String intro
+    Map<String, String> descriptions = [:]
+}
+
+class PropertyReferenceEntry {
+    String name
+    String type
+    String defaultValue
+    String description
+}
+
+def loggingDescriptions = [
+        'smbtech.logging.production'                       : 'Enables production filtering behavior. When true, metric events are disabled; audit, security, and tracking events remain enabled.',
+        'smbtech.logging.level'                            : 'Root logging level used by the starter Logback configuration.',
+        'smbtech.logging.async.enabled'                    : 'Enables Logback async console logging.',
+        'smbtech.logging.async.queue-size'                 : 'Async appender queue size.',
+        'smbtech.logging.async.discarding-threshold'       : 'Logback async discarding threshold.',
+        'smbtech.logging.async.never-block'                : 'Whether appenders should avoid blocking when the async queue is full.',
+        'smbtech.logging.async.max-flush-time-ms'          : 'Maximum async appender flush time during shutdown.',
+        'smbtech.logging.transaction.enabled'              : 'Registers the servlet transaction id filter when servlet APIs are present.',
+        'smbtech.logging.transaction.header-name'          : 'Request and response header used for transaction id propagation.',
+        'smbtech.logging.transaction.accept-incoming'      : 'Accepts a valid incoming transaction id. If disabled, always generates a new UUID.',
+        'smbtech.logging.transaction.max-length'           : 'Maximum accepted incoming transaction id length.'
+]
+
+def mockDescriptions = [
+        'smbtech.mocks.endpoints.<key>.enabled'              : 'Enables this mock endpoint. Disabled mocks are ignored.',
+        'smbtech.mocks.endpoints.<key>.file'                 : 'Mock response JSON file. Supports classpath: and file: locations. Plain paths are treated as classpath resources.',
+        'smbtech.mocks.endpoints.<key>.delay'                : 'Artificial delay applied before loading the response.',
+        'smbtech.mocks.openapi.enabled'                      : 'Registers servlet mock routes from configured OpenAPI contracts.',
+        'smbtech.mocks.openapi.fail-fast'                    : 'Fails application startup when an OpenAPI contract cannot be loaded or registered.',
+        'smbtech.mocks.openapi.include-optional-properties'  : 'Includes optional schema properties in automatically generated response bodies.',
+        'smbtech.mocks.openapi.status-header'                : 'Request header used to select a declared OpenAPI response status.',
+        'smbtech.mocks.openapi.contracts.<key>.enabled'      : 'Enables this OpenAPI mock contract.',
+        'smbtech.mocks.openapi.contracts.<key>.location'     : 'OpenAPI YAML or JSON resource location. Plain paths are treated as classpath resources.',
+        'smbtech.mocks.openapi.contracts.<key>.base-path'    : 'Path prefix prepended to every operation registered from this contract.',
+        'smbtech.mocks.openapi.contracts.<key>.delay'        : 'Artificial delay applied to responses served from this contract.'
+]
+
+def errorHandlingDescriptions = [
+        'smbtech.error-handling.enabled'                           : 'Enables servlet error handling auto-configuration. Disable it to remove all framework error handling beans.',
+        'smbtech.error-handling.response.exposure'                : 'Global response exposure applied to every handled error after resolvers and customizers. Accepted values are INTERNAL and PUBLIC. INTERNAL returns the generic safe notification; PUBLIC returns the resolved notification after mandatory sanitization.',
+        'smbtech.error-handling.response.include-field-violations': 'Includes aggregated Bean Validation and binding violations under metadata.violations.',
+        'smbtech.error-handling.response.metadata-allowlist'      : 'Top-level notification metadata keys allowed in public responses. Allowed values are still recursively sanitized.',
+        'smbtech.error-handling.logging.enabled'                  : 'Enables structured error reporting when StructuredLoggerFactory and CorrelationContext beans are available.',
+        'smbtech.error-handling.logging.include-diagnostics'      : 'Includes the internal diagnostic message in structured error events. It never changes the public Notification.',
+        'smbtech.error-handling.metrics.enabled'                  : 'Enables the bounded-cardinality error counter when a MeterRegistry bean is available.',
+        'smbtech.error-handling.metrics.metric-name'              : 'Micrometer counter name used for error code, category, and HTTP status tags.',
+        'smbtech.error-handling.security.enabled'                 : 'Registers Notification-based authentication entry point and access denied handler defaults when Spring Security is present.',
+        'smbtech.error-handling.security.oauth2-metadata.enabled' : 'Includes OAuth2 details in public Notification metadata. The RFC 6750 WWW-Authenticate challenge remains enabled.',
+        'smbtech.error-handling.security.oauth2-metadata.include-error-description': 'Includes a static framework-controlled OAuth2 error description. Provider and exception messages are never exposed.',
+        'smbtech.error-handling.security.oauth2-metadata.include-error-uri': 'Includes the fixed RFC 6750 reference URI in public Notification metadata.',
+        'smbtech.error-handling.security.oauth2-metadata.include-required-scope': 'Includes scopes required by the protected operation. Granted token scopes are never exposed.'
+]
+
+def restClientDescriptions = [
+        'smbtech.rest-clients.clients.<name>.enabled'                                                : 'Enables or disables this client definition.',
+        'smbtech.rest-clients.clients.<name>.bean-name'                                              : 'Spring bean name for the generated RestClient. Defaults to <name>RestClient when empty.',
+        'smbtech.rest-clients.clients.<name>.base-url'                                               : 'Base URL used by the generated client. Required for enabled clients.',
+        'smbtech.rest-clients.clients.<name>.client-type'                                            : 'Client implementation type: DEFAULT, APACHE_HTTP, or OTHER.',
+        'smbtech.rest-clients.clients.<name>.authentication-type'                                    : 'Authentication type: NO_AUTH, BASIC_AUTH, CLIENT_CREDENTIALS, JWT_BEARER, or OTHER.',
+        'smbtech.rest-clients.clients.<name>.basic-authentication.username'                          : 'Inline basic authentication username. Prefer username-ref for reusable credentials.',
+        'smbtech.rest-clients.clients.<name>.basic-authentication.username-ref'                      : 'Credential id for the basic authentication username.',
+        'smbtech.rest-clients.clients.<name>.basic-authentication.password'                          : 'Inline basic authentication password. Prefer password-ref for secrets.',
+        'smbtech.rest-clients.clients.<name>.basic-authentication.password-ref'                      : 'Credential id for the basic authentication password.',
+        'smbtech.rest-clients.clients.<name>.token-request-id'                          : 'OAuth2 registration id under spring.security.oauth2.client.registration. Required for bearer authentication. Replaces credential-token-requestor-id; the former key is not supported.',
+        'smbtech.rest-clients.clients.<name>.scopes'                                                 : 'Expected scopes for returned-token validation. Supports space or comma separated values.',
+        'smbtech.rest-clients.clients.<name>.timeout.connect-timeout'                                : 'Time allowed to establish a connection.',
+        'smbtech.rest-clients.clients.<name>.timeout.connection-request-timeout'                     : 'Time allowed to obtain a pooled connection.',
+        'smbtech.rest-clients.clients.<name>.timeout.response-timeout'                               : 'Time allowed to wait for the response.',
+        'smbtech.rest-clients.clients.<name>.pooling.connection-reuse-policy'                        : 'Apache connection reuse policy name.',
+        'smbtech.rest-clients.clients.<name>.pooling.keep-alive'                                     : 'Default keep-alive duration.',
+        'smbtech.rest-clients.clients.<name>.pooling.max-connections'                                : 'Maximum total pooled connections.',
+        'smbtech.rest-clients.clients.<name>.pooling.max-connections-per-route'                      : 'Maximum pooled connections per route.',
+        'smbtech.rest-clients.clients.<name>.pooling.tcp-keep-alive'                                 : 'Enables TCP keep-alive on sockets when supported.',
+        'smbtech.rest-clients.clients.<name>.apache.hostname-verification-enabled'                   : 'Enables hostname verification for TLS connections.',
+        'smbtech.rest-clients.clients.<name>.apache.validate-after-inactivity'                       : 'Validates idle pooled connections after inactivity.',
+        'smbtech.rest-clients.clients.<name>.apache.connection-time-to-live'                         : 'Maximum lifetime for pooled connections.',
+        'smbtech.rest-clients.clients.<name>.apache.ssl.enabled'                                     : 'Enables custom SSL configuration.',
+        'smbtech.rest-clients.clients.<name>.apache.ssl.trust-store-id'                              : 'Truststore id under authentication.key-stores.',
+        'smbtech.rest-clients.clients.<name>.apache.ssl.key-store-id'                                : 'Client keystore id under authentication.key-stores.',
+        'smbtech.rest-clients.clients.<name>.error-handling.enabled'                                 : 'Converts downstream HTTP error responses into HttpClientResponseException.',
+        'smbtech.rest-clients.clients.<name>.error-handling.include-body'                            : 'Captures the complete downstream error body in the exception.',
+        'smbtech.rest-clients.clients.<name>.error-handling.include-headers'                         : 'Captures downstream response headers in the exception.',
+        'smbtech.rest-clients.clients.<name>.error-handling.include-notification-metadata'           : 'Adds safe HTTP metadata to the generated Notification.',
+        'smbtech.rest-clients.clients.<name>.error-handling.notification-code-prefix'                : 'Prefix used for notification codes. A trailing underscore is added if missing.',
+        'smbtech.rest-clients.clients.<name>.error-handling.max-body-size'                           : 'Reserved compatibility value. Audit body truncation is controlled by audit.max-body-size.',
+        'smbtech.rest-clients.clients.<name>.observability.enabled'                                  : 'Enables Micrometer timer and error counter recording.',
+        'smbtech.rest-clients.clients.<name>.observability.metric-name'                              : 'Timer metric name. Error counter uses <metric-name>.errors.',
+        'smbtech.rest-clients.clients.<name>.observability.include-uri'                              : 'Adds the URI path as a metric tag. Keep disabled for high-cardinality paths.',
+        'smbtech.rest-clients.clients.<name>.observability.include-status'                           : 'Adds HTTP status as a metric tag.',
+        'smbtech.rest-clients.clients.<name>.observability.include-exception'                        : 'Adds exception class name as a metric tag.',
+        'smbtech.rest-clients.clients.<name>.observability.tags.*'                                   : 'Static custom metric tags.',
+        'smbtech.rest-clients.clients.<name>.resilience.enabled'                                     : 'Enables the starter resilience interceptor.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.enabled'                               : 'Enables retry behavior.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.max-attempts'                          : 'Maximum attempts including the first call.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.backoff'                               : 'Wait time between retry attempts.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.retry-on-server-errors'                : 'Retries 5xx responses.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.retry-on-exceptions'                   : 'Retries transport and runtime exceptions.',
+        'smbtech.rest-clients.clients.<name>.resilience.retry.retry-on-statuses'                     : 'Additional HTTP status codes to retry, for example [429].',
+        'smbtech.rest-clients.clients.<name>.resilience.circuit-breaker.enabled'                     : 'Enables circuit breaker behavior.',
+        'smbtech.rest-clients.clients.<name>.resilience.circuit-breaker.failure-threshold'           : 'Consecutive failures before opening the circuit.',
+        'smbtech.rest-clients.clients.<name>.resilience.circuit-breaker.open-duration'               : 'Time the circuit remains open before allowing calls again.',
+        'smbtech.rest-clients.clients.<name>.audit.enabled'                                          : 'Enables HTTP exchange audit events.',
+        'smbtech.rest-clients.clients.<name>.audit.include-request'                                  : 'Emits request audit events.',
+        'smbtech.rest-clients.clients.<name>.audit.include-response'                                 : 'Emits response audit events.',
+        'smbtech.rest-clients.clients.<name>.audit.include-headers'                                  : 'Includes request and response headers in audit events.',
+        'smbtech.rest-clients.clients.<name>.audit.include-body'                                     : 'Includes request and response bodies in audit events.',
+        'smbtech.rest-clients.clients.<name>.audit.max-body-size'                                    : 'Maximum characters copied to audit logs before appending ...[truncated].',
+        'smbtech.rest-clients.clients.<name>.default-headers.*'                                      : 'Headers added to every request.',
+        'smbtech.rest-clients.authentication.credentials.<id>.value'                                 : 'Plain credential value resolved by *-ref properties such as password-ref, key-password-ref, username refs, and password refs.',
+        'smbtech.rest-clients.authentication.credentials.<id>.base64'                                : 'Base64-encoded credential value resolved by *-ref properties. Takes priority over value; whitespace is ignored before decoding.',
+        'smbtech.rest-clients.authentication.client-assertions.<registration-id>.key-store-id'        : 'Signing keystore id for private_key_jwt client authentication.',
+        'smbtech.rest-clients.authentication.client-assertions.<registration-id>.token-lifetime'      : 'Client assertion JWT lifetime.',
+        'smbtech.rest-clients.authentication.client-assertions.<registration-id>.custom-claims.*'     : 'Provider-specific custom claims added to the client assertion.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.key-store-id'              : 'Signing keystore id for urn:ietf:params:oauth:grant-type:jwt-bearer.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.issuer'                    : 'JWT bearer assertion issuer (iss). Defaults to the client registration client id when empty.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.subject'                   : 'JWT bearer assertion subject (sub). Defaults to the client registration client id when empty.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.audience'                  : 'JWT bearer assertion audience (aud). Defaults to the provider token URI when empty.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.token-lifetime'            : 'JWT bearer assertion lifetime.',
+        'smbtech.rest-clients.authentication.jwt-bearer.<registration-id>.custom-claims.*'           : 'Provider-specific custom JWT bearer claims.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.location'                               : 'Resource or file location for a keystore or truststore.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.base64'                                 : 'Inline base64 keystore or truststore content. Takes priority over location.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.type'                                   : 'Store type, usually PKCS12 or JKS.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.password'                               : 'Inline store password used to load the JKS or PKCS12 container. Prefer password-ref.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.password-ref'                           : 'Credential id for the store password. The referenced credential may use value or base64.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.key-alias'                              : 'Private key alias for signing or mTLS.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.key-password'                           : 'Inline private key password. Falls back to the resolved store password when empty.',
+        'smbtech.rest-clients.authentication.key-stores.<id>.key-password-ref'                       : 'Credential id for the private key password. The referenced credential may use value or base64, and may differ from the store password.',
+        'smbtech.rest-clients.authentication.token-cache.client-credentials'                         : 'Whether the starter-managed Spring OAuth2 authorized client service caches client_credentials access tokens.',
+        'smbtech.rest-clients.authentication.token-cache.jwt-bearer'                                 : 'Whether the starter-managed Spring OAuth2 authorized client service caches JWT bearer grant access tokens. Dynamic custom claims are part of the cache identity when enabled.',
+        'smbtech.rest-clients.authentication.diagnostics.enabled'                                    : 'Emits structured OAuth2 token diagnostic events through logging-core.',
+        'smbtech.rest-clients.authentication.diagnostics.include-claims'                             : 'Includes sanitized assertion claims and authorization attributes in diagnostics.',
+        'smbtech.rest-clients.authentication.diagnostics.include-cache-events'                       : 'Emits authorized-client cache hit, miss, skip, and save events when diagnostics are enabled.',
+        'smbtech.rest-clients.authentication.diagnostics.include-token-preview'                      : 'Includes a truncated token or assertion prefix followed by ...<redacted>. Keep disabled outside controlled debugging.',
+        'smbtech.rest-clients.authentication.diagnostics.token-preview-length'                       : 'Number of leading characters to include when token preview is enabled. Minimum effective value is 8.',
+        'smbtech.rest-clients.request-context.enabled'                                               : 'Enables request context propagation globally. When false, dynamic headers and request-context JWT bearer claims are ignored.',
+        'smbtech.rest-clients.request-context.headers'                                               : 'Copies dynamic RequestContext headers to outgoing REST client requests when globally enabled. Existing request headers are not overwritten.',
+        'smbtech.rest-clients.request-context.jwt-bearer-claims'                                     : 'Applies dynamic RequestContext JWT bearer custom claims to JWT bearer grant assertions when globally enabled. Explicit AccessTokenClient.jwtBearer claims still apply when false.',
+        'smbtech.rest-clients.request-context.blocked-headers'                                       : 'Additional case-insensitive dynamic header names to block. Security-sensitive headers are always blocked.',
+        'smbtech.rest-clients.request-context.blocked-jwt-bearer-claims'                            : 'Additional case-insensitive JWT bearer custom claim names to block. Registered JWT claims and token/secret-shaped claims are always blocked.',
+        'smbtech.rest-clients.validation.enabled'                                                    : 'Enables startup validation for REST client OAuth2 configuration.',
+        'smbtech.rest-clients.validation.fail-on-warnings'                                           : 'Treats OAuth2 configuration warnings as startup failures.',
+        'smbtech.rest-clients.validation.validate-key-store-content'                                 : 'Opens referenced keystores during startup and validates SSL stores, mTLS aliases/private keys, and JWT signing RSA key material.'
+]
+
+def propertyReferenceSpecs = [
+        new PropertyReferenceSpec(
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client',
+                configurationPropertiesClass: 'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties',
+                prefix: 'smbtech.rest-clients',
+                outputPath: 'docs/rest-client/property-reference.md',
+                title: 'REST Client Property Reference',
+                intro: 'Generated from the compiled `RestClientProperties` configuration property class. OAuth2 provider, registration, client id, client secret, grant type, token URI, and requested scopes are owned by Spring Boot under `spring.security.oauth2.client.*`.',
+                descriptions: restClientDescriptions
+        ),
+        new PropertyReferenceSpec(
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging',
+                configurationPropertiesClass: 'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties',
+                prefix: 'smbtech.logging',
+                outputPath: 'docs/logging/property-reference.md',
+                title: 'Logging Property Reference',
+                intro: 'Generated from the compiled `LoggingProperties` configuration property class. All properties are under `smbtech.logging`.',
+                descriptions: loggingDescriptions
+        ),
+        new PropertyReferenceSpec(
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock',
+                configurationPropertiesClass: 'com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties',
+                prefix: 'smbtech.mocks',
+                outputPath: 'docs/mock/property-reference.md',
+                title: 'Mock Property Reference',
+                intro: 'Generated from the compiled `MockProperties` configuration property class. All properties are under `smbtech.mocks`.',
+                descriptions: mockDescriptions
+        ),
+        new PropertyReferenceSpec(
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling',
+                configurationPropertiesClass: 'com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties',
+                prefix: 'smbtech.error-handling',
+                outputPath: 'docs/error-handling/property-reference.md',
+                title: 'Error Handling Property Reference',
+                intro: 'Generated from the compiled `ErrorHandlingProperties` configuration property class. All properties are under `smbtech.error-handling`.',
+                descriptions: errorHandlingDescriptions
+        )
+]
+
+String kebabCase(String value) {
+    value.replaceAll(/([a-z0-9])([A-Z])/, '$1-$2').toLowerCase(Locale.ROOT)
+}
+
+boolean isSimplePropertyType(Class<?> type) {
+    type.isPrimitive()
+            || Object == type
+            || CharSequence.isAssignableFrom(type)
+            || Number.isAssignableFrom(type)
+            || Boolean == type
+            || Character == type
+            || Enum.isAssignableFrom(type)
+            || Duration.isAssignableFrom(type)
+            || Collection.isAssignableFrom(type)
+}
+
+String shortType(Type type) {
+    String typeName = type.typeName
+            .replace('java.lang.', '')
+            .replace('java.time.', '')
+            .replace('java.util.', '')
+            .replace('com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties$', '')
+            .replace('com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties$', '')
+            .replace('com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties$', '')
+            .replace('com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties$', '')
+            .replace('com.smbtech.serviceframework.httpclient.domain.', '')
+            .replace('com.smbtech.serviceframework.error.', '')
+    typeName.replaceAll(/</, '&lt;').replaceAll(/>/, '&gt;')
+}
+
+String formatDefaultValue(Object value) {
+    if (value == null) {
+        return 'empty'
+    }
+    if (value instanceof String && value.isEmpty()) {
+        return 'empty'
+    }
+    if (value instanceof Duration) {
+        if (value == Duration.ZERO) {
+            return '0ms'
+        }
+        if (value.toMillis() % 60000L == 0L) {
+            return "${value.toMinutes()}m"
+        }
+        if (value.toMillis() % 1000L == 0L) {
+            return "${value.seconds}s"
+        }
+        return "${value.toMillis()}ms"
+    }
+    if (value instanceof Collection || value instanceof Map) {
+        return value.isEmpty() ? 'empty' : value.toString()
+    }
+    if (value instanceof Enum) {
+        return value.name()
+    }
+    value.toString()
+}
+
+List<Field> bindableFields(Class<?> type) {
+    List<Field> fields = []
+    Class<?> current = type
+    while (current != null && current != Object) {
+        fields.addAll(current.declaredFields)
+        current = current.superclass
+    }
+    fields.findAll { field ->
+        !field.synthetic
+                && !Modifier.isStatic(field.modifiers)
+                && !Modifier.isTransient(field.modifiers)
+    }.sort { a, b -> a.name <=> b.name }
+}
+
+String mapPlaceholder(String fieldName) {
+    switch (fieldName) {
+        case 'clients':
+            return '<name>'
+        case 'endpoints':
+        case 'contracts':
+            return '<key>'
+        case 'clientAssertions':
+        case 'jwtBearer':
+            return '<registration-id>'
+        case 'credentials':
+        case 'keyStores':
+            return '<id>'
+        default:
+            return '*'
+    }
+}
+
+Class<?> mapValueClass(Field field) {
+    if (!(field.genericType instanceof ParameterizedType)) {
+        return null
+    }
+    Type valueType = field.genericType.actualTypeArguments[1]
+    valueType instanceof Class<?> ? (Class<?>) valueType : null
+}
+
+Object newInstance(Class<?> type) {
+    def constructor = type.getDeclaredConstructor()
+    constructor.accessible = true
+    constructor.newInstance()
+}
+
+Object fieldValue(Field field, Object instance) {
+    field.accessible = true
+    field.get(instance)
+}
+
+void collectProperties(
+        Class<?> type,
+        Object instance,
+        String prefix,
+        Map<String, String> descriptions,
+        List<PropertyReferenceEntry> entries
+) {
+    bindableFields(type).each { field ->
+        String propertyName = kebabCase(field.name)
+        String fullName = prefix ? "${prefix}.${propertyName}" : propertyName
+        Class<?> fieldClass = field.type
+        Object value = fieldValue(field, instance)
+
+        if (Map.isAssignableFrom(fieldClass)) {
+            Class<?> valueClass = mapValueClass(field)
+            String placeholder = mapPlaceholder(field.name)
+            String mapEntryName = "${fullName}.${placeholder}".toString()
+
+            if (valueClass != null && !isSimplePropertyType(valueClass) && !Map.isAssignableFrom(valueClass)) {
+                collectProperties(
+                        valueClass,
+                        newInstance(valueClass),
+                        mapEntryName,
+                        descriptions,
+                        entries
+                )
+            } else {
+                entries << new PropertyReferenceEntry(
+                        name: mapEntryName,
+                        type: shortType(field.genericType),
+                        defaultValue: formatDefaultValue(value),
+                        description: descriptions.get(mapEntryName, 'Map entries configured by the consuming application.')
+                )
+            }
+            return
+        }
+
+        if (!isSimplePropertyType(fieldClass) && !fieldClass.name.startsWith('java.')) {
+            collectProperties(
+                    fieldClass,
+                    value ?: newInstance(fieldClass),
+                    fullName,
+                    descriptions,
+                    entries
+            )
+            return
+        }
+
+        entries << new PropertyReferenceEntry(
+                name: fullName,
+                type: shortType(field.genericType),
+                defaultValue: formatDefaultValue(value),
+                description: descriptions.get(fullName, 'Generated configuration property.')
+        )
+    }
+}
+
+String generatePropertyReference(PropertyReferenceSpec spec) {
+    URL[] urls = rootProject.subprojects
+            .findAll { it.extensions.findByName('sourceSets') != null }
+            .collectMany { subproject ->
+                subproject.extensions.getByName('sourceSets').main.output.classesDirs.files
+            }
+            .collect { it.toURI().toURL() } as URL[]
+    URLClassLoader classLoader = new URLClassLoader(urls, this.class.classLoader)
+    Class<?> propertiesClass = Class.forName(spec.configurationPropertiesClass, false, classLoader)
+
+    List<PropertyReferenceEntry> entries = []
+    collectProperties(propertiesClass, newInstance(propertiesClass), spec.prefix, spec.descriptions, entries)
+
+    StringBuilder markdown = new StringBuilder()
+    markdown << "# ${spec.title}\n\n"
+    markdown << "${spec.intro}\n\n"
+    markdown << "<!-- generated by ./gradlew generatePropertyReferences; do not edit this file manually. -->\n\n"
+    markdown << "| Property | Type | Default | Description |\n"
+    markdown << "|---|---|---|---|\n"
+    entries.sort { a, b -> a.name <=> b.name }.each { entry ->
+        markdown << "| `${entry.name}` | `${entry.type}` | `${entry.defaultValue}` | ${entry.description} |\n"
+    }
+    markdown.toString()
+}
+
+tasks.register('generatePropertyReferences') {
+    group = 'documentation'
+    description = 'Generates Markdown property references from Spring Boot configuration property classes.'
+    dependsOn propertyReferenceSpecs.collect { "${it.projectPath}:classes" }
+
+    doLast {
+        propertyReferenceSpecs.each { spec ->
+            File outputFile = file(spec.outputPath)
+            outputFile.parentFile.mkdirs()
+            outputFile.text = generatePropertyReference(spec)
+        }
+    }
+}
+
+tasks.register('validatePropertyReferences') {
+    group = 'verification'
+    description = 'Validates generated Markdown property references are up to date.'
+    dependsOn propertyReferenceSpecs.collect { "${it.projectPath}:classes" }
+
+    doLast {
+        List<String> failures = []
+        propertyReferenceSpecs.each { spec ->
+            File outputFile = file(spec.outputPath)
+            String expected = generatePropertyReference(spec)
+            if (!outputFile.exists()) {
+                failures << "${spec.outputPath}: missing generated property reference"
+            } else if (outputFile.text != expected) {
+                failures << "${spec.outputPath}: generated property reference is out of date; run ./gradlew generatePropertyReferences"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Property reference validation failed:\n" + failures.join('\n'))
+        }
+    }
+}

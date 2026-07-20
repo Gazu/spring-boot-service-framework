@@ -1,24 +1,8 @@
 plugins {
-    id 'java-library'
-    id 'maven-publish'
-    id 'io.spring.dependency-management'
+    id 'com.smbtech.service-framework.spring-boot-starter'
 }
 
 description = 'Mock services starter for Spring Boot services'
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-    withSourcesJar()
-    withJavadocJar()
-}
-
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
-    }
-}
 
 dependencies {
     api project(':spring-boot-service-framework-mock-core')
@@ -26,62 +10,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework:spring-core'
     implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.compilerArgs += ['-parameters']
-}
-
-tasks.withType(Test).configureEach {
-    useJUnitPlatform()
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc'
 }
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            versionMapping {
-                usage('java-api') {
-                    fromResolutionOf('runtimeClasspath')
-                }
-                usage('java-runtime') {
-                    fromResolutionResult()
-                }
-            }
+        named('mavenJava', MavenPublication) {
             pom {
                 name = 'Spring Boot Service Framework - Mock Starter'
-                description = project.description
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = 'localBuild'
-            url = layout.buildDirectory.dir('repository')
-        }
-
-        def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
-                .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
-                .orNull
-        if (privateRepositoryUrl) {
-            maven {
-                name = 'privateRegistry'
-                url = uri(privateRepositoryUrl)
-                credentials {
-                    username = providers.gradleProperty('privateMavenUsername')
-                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
-                            .getOrElse('')
-                    password = providers.gradleProperty('privateMavenPassword')
-                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
-                            .getOrElse('')
-                }
             }
         }
     }

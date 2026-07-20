@@ -2,11 +2,6 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.error;
 
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.ClientHttpResponse;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,16 +10,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpResponse;
 
+/** Provides http error response mapper behavior. */
 public final class HttpErrorResponseMapper {
+    /** Creates a http error response mapper instance. */
+    public HttpErrorResponseMapper() {}
 
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
+    /**
+     * Performs the map operation.
+     *
+     * @param definition definition value
+     * @param request request value
+     * @param response response value
+     * @return map result
+     * @throws IOException when the operation cannot be completed
+     */
     public HttpErrorResponse map(
-            HttpClientDefinition definition,
-            HttpRequest request,
-            ClientHttpResponse response
-    ) throws IOException {
+            HttpClientDefinition definition, HttpRequest request, ClientHttpResponse response)
+            throws IOException {
         HttpHeaders responseHeaders = response.getHeaders();
         int statusCode = response.getStatusCode().value();
         String contentType = contentType(responseHeaders);
@@ -41,8 +50,7 @@ public final class HttpErrorResponseMapper {
                 definition.errorHandling().includeBody() ? body(response.getBody(), charset) : "",
                 contentType,
                 charset.name(),
-                false
-        );
+                false);
     }
 
     private Map<String, String> headers(HttpHeaders headers) {
@@ -50,7 +58,8 @@ public final class HttpErrorResponseMapper {
             return Map.of();
         }
         Map<String, String> result = new LinkedHashMap<>();
-        headers.headerSet().forEach(entry -> result.put(entry.getKey(), headerValue(entry.getValue())));
+        headers.headerSet()
+                .forEach(entry -> result.put(entry.getKey(), headerValue(entry.getValue())));
         return result;
     }
 

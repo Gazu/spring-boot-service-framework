@@ -1,0 +1,76 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+def junitVersion = providers.gradleProperty('junitVersion').get()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${junitVersion}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+    options.docEncoding = 'UTF-8'
+    options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PUBLIC
+    options.addBooleanOption('Werror', true)
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('javadoc')
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = project.name
+                description = providers.provider { project.description }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = layout.buildDirectory.dir('repository')
+        }
+
+        def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
+                .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
+                .orNull
+        if (privateRepositoryUrl) {
+            maven {
+                name = 'privateRegistry'
+                url = uri(privateRepositoryUrl)
+                credentials {
+                    username = providers.gradleProperty('privateMavenUsername')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
+                            .getOrElse('')
+                    password = providers.gradleProperty('privateMavenPassword')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
+                            .getOrElse('')
+                }
+            }
+        }
+    }
+}

@@ -7,12 +7,6 @@ import com.smbtech.serviceframework.httpclient.domain.HttpExchangeAuditRequest;
 import com.smbtech.serviceframework.httpclient.domain.HttpExchangeAuditResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
 import com.smbtech.serviceframework.httpclient.port.out.HttpExchangeAuditSink;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.client.ClientHttpRequestExecution;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +14,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.ClientHttpResponse;
 
+/** Provides audit log interceptor behavior. */
 public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
 
     private static final String TRUNCATED_SUFFIX = "...[truncated]";
@@ -28,20 +28,21 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
     private final HttpClientDefinition definition;
     private final HttpExchangeAuditSink auditSink;
 
-    public AuditLogInterceptor(
-            HttpClientDefinition definition,
-            HttpExchangeAuditSink auditSink
-    ) {
+    /**
+     * Creates a audit log interceptor instance.
+     *
+     * @param definition definition value
+     * @param auditSink audit sink value
+     */
+    public AuditLogInterceptor(HttpClientDefinition definition, HttpExchangeAuditSink auditSink) {
         this.definition = definition;
         this.auditSink = auditSink;
     }
 
     @Override
     public ClientHttpResponse intercept(
-            HttpRequest request,
-            byte[] body,
-            ClientHttpRequestExecution execution
-    ) throws IOException {
+            HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
+            throws IOException {
         long startedAt = System.nanoTime();
         String method = request.getMethod().name();
         String uri = request.getURI().toString();
@@ -49,26 +50,24 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
 
         try {
             if (definition.audit().includeRequest()) {
-                auditSink.request(definition, new HttpExchangeAuditRequest(
-                        method,
-                        uri,
-                        headers(request),
-                        requestBody
-                ));
+                auditSink.request(
+                        definition,
+                        new HttpExchangeAuditRequest(method, uri, headers(request), requestBody));
             }
 
             ClientHttpResponse response = execution.execute(request, body);
 
             if (definition.audit().includeResponse()) {
-                auditSink.response(definition, new HttpExchangeAuditResponse(
-                        method,
-                        uri,
-                        response.getStatusCode().value(),
-                        response.getStatusText(),
-                        headers(response),
-                        body(response),
-                        durationSince(startedAt)
-                ));
+                auditSink.response(
+                        definition,
+                        new HttpExchangeAuditResponse(
+                                method,
+                                uri,
+                                response.getStatusCode().value(),
+                                response.getStatusText(),
+                                headers(response),
+                                body(response),
+                                durationSince(startedAt)));
             }
             return response;
         } catch (IOException | RuntimeException exception) {
@@ -142,12 +141,7 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
     }
 
     private HttpExchangeAuditFailure failure(
-            String method,
-            String uri,
-            String requestBody,
-            long startedAt,
-            Exception exception
-    ) {
+            String method, String uri, String requestBody, long startedAt, Exception exception) {
         if (exception instanceof HttpClientResponseException responseException) {
             HttpErrorResponse error = responseException.error();
             return new HttpExchangeAuditFailure(
@@ -161,8 +155,7 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
                     durationSince(startedAt),
                     exception.getClass().getName(),
                     exception.getMessage(),
-                    exception
-            );
+                    exception);
         }
 
         return new HttpExchangeAuditFailure(
@@ -176,8 +169,7 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
                 durationSince(startedAt),
                 exception.getClass().getName(),
                 exception.getMessage(),
-                exception
-        );
+                exception);
     }
 
     private Duration durationSince(long startedAt) {
@@ -186,7 +178,8 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
 
     private Map<String, String> flatten(HttpHeaders headers) {
         Map<String, String> result = new LinkedHashMap<>();
-        headers.headerSet().forEach(entry -> result.put(entry.getKey(), String.join(",", entry.getValue())));
+        headers.headerSet()
+                .forEach(entry -> result.put(entry.getKey(), String.join(",", entry.getValue())));
         return result;
     }
 }

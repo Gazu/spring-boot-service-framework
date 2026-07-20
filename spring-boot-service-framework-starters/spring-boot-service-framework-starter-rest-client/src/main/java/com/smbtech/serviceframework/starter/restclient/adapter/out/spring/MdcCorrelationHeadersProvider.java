@@ -1,12 +1,14 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.spring;
 
 import com.smbtech.serviceframework.httpclient.port.out.CorrelationHeadersProvider;
-import org.slf4j.MDC;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.MDC;
 
+/** Provides mdc correlation headers provider behavior. */
 public final class MdcCorrelationHeadersProvider implements CorrelationHeadersProvider {
+    /** Creates a mdc correlation headers provider instance. */
+    public MdcCorrelationHeadersProvider() {}
 
     private static final String TRACE_ID = "traceId";
     private static final String SPAN_ID = "spanId";

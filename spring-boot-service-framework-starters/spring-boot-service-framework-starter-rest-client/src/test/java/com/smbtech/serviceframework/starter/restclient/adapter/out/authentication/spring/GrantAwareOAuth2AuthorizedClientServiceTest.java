@@ -1,6 +1,12 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -12,13 +18,6 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     private static final String PRINCIPAL_NAME = "spring-boot-service-framework";
@@ -27,12 +26,14 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void loadsClientCredentialsWhenEnabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
         GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, true));
         OAuth2AuthorizedClient authorizedClient = authorizedClient(clientCredentialsRegistration());
         delegate.saveAuthorizedClient(authorizedClient, principal);
 
-        OAuth2AuthorizedClient loaded = service.loadAuthorizedClient("client-credentials-api", PRINCIPAL_NAME);
+        OAuth2AuthorizedClient loaded =
+                service.loadAuthorizedClient("client-credentials-api", PRINCIPAL_NAME);
 
         assertThat(loaded).isSameAs(authorizedClient);
         assertThat(delegate.loadCalls).isEqualTo(1);
@@ -40,11 +41,14 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void doesNotLoadClientCredentialsWhenDisabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(false, true));
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                service(delegate, tokenCache(false, true));
         delegate.saveAuthorizedClient(authorizedClient(clientCredentialsRegistration()), principal);
 
-        OAuth2AuthorizedClient loaded = service.loadAuthorizedClient("client-credentials-api", PRINCIPAL_NAME);
+        OAuth2AuthorizedClient loaded =
+                service.loadAuthorizedClient("client-credentials-api", PRINCIPAL_NAME);
 
         assertThat(loaded).isNull();
         assertThat(delegate.loadCalls).isZero();
@@ -52,7 +56,8 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void savesClientCredentialsWhenEnabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
         GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, true));
         OAuth2AuthorizedClient authorizedClient = authorizedClient(clientCredentialsRegistration());
 
@@ -63,8 +68,10 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void doesNotSaveClientCredentialsWhenDisabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(false, true));
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                service(delegate, tokenCache(false, true));
 
         service.saveAuthorizedClient(authorizedClient(clientCredentialsRegistration()), principal);
 
@@ -73,12 +80,14 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void loadsJwtBearerWhenEnabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
         GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, true));
         OAuth2AuthorizedClient authorizedClient = authorizedClient(jwtBearerRegistration());
         delegate.saveAuthorizedClient(authorizedClient, principal);
 
-        OAuth2AuthorizedClient loaded = service.loadAuthorizedClient("jwt-bearer-api", PRINCIPAL_NAME);
+        OAuth2AuthorizedClient loaded =
+                service.loadAuthorizedClient("jwt-bearer-api", PRINCIPAL_NAME);
 
         assertThat(loaded).isSameAs(authorizedClient);
         assertThat(delegate.loadCalls).isEqualTo(1);
@@ -86,11 +95,14 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void doesNotLoadJwtBearerWhenDisabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, false));
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                service(delegate, tokenCache(true, false));
         delegate.saveAuthorizedClient(authorizedClient(jwtBearerRegistration()), principal);
 
-        OAuth2AuthorizedClient loaded = service.loadAuthorizedClient("jwt-bearer-api", PRINCIPAL_NAME);
+        OAuth2AuthorizedClient loaded =
+                service.loadAuthorizedClient("jwt-bearer-api", PRINCIPAL_NAME);
 
         assertThat(loaded).isNull();
         assertThat(delegate.loadCalls).isZero();
@@ -98,7 +110,8 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void savesJwtBearerWhenEnabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
         GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, true));
         OAuth2AuthorizedClient authorizedClient = authorizedClient(jwtBearerRegistration());
 
@@ -109,8 +122,10 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void doesNotSaveJwtBearerWhenDisabled() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(true, false));
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                service(delegate, tokenCache(true, false));
 
         service.saveAuthorizedClient(authorizedClient(jwtBearerRegistration()), principal);
 
@@ -119,8 +134,10 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void removeAlwaysDelegates() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = service(delegate, tokenCache(false, false));
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                service(delegate, tokenCache(false, false));
 
         service.removeAuthorizedClient("jwt-bearer-api", PRINCIPAL_NAME);
 
@@ -131,12 +148,13 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     @Test
     void doesNotLoadWhenRegistrationIsMissing() {
-        RecordingOAuth2AuthorizedClientService delegate = new RecordingOAuth2AuthorizedClientService();
-        GrantAwareOAuth2AuthorizedClientService service = new GrantAwareOAuth2AuthorizedClientService(
-                new InMemoryClientRegistrationRepository(clientCredentialsRegistration()),
-                delegate,
-                new OAuth2TokenCachePolicy(tokenCache(true, true))
-        );
+        RecordingOAuth2AuthorizedClientService delegate =
+                new RecordingOAuth2AuthorizedClientService();
+        GrantAwareOAuth2AuthorizedClientService service =
+                new GrantAwareOAuth2AuthorizedClientService(
+                        new InMemoryClientRegistrationRepository(clientCredentialsRegistration()),
+                        delegate,
+                        new OAuth2TokenCachePolicy(tokenCache(true, true)));
 
         OAuth2AuthorizedClient loaded = service.loadAuthorizedClient("missing-api", PRINCIPAL_NAME);
 
@@ -146,19 +164,16 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
 
     private GrantAwareOAuth2AuthorizedClientService service(
             RecordingOAuth2AuthorizedClientService delegate,
-            RestClientProperties.TokenCache tokenCache
-    ) {
+            RestClientProperties.TokenCache tokenCache) {
         return new GrantAwareOAuth2AuthorizedClientService(
                 new InMemoryClientRegistrationRepository(
-                        clientCredentialsRegistration(),
-                        jwtBearerRegistration()
-                ),
+                        clientCredentialsRegistration(), jwtBearerRegistration()),
                 delegate,
-                new OAuth2TokenCachePolicy(tokenCache)
-        );
+                new OAuth2TokenCachePolicy(tokenCache));
     }
 
-    private RestClientProperties.TokenCache tokenCache(boolean clientCredentials, boolean jwtBearer) {
+    private RestClientProperties.TokenCache tokenCache(
+            boolean clientCredentials, boolean jwtBearer) {
         RestClientProperties.TokenCache tokenCache = new RestClientProperties.TokenCache();
         tokenCache.setClientCredentials(clientCredentials);
         tokenCache.setJwtBearer(jwtBearer);
@@ -174,9 +189,7 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
                         "token-" + registration.getRegistrationId(),
                         Instant.now(),
                         Instant.now().plusSeconds(60),
-                        Set.of("payment.read")
-                )
-        );
+                        Set.of("payment.read")));
     }
 
     private ClientRegistration clientCredentialsRegistration() {
@@ -187,9 +200,9 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
         return registration("jwt-bearer-api", OAuth2TokenCachePolicy.JWT_BEARER_GRANT);
     }
 
-    private ClientRegistration registration(String registrationId, AuthorizationGrantType grantType) {
-        return ClientRegistration
-                .withRegistrationId(registrationId)
+    private ClientRegistration registration(
+            String registrationId, AuthorizationGrantType grantType) {
+        return ClientRegistration.withRegistrationId(registrationId)
                 .tokenUri("https://auth.example/token")
                 .clientId("payments-client")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
@@ -198,7 +211,8 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
                 .build();
     }
 
-    private static final class RecordingOAuth2AuthorizedClientService implements OAuth2AuthorizedClientService {
+    private static final class RecordingOAuth2AuthorizedClientService
+            implements OAuth2AuthorizedClientService {
 
         private final List<OAuth2AuthorizedClient> savedClients = new ArrayList<>();
         private int loadCalls;
@@ -209,19 +223,23 @@ class GrantAwareOAuth2AuthorizedClientServiceTest {
         @Override
         @SuppressWarnings("unchecked")
         public <T extends OAuth2AuthorizedClient> T loadAuthorizedClient(
-                String clientRegistrationId,
-                String principalName
-        ) {
+                String clientRegistrationId, String principalName) {
             loadCalls++;
-            return (T) savedClients.stream()
-                    .filter(client -> client.getClientRegistration().getRegistrationId().equals(clientRegistrationId))
-                    .filter(client -> client.getPrincipalName().equals(principalName))
-                    .findFirst()
-                    .orElse(null);
+            return (T)
+                    savedClients.stream()
+                            .filter(
+                                    client ->
+                                            client.getClientRegistration()
+                                                    .getRegistrationId()
+                                                    .equals(clientRegistrationId))
+                            .filter(client -> client.getPrincipalName().equals(principalName))
+                            .findFirst()
+                            .orElse(null);
         }
 
         @Override
-        public void saveAuthorizedClient(OAuth2AuthorizedClient authorizedClient, Authentication principal) {
+        public void saveAuthorizedClient(
+                OAuth2AuthorizedClient authorizedClient, Authentication principal) {
             savedClients.add(authorizedClient);
         }
 

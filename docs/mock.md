@@ -1,6 +1,6 @@
 # Mock Core and Starter
 
-This document describes the mock module family:
+This is the canonical guide for the mock module family:
 
 - `spring-boot-service-framework-mock-core`
 - `spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock`
@@ -44,6 +44,10 @@ flowchart LR
 |---|---|---|
 | `spring-boot-service-framework-mock-core` | Domain model, ports, and default services for mock lookup and response loading orchestration. | Spring, Jackson, Servlet, `RestClient`, Apache, SLF4J. |
 | `spring-boot-service-framework-starter-mock` | Spring Boot properties, JSON file loading, controller facade, and outbound `RestClient` interceptor. | Business-specific mock scenarios. |
+
+Consumers upgrading an existing mock integration should update the
+`MockService` package and any direct adapter imports using
+[Migrate Public Names And Properties](guides/migrate-public-names-and-properties.md).
 
 ---
 
@@ -90,7 +94,8 @@ continue normal behavior, such as executing the real HTTP request.
 
 ## 4. Spring Boot properties
 
-All starter properties are under `smbtech.mocks`.
+All starter properties are under `smbtech.mocks` and are documented in the
+generated [Mock Property Reference](mock/property-reference.md).
 
 ```yaml
 smbtech:
@@ -101,14 +106,6 @@ smbtech:
         file: classpath:mocks/payments-success.json
         delay: 100ms
 ```
-
-| Property | Required | Default | Description |
-|---|---:|---|---|
-| `endpoints.<key>.enabled` | No | `false` | Enables this mock endpoint. Disabled mocks are ignored. |
-| `endpoints.<key>.file` | Yes when enabled | empty | Mock response JSON file. Supports `classpath:` and `file:` locations. Plain paths are treated as classpath resources. |
-| `endpoints.<key>.delay` | No | `0ms` | Artificial delay applied before loading the response. |
-
----
 
 ## 5. Mock response file format
 
@@ -137,7 +134,8 @@ smbtech:
 
 ## 6. Controller usage
 
-Inject `MockService` when a controller should return a configured mock response.
+Inject `com.smbtech.serviceframework.starter.mock.api.MockService` when a
+controller should return a configured mock response.
 
 ```java
 @RestController
@@ -175,8 +173,11 @@ Use `response(...)` when the controller wants custom fallback logic. Use
 
 ## 7. RestClient usage
 
-The starter exposes `MockRestClientInterceptor`. It adapts outbound Spring
-`RestClient` requests to `MockRequest`.
+The starter auto-configures
+`com.smbtech.serviceframework.starter.mock.adapter.out.restclient.MockRestClientInterceptor`.
+It adapts outbound Spring `RestClient` requests to `MockRequest`. This concrete
+adapter is usable for manual wiring but is not a supported extension contract;
+the `adapter.out` package remains framework implementation.
 
 Mock key resolution:
 
@@ -251,6 +252,7 @@ Run only mock modules:
 ```bash
 ./gradlew :spring-boot-service-framework-mock-core:check \
   :spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check
+./gradlew mockCompatibilityCheck
 ```
 
 Run the full framework baseline:
@@ -263,17 +265,26 @@ Run the full framework baseline:
 
 ## 9. Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Controller returns `404` | Mock key is missing, disabled, or not configured. | Check `smbtech.mocks.endpoints.<key>.enabled=true`. |
-| `Mock file does not exist` | Wrong classpath/file location. | Use `classpath:mocks/name.json` or place the file under `src/main/resources/mocks`. |
-| Outbound RestClient still calls real service | `MockRestClientInterceptor` was not added, `X-Mock-Key` is missing, or no path fallback mock exists. | Add the interceptor or configure `default-headers.X-Mock-Key`. |
-| Response body conversion fails | Mock JSON body does not match the target DTO. | Validate the mock file body against the controller response type. |
-| Core boundary check fails | Spring/Jackson/RestClient import was added to `mock-core`. | Move adapter code to the starter. |
+Mock issues are covered by the canonical
+[Troubleshooting](troubleshooting.md#mock) guide.
 
 ---
 
-## 10. Extension points
+## 10. Current limitations
+
+The public `MockService` facade is intentionally Spring/Jackson oriented because
+it returns `ResponseEntity<T>` and accepts Jackson `TypeReference<T>` for
+generic payloads.
+
+For framework-neutral integrations, depend on the core `MockResponder` contract
+instead.
+
+Adding `spring-boot-service-framework-starter-mock` does not automatically
+replace outbound HTTP calls. Outbound mocks are opt-in: add
+`MockRestClientInterceptor` manually or through the REST client starter
+customizer hook.
+
+## 11. Planned extensions
 
 Future work can add new adapters without changing the core:
 

@@ -1,0 +1,4 @@
+rootProject.name = 'spring-boot-service-framework-build-logic'
+
+include 'openapi-generator-plugin'
+include 'conventions'

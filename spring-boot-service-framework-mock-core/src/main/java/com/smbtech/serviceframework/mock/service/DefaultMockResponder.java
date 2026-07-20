@@ -7,37 +7,39 @@ import com.smbtech.serviceframework.mock.exception.MockException;
 import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
 import com.smbtech.serviceframework.mock.port.out.MockResponseSource;
-
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
+/** Provides default mock responder behavior. */
 public final class DefaultMockResponder implements MockResponder {
 
     private final MockCatalog catalog;
     private final MockResponseSource responseSource;
     private final MockDelay mockDelay;
 
-    public DefaultMockResponder(
-            MockCatalog catalog,
-            MockResponseSource responseSource
-    ) {
+    /**
+     * Creates a default mock responder instance.
+     *
+     * @param catalog catalog value
+     * @param responseSource response source value
+     */
+    public DefaultMockResponder(MockCatalog catalog, MockResponseSource responseSource) {
         this(catalog, responseSource, DefaultMockResponder::sleep);
     }
 
     DefaultMockResponder(
-            MockCatalog catalog,
-            MockResponseSource responseSource,
-            MockDelay mockDelay
-    ) {
+            MockCatalog catalog, MockResponseSource responseSource, MockDelay mockDelay) {
         this.catalog = Objects.requireNonNull(catalog, "catalog must not be null");
-        this.responseSource = Objects.requireNonNull(responseSource, "responseSource must not be null");
+        this.responseSource =
+                Objects.requireNonNull(responseSource, "responseSource must not be null");
         this.mockDelay = Objects.requireNonNull(mockDelay, "mockDelay must not be null");
     }
 
     @Override
     public Optional<MockResponse> respond(MockRequest request) {
-        MockRequest normalizedRequest = Objects.requireNonNullElseGet(request, () -> new MockRequest(""));
+        MockRequest normalizedRequest =
+                Objects.requireNonNullElseGet(request, () -> new MockRequest(""));
         if (!normalizedRequest.hasKey()) {
             return Optional.empty();
         }
@@ -49,14 +51,16 @@ public final class DefaultMockResponder implements MockResponder {
 
     private MockResponse load(MockDefinition definition, MockRequest request) {
         if (!definition.isUsable()) {
-            throw new MockException("Mock is enabled but file is empty for key: " + definition.key());
+            throw new MockException(
+                    "Mock is enabled but file is empty for key: " + definition.key());
         }
 
         mockDelay.apply(definition.key(), definition.delay());
 
         MockResponse response = responseSource.load(definition, request);
         if (response == null) {
-            throw new MockException("Mock response source returned null for key: " + definition.key());
+            throw new MockException(
+                    "Mock response source returned null for key: " + definition.key());
         }
         return response;
     }

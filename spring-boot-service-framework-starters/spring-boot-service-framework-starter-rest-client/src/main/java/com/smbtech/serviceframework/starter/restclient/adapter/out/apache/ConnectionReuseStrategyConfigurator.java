@@ -5,8 +5,17 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import org.apache.hc.core5.http.ConnectionReuseStrategy;
 import org.apache.hc.core5.http.impl.DefaultConnectionReuseStrategy;
 
+/** Provides connection reuse strategy configurator behavior. */
 public final class ConnectionReuseStrategyConfigurator {
+    /** Creates a connection reuse strategy configurator instance. */
+    public ConnectionReuseStrategyConfigurator() {}
 
+    /**
+     * Creates the result.
+     *
+     * @param definition definition value
+     * @return build result
+     */
     public ConnectionReuseStrategy build(HttpClientDefinition definition) {
         ConnectionReusePolicy policy = definition.pooling().connectionReusePolicy();
         return switch (policy) {

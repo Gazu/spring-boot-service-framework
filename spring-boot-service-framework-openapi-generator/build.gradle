@@ -1,0 +1,57 @@
+plugins {
+    id 'com.smbtech.service-framework.java-library'
+}
+
+description = 'Build-time OpenAPI artifact generator for SMB Tech service contracts'
+
+dependencies {
+    api 'com.fasterxml.jackson.core:jackson-databind:2.21.4'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.4'
+
+}
+
+def rootOpenApiSpecFiles = rootProject.fileTree(rootProject.rootDir) {
+    include '**/src/main/openapi/*.yaml'
+    include '**/src/main/openapi/*.yml'
+    include '**/src/main/openapi/*.json'
+    include '**/openapi/*.yaml'
+    include '**/openapi/*.yml'
+    include '**/openapi/*.json'
+    include '**/swagger/*.yaml'
+    include '**/swagger/*.yml'
+    include '**/swagger/*.json'
+    exclude '**/.git/**'
+    exclude '**/.gradle/**'
+    exclude '**/build/**'
+}
+
+tasks.register('openApiBreakingChangeCheckRunner', JavaExec) {
+    group = 'verification'
+    description = 'Runs the OpenAPI breaking change detector for the root build.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.smbtech.serviceframework.openapi.generator.OpenApiBreakingChangeCli'
+    inputs.files(rootOpenApiSpecFiles)
+    inputs.dir(rootProject.file('docs/openapi-baselines'))
+
+    doFirst {
+        def taskArguments = [
+                "--baseline-root=${rootProject.file('docs/openapi-baselines').absolutePath}"
+        ]
+        if (providers.gradleProperty('openApiFailOnBreakingChanges').map(String::toBoolean).getOrElse(false)) {
+            taskArguments << '--fail-on-breaking'
+        }
+        taskArguments.addAll(rootOpenApiSpecFiles.files.sort().collect { it.absolutePath })
+        setArgs(taskArguments)
+    }
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - OpenAPI Generator'
+            }
+        }
+    }
+}

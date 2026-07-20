@@ -4,21 +4,23 @@ import com.smbtech.serviceframework.logging.domain.EventType;
 import com.smbtech.serviceframework.logging.domain.LogLevel;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
 import com.smbtech.serviceframework.logging.port.out.LogEventSink;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 import org.slf4j.spi.LoggingEventBuilder;
 
-import java.util.Objects;
-
-/**
- * SLF4J output adapter for the structured logging core.
- */
+/** SLF4J output adapter for the structured logging core. */
 public final class Slf4jLogEventSink implements LogEventSink {
     private static final String SENSITIVE_MARKER = "SENSITIVE";
 
     private final Logger logger;
 
+    /**
+     * Creates a slf4j log event sink instance.
+     *
+     * @param logger logger value
+     */
     public Slf4jLogEventSink(Logger logger) {
         this.logger = Objects.requireNonNull(logger, "logger must not be null");
     }
@@ -42,9 +44,8 @@ public final class Slf4jLogEventSink implements LogEventSink {
             marker.add(MarkerFactory.getDetachedMarker(SENSITIVE_MARKER));
         }
 
-        LoggingEventBuilder builder = logger.atLevel(toSlf4jLevel(level))
-                .addMarker(marker)
-                .setMessage(event.message());
+        LoggingEventBuilder builder =
+                logger.atLevel(toSlf4jLevel(level)).addMarker(marker).setMessage(event.message());
         event.arguments().forEach(builder::addArgument);
         builder.addArgument(event);
         if (event.throwable() != null) {

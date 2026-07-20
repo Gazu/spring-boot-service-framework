@@ -3,28 +3,43 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.resilience;
 import com.smbtech.serviceframework.httpclient.domain.CircuitBreakerPolicy;
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import com.smbtech.serviceframework.httpclient.exception.CircuitBreakerOpenException;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** Provides resilience state registry behavior. */
 public final class ResilienceStateRegistry {
 
     private final Clock clock;
     private final Map<String, CircuitBreakerState> circuitBreakers = new ConcurrentHashMap<>();
 
+    /**
+     * Creates a resilience state registry instance.
+     *
+     * @param clock clock value
+     */
     public ResilienceStateRegistry(Clock clock) {
         this.clock = clock;
     }
 
+    /**
+     * Performs the circuit breaker operation.
+     *
+     * @param definition definition value
+     * @return circuit breaker result
+     */
     public CircuitBreakerState circuitBreaker(HttpClientDefinition definition) {
         return circuitBreakers.computeIfAbsent(
                 definition.name(),
-                key -> new CircuitBreakerState(definition.name(), definition.resilience().circuitBreaker(), clock)
-        );
+                key ->
+                        new CircuitBreakerState(
+                                definition.name(),
+                                definition.resilience().circuitBreaker(),
+                                clock));
     }
 
+    /** Provides circuit breaker state behavior. */
     public static final class CircuitBreakerState {
         private final String clientName;
         private final CircuitBreakerPolicy policy;
@@ -33,16 +48,13 @@ public final class ResilienceStateRegistry {
         private Instant openedAt;
         private boolean halfOpenTrialInProgress;
 
-        private CircuitBreakerState(
-                String clientName,
-                CircuitBreakerPolicy policy,
-                Clock clock
-        ) {
+        private CircuitBreakerState(String clientName, CircuitBreakerPolicy policy, Clock clock) {
             this.clientName = clientName;
             this.policy = policy;
             this.clock = clock;
         }
 
+        /** Performs the before call operation. */
         public synchronized void beforeCall() {
             if (!policy.enabled()) {
                 return;
@@ -59,6 +71,7 @@ public final class ResilienceStateRegistry {
             halfOpenTrialInProgress = true;
         }
 
+        /** Performs the record success operation. */
         public synchronized void recordSuccess() {
             if (!policy.enabled()) {
                 return;
@@ -68,6 +81,7 @@ public final class ResilienceStateRegistry {
             halfOpenTrialInProgress = false;
         }
 
+        /** Performs the record failure operation. */
         public synchronized void recordFailure() {
             if (!policy.enabled()) {
                 return;

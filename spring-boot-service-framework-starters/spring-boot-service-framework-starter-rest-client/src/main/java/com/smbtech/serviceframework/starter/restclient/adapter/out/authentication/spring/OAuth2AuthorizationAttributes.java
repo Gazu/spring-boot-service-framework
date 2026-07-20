@@ -3,8 +3,7 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 final class OAuth2AuthorizationAttributes {
 
     static final String JWT_BEARER_CUSTOM_CLAIMS =
-            "com.smbtech.serviceframework.oauth2.jwt-bearer.custom-claims";
+            "com.smbtech.serviceframework.OAuth2.jwt-bearer.custom-claims";
 
-    private OAuth2AuthorizationAttributes() {
-    }
+    private OAuth2AuthorizationAttributes() {}
 }

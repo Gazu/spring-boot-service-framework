@@ -1,18 +1,17 @@
 package com.smbtech.serviceframework.mock.domain;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class MockRequestTest {
 
@@ -36,15 +35,15 @@ class MockRequestTest {
         headers.put("X-Test", new ArrayList<>(List.of("one")));
         byte[] body = "request".getBytes(StandardCharsets.UTF_8);
 
-        MockRequest request = new MockRequest(
-                " payments ",
-                " GET ",
-                " /v1/payments ",
-                headers,
-                Map.of("status", List.of("open")),
-                body,
-                Map.of("source", "test")
-        );
+        MockRequest request =
+                new MockRequest(
+                        " payments ",
+                        " GET ",
+                        " /v1/payments ",
+                        headers,
+                        Map.of("status", List.of("open")),
+                        body,
+                        Map.of("source", "test"));
 
         headers.get("X-Test").add("two");
         body[0] = 'R';
@@ -59,18 +58,22 @@ class MockRequestTest {
 
     @Test
     void exposesImmutableMapsAndBodyCopy() {
-        MockRequest request = new MockRequest(
-                "payments",
-                "POST",
-                "/payments",
-                Map.of("X-Test", List.of("one")),
-                Map.of(),
-                "request".getBytes(StandardCharsets.UTF_8),
-                Map.of()
-        );
+        MockRequest request =
+                new MockRequest(
+                        "payments",
+                        "POST",
+                        "/payments",
+                        Map.of("X-Test", List.of("one")),
+                        Map.of(),
+                        "request".getBytes(StandardCharsets.UTF_8),
+                        Map.of());
 
-        assertThrows(UnsupportedOperationException.class, () -> request.headers().put("X-Other", List.of("two")));
-        assertThrows(UnsupportedOperationException.class, () -> request.headers().get("X-Test").add("two"));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> request.headers().put("X-Other", List.of("two")));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> request.headers().get("X-Test").add("two"));
 
         byte[] body = request.body();
         body[0] = 'R';

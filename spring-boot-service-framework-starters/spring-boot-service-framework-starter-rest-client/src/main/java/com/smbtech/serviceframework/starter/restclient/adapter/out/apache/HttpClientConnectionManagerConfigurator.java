@@ -4,19 +4,31 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 
+/** Provides http client connection manager configurator behavior. */
 public final class HttpClientConnectionManagerConfigurator {
 
     private final RegistryConfigurator registryConfigurator;
     private final SocketConfigConfigurator socketConfigConfigurator;
 
+    /**
+     * Creates a http client connection manager configurator instance.
+     *
+     * @param registryConfigurator registry configurator value
+     * @param socketConfigConfigurator socket config configurator value
+     */
     public HttpClientConnectionManagerConfigurator(
             RegistryConfigurator registryConfigurator,
-            SocketConfigConfigurator socketConfigConfigurator
-    ) {
+            SocketConfigConfigurator socketConfigConfigurator) {
         this.registryConfigurator = registryConfigurator;
         this.socketConfigConfigurator = socketConfigConfigurator;
     }
 
+    /**
+     * Creates the result.
+     *
+     * @param definition definition value
+     * @return build result
+     */
     public PoolingHttpClientConnectionManager build(HttpClientDefinition definition) {
         PoolingHttpClientConnectionManager connectionManager =
                 new PoolingHttpClientConnectionManager(registryConfigurator.build(definition));
@@ -26,8 +38,7 @@ public final class HttpClientConnectionManagerConfigurator {
         connectionManager.setDefaultSocketConfig(socketConfigConfigurator.build(definition));
         connectionManager.setDefaultConnectionConfig(connectionConfig(definition));
         connectionManager.setValidateAfterInactivity(
-                ApacheTime.timeValue(definition.apache().validateAfterInactivity())
-        );
+                ApacheTime.timeValue(definition.apache().validateAfterInactivity()));
 
         return connectionManager;
     }
@@ -36,7 +47,8 @@ public final class HttpClientConnectionManagerConfigurator {
         return ConnectionConfig.custom()
                 .setConnectTimeout(ApacheTime.timeout(definition.timeout().connectTimeout()))
                 .setSocketTimeout(ApacheTime.timeout(definition.timeout().responseTimeout()))
-                .setValidateAfterInactivity(ApacheTime.timeValue(definition.apache().validateAfterInactivity()))
+                .setValidateAfterInactivity(
+                        ApacheTime.timeValue(definition.apache().validateAfterInactivity()))
                 .setTimeToLive(ApacheTime.timeValue(definition.apache().connectionTimeToLive()))
                 .build();
     }

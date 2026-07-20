@@ -1,17 +1,16 @@
 package com.smbtech.serviceframework.logging.application;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.smbtech.serviceframework.logging.domain.EventType;
 import com.smbtech.serviceframework.logging.domain.LogLevel;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
 import com.smbtech.serviceframework.logging.port.out.LogEventSink;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class StructuredLoggingServiceTest {
 
@@ -19,9 +18,8 @@ class StructuredLoggingServiceTest {
     void delegatesEnabledEventToOutputPort() {
         RecordingSink sink = new RecordingSink();
         StructuredLoggingService service = new StructuredLoggingService(sink, false);
-        StructuredEvent event = StructuredEvent.builder(EventType.AUDIT)
-                .message("Project updated")
-                .build();
+        StructuredEvent event =
+                StructuredEvent.builder(EventType.AUDIT).message("Project updated").build();
 
         service.info(event);
 
@@ -32,9 +30,8 @@ class StructuredLoggingServiceTest {
     void suppressesMetricsInProduction() {
         RecordingSink sink = new RecordingSink();
         StructuredLoggingService service = new StructuredLoggingService(sink, true);
-        StructuredEvent metric = StructuredEvent.builder(EventType.METRIC)
-                .message("Projects counted")
-                .build();
+        StructuredEvent metric =
+                StructuredEvent.builder(EventType.METRIC).message("Projects counted").build();
 
         service.info(metric);
 
@@ -56,6 +53,5 @@ class StructuredLoggingServiceTest {
         }
     }
 
-    private record RecordedEvent(LogLevel level, StructuredEvent event) {
-    }
+    private record RecordedEvent(LogLevel level, StructuredEvent event) {}
 }

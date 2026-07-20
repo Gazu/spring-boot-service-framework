@@ -1,18 +1,20 @@
 package com.smbtech.serviceframework.httpclient.domain;
 
 import com.smbtech.serviceframework.commons.notification.Notification;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Maps framework HTTP error responses into structured notifications.
- */
+/** Maps framework HTTP error responses into structured notifications. */
 public final class HttpErrorNotificationMapper {
+    /** Creates a http error notification mapper instance. */
+    public HttpErrorNotificationMapper() {}
 
+    /** Prefix reserved for notifications produced from downstream HTTP failures. */
     public static final String CODE_PREFIX = "E_SERVICE_FRAMEWORK_HTTP_CLIENT_";
+
+    /** Fallback notification code when a downstream failure cannot be classified. */
     public static final String UNKNOWN_ERROR_CODE = CODE_PREFIX + "UNKNOWN";
 
     /**
@@ -26,8 +28,8 @@ public final class HttpErrorNotificationMapper {
     }
 
     /**
-     * Creates notifications for an HTTP error response using policy-controlled
-     * code prefix and metadata behavior.
+     * Creates notifications for an HTTP error response using policy-controlled code prefix and
+     * metadata behavior.
      *
      * @param error HTTP error response
      * @param policy error handling policy
@@ -48,8 +50,8 @@ public final class HttpErrorNotificationMapper {
     }
 
     /**
-     * Creates the primary notification for an HTTP error response using
-     * policy-controlled code prefix and metadata behavior.
+     * Creates the primary notification for an HTTP error response using policy-controlled code
+     * prefix and metadata behavior.
      *
      * @param error HTTP error response
      * @param policy error handling policy
@@ -57,7 +59,8 @@ public final class HttpErrorNotificationMapper {
      */
     public Notification notification(HttpErrorResponse error, ErrorHandlingPolicy policy) {
         HttpErrorResponse safeError = Objects.requireNonNull(error, "error must not be null");
-        ErrorHandlingPolicy safePolicy = Objects.requireNonNullElseGet(policy, ErrorHandlingPolicy::defaults);
+        ErrorHandlingPolicy safePolicy =
+                Objects.requireNonNullElseGet(policy, ErrorHandlingPolicy::defaults);
         return Notification.builder()
                 .code(code(safeError.statusCode(), safePolicy.notificationCodePrefix()))
                 .message(message(safeError))
@@ -77,7 +80,10 @@ public final class HttpErrorNotificationMapper {
         if (error.reasonPhrase().isBlank()) {
             return "HTTP " + error.statusCode() + " response received from downstream service";
         }
-        return "HTTP " + error.statusCode() + " " + error.reasonPhrase()
+        return "HTTP "
+                + error.statusCode()
+                + " "
+                + error.reasonPhrase()
                 + " response received from downstream service";
     }
 

@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+group = 'com.smbtech.examples'
+version = '0.3.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def frameworkRoot = file('../..')
+
+repositories {
+    maven {
+        name = 'errorHandlingStarterBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/build/repository")
+    }
+    maven {
+        name = 'errorCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-error-core/build/repository")
+    }
+    maven {
+        name = 'httpClientCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-http-client-core/build/repository")
+    }
+    maven {
+        name = 'commonsBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-commons/build/repository")
+    }
+    maven {
+        name = 'loggingCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-logging-core/build/repository")
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0'
+    implementation 'com.smbtech:spring-boot-service-framework-http-client-core:0.3.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

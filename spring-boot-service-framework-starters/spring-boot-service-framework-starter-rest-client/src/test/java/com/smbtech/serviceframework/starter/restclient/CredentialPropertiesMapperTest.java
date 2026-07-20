@@ -1,15 +1,14 @@
 package com.smbtech.serviceframework.starter.restclient;
 
-import com.smbtech.serviceframework.httpclient.domain.CredentialDefinition;
-import com.smbtech.serviceframework.httpclient.exception.AuthenticationException;
-import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper;
-import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
-import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.smbtech.serviceframework.httpclient.domain.CredentialDefinition;
+import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class CredentialPropertiesMapperTest {
 
@@ -73,7 +72,7 @@ class CredentialPropertiesMapperTest {
         properties.getAuthentication().getCredentials().put("broken", credential);
 
         assertThatThrownBy(() -> mapper.map(properties))
-                .isInstanceOf(AuthenticationException.class)
+                .isInstanceOf(HttpClientAuthenticationException.class)
                 .hasMessage("Invalid base64 credential value: broken");
     }
 }

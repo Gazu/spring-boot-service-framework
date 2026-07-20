@@ -1,5 +1,7 @@
 package com.smbtech.serviceframework.starter.restclient.autoconfigure;
 
+import static org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.port.in.HttpClientCatalog;
 import com.smbtech.serviceframework.httpclient.port.in.HttpClientDefinitionValidator;
@@ -14,6 +16,7 @@ import com.smbtech.serviceframework.httpclient.port.out.KeyStoreDefinitionSource
 import com.smbtech.serviceframework.httpclient.service.DefaultHttpClientCatalog;
 import com.smbtech.serviceframework.httpclient.service.DefaultHttpClientDefinitionValidator;
 import com.smbtech.serviceframework.httpclient.service.ScopeValidator;
+import com.smbtech.serviceframework.logging.port.in.StructuredLoggerFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.ApacheHttpClientConfigurator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.ConnectionReuseStrategyConfigurator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.HostnameVerifierConfigurator;
@@ -23,8 +26,8 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.KeepAl
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.RegistryConfigurator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.RequestConfigConfigurator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SocketConfigConfigurator;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SslContextFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SslConnectionSocketFactoryConfigurator;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.SslContextFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialDefinitionSource;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialProvider;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesKeyStoreDefinitionSource;
@@ -33,12 +36,19 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.authenticatio
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.ClientAssertionJwkResolver;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.GrantAwareOAuth2AuthorizedClientService;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2AuthorizationContextAttributesMapper;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2ExtensionRegistry;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidationRunner;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidator;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2TokenDiagnosticSanitizer;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2TokenDiagnosticsLogger;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SigningJwkResolver;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringClientRegistrationResolver;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringOAuth2TokenResponseClientFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityAuthorizedClientTokenClient;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringSecurityJwtBearerAssertionResolver;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.context.ThreadLocalRequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.error.HttpErrorResponseMapper;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.logging.Slf4jStructuredLoggerFactory;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.resilience.ResilienceStateRegistry;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.source.PropertiesHttpClientDefinitionSource;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.ConfiguredRestClientFactory;
@@ -49,17 +59,25 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.Slf4jH
 import com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient;
 import com.smbtech.serviceframework.starter.restclient.api.ApiClientFactory;
 import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
+import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.ApacheHttpClientBuilderCustomizer;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.ClientHttpRequestFactoryCustomizer;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer;
+import com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver;
+import com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionCustomizer;
+import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaimsContributor;
+import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestCustomizer;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Clock;
+import java.util.List;
+import javax.net.ssl.SSLContext;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Role;
 import org.springframework.core.io.ResourceLoader;
@@ -74,20 +92,21 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.web.client.RestClient;
 
-import javax.net.ssl.SSLContext;
-import java.time.Clock;
-import java.util.List;
-
-import static org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE;
-
-@AutoConfiguration(afterName = {
-        "org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration",
-        "org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration",
-        "org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration"
-})
+/**
+ * Auto-configures named REST clients and their optional authentication, resilience, observability,
+ * and extension pipelines.
+ */
+@AutoConfiguration(
+        afterName = {
+            "org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration",
+            "org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration",
+            "org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration"
+        })
 @ConditionalOnClass(RestClient.class)
 @EnableConfigurationProperties(RestClientProperties.class)
 public class RestClientAutoConfiguration {
+    /** Creates a rest client auto configuration instance. */
+    public RestClientAutoConfiguration() {}
 
     @Bean
     @Role(ROLE_INFRASTRUCTURE)
@@ -96,11 +115,12 @@ public class RestClientAutoConfiguration {
     }
 
     @Bean
-    static OAuth2AuthorizedClientServiceCachePolicyPostProcessor oAuth2AuthorizedClientServiceCachePolicyPostProcessor(
-            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
-            ObjectProvider<RestClientProperties> properties
-    ) {
-        return new OAuth2AuthorizedClientServiceCachePolicyPostProcessor(clientRegistrationRepository, properties);
+    static OAuth2AuthorizedClientServiceCachePolicyPostProcessor
+            oAuth2AuthorizedClientServiceCachePolicyPostProcessor(
+                    ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+                    ObjectProvider<RestClientProperties> properties) {
+        return new OAuth2AuthorizedClientServiceCachePolicyPostProcessor(
+                clientRegistrationRepository, properties);
     }
 
     @Bean
@@ -118,9 +138,7 @@ public class RestClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     CredentialDefinitionSource credentialDefinitionSource(
-            RestClientProperties properties,
-            CredentialPropertiesMapper mapper
-    ) {
+            RestClientProperties properties, CredentialPropertiesMapper mapper) {
         return new PropertiesCredentialDefinitionSource(properties, mapper);
     }
 
@@ -157,9 +175,7 @@ public class RestClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     HttpClientDefinitionSource httpClientDefinitionSource(
-            RestClientProperties properties,
-            RestClientPropertiesMapper mapper
-    ) {
+            RestClientProperties properties, RestClientPropertiesMapper mapper) {
         return new PropertiesHttpClientDefinitionSource(properties, mapper);
     }
 
@@ -172,18 +188,14 @@ public class RestClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     HttpClientCatalog httpClientCatalog(
-            HttpClientDefinitionSource source,
-            HttpClientDefinitionValidator validator
-    ) {
+            HttpClientDefinitionSource source, HttpClientDefinitionValidator validator) {
         return new DefaultHttpClientCatalog(source, validator);
     }
 
     @Bean
     @ConditionalOnMissingBean
     KeyStoreDefinitionSource keyStoreDefinitionSource(
-            RestClientProperties properties,
-            KeyStorePropertiesMapper mapper
-    ) {
+            RestClientProperties properties, KeyStorePropertiesMapper mapper) {
         return new PropertiesKeyStoreDefinitionSource(properties, mapper);
     }
 
@@ -194,11 +206,79 @@ public class RestClientAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    RequestContextManager requestContextManager() {
+        return new ThreadLocalRequestContextManager();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    OAuth2TokenDiagnosticSanitizer oAuth2TokenDiagnosticSanitizer() {
+        return new OAuth2TokenDiagnosticSanitizer();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    OAuth2TokenDiagnosticsLogger oAuth2TokenDiagnosticsLogger(
+            RestClientProperties properties,
+            ObjectProvider<StructuredLoggerFactory> structuredLoggerFactory,
+            OAuth2TokenDiagnosticSanitizer sanitizer) {
+        StructuredLoggerFactory loggerFactory =
+                structuredLoggerFactory.getIfAvailable(Slf4jStructuredLoggerFactory::new);
+        RestClientProperties.Authentication authentication =
+                properties.getAuthentication() == null
+                        ? new RestClientProperties.Authentication()
+                        : properties.getAuthentication();
+        return new OAuth2TokenDiagnosticsLogger(
+                loggerFactory.get(OAuth2TokenDiagnosticsLogger.class),
+                authentication.getDiagnostics(),
+                sanitizer);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    OAuth2RestClientConfigurationValidator oAuth2RestClientConfigurationValidator(
+            ObjectProvider<KeyStoreManager> keyStoreManager,
+            ObjectProvider<SigningJwkResolver> signingJwkResolver) {
+        return new OAuth2RestClientConfigurationValidator(
+                keyStoreManager.getIfAvailable(), signingJwkResolver.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    OAuth2ExtensionRegistry oAuth2ExtensionRegistry(
+            ObjectProvider<JwtBearerClaimsContributor> jwtBearerClaimsContributors,
+            ObjectProvider<ClientAssertionCustomizer> clientAssertionCustomizers,
+            ObjectProvider<OAuth2TokenRequestCustomizer> tokenRequestCustomizers,
+            ObjectProvider<AccessTokenCacheKeyResolver> accessTokenCacheKeyResolver) {
+        return new OAuth2ExtensionRegistry(
+                orderedList(jwtBearerClaimsContributors),
+                orderedList(clientAssertionCustomizers),
+                orderedList(tokenRequestCustomizers),
+                accessTokenCacheKeyResolver.getIfAvailable());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    OAuth2RestClientConfigurationValidationRunner oAuth2RestClientConfigurationValidationRunner(
+            RestClientProperties properties,
+            OAuth2RestClientConfigurationValidator validator,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+            ObjectProvider<StructuredLoggerFactory> structuredLoggerFactory) {
+        StructuredLoggerFactory loggerFactory =
+                structuredLoggerFactory.getIfAvailable(Slf4jStructuredLoggerFactory::new);
+        return new OAuth2RestClientConfigurationValidationRunner(
+                properties,
+                validator,
+                clientRegistrationRepository,
+                loggerFactory.get(OAuth2RestClientConfigurationValidationRunner.class));
+    }
+
+    @Bean
     @ConditionalOnBean(ClientRegistrationRepository.class)
     @ConditionalOnMissingBean
     SpringClientRegistrationResolver springClientRegistrationResolver(
-            ClientRegistrationRepository clientRegistrationRepository
-    ) {
+            ClientRegistrationRepository clientRegistrationRepository) {
         return new SpringClientRegistrationResolver(clientRegistrationRepository);
     }
 
@@ -212,9 +292,7 @@ public class RestClientAutoConfiguration {
     @ConditionalOnBean(SpringClientRegistrationResolver.class)
     @ConditionalOnMissingBean
     ClientAssertionJwkResolver clientAssertionJwkResolver(
-            RestClientProperties properties,
-            SigningJwkResolver signingJwkResolver
-    ) {
+            RestClientProperties properties, SigningJwkResolver signingJwkResolver) {
         return new ClientAssertionJwkResolver(properties, signingJwkResolver);
     }
 
@@ -223,9 +301,11 @@ public class RestClientAutoConfiguration {
     @ConditionalOnMissingBean
     SpringOAuth2TokenResponseClientFactory springOAuth2TokenResponseClientFactory(
             ClientAssertionJwkResolver clientAssertionJwkResolver,
-            Clock clock
-    ) {
-        return new SpringOAuth2TokenResponseClientFactory(clientAssertionJwkResolver, clock);
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            Clock clock,
+            OAuth2ExtensionRegistry extensionRegistry) {
+        return new SpringOAuth2TokenResponseClientFactory(
+                clientAssertionJwkResolver, diagnosticsLogger, clock, extensionRegistry);
     }
 
     @Bean
@@ -234,14 +314,15 @@ public class RestClientAutoConfiguration {
     OAuth2AuthorizedClientProvider springOAuth2AuthorizedClientProvider(
             SpringOAuth2TokenResponseClientFactory tokenResponseClientFactory,
             SpringSecurityJwtBearerAssertionResolver assertionResolver,
-            Clock clock
-    ) {
+            Clock clock) {
         ClientCredentialsOAuth2AuthorizedClientProvider clientCredentials =
                 new ClientCredentialsOAuth2AuthorizedClientProvider();
-        clientCredentials.setAccessTokenResponseClient(tokenResponseClientFactory.createClientCredentials());
+        clientCredentials.setAccessTokenResponseClient(
+                tokenResponseClientFactory.createClientCredentials());
         clientCredentials.setClock(clock);
 
-        JwtBearerOAuth2AuthorizedClientProvider jwtBearer = new JwtBearerOAuth2AuthorizedClientProvider();
+        JwtBearerOAuth2AuthorizedClientProvider jwtBearer =
+                new JwtBearerOAuth2AuthorizedClientProvider();
         jwtBearer.setAccessTokenResponseClient(tokenResponseClientFactory.createJwtBearer());
         jwtBearer.setJwtAssertionResolver(assertionResolver::createAssertion);
         jwtBearer.setClock(clock);
@@ -257,9 +338,11 @@ public class RestClientAutoConfiguration {
     SpringSecurityJwtBearerAssertionResolver springSecurityJwtBearerAssertionResolver(
             RestClientProperties properties,
             SigningJwkResolver signingJwkResolver,
-            Clock clock
-    ) {
-        return new SpringSecurityJwtBearerAssertionResolver(properties, signingJwkResolver, clock);
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            Clock clock,
+            OAuth2ExtensionRegistry extensionRegistry) {
+        return new SpringSecurityJwtBearerAssertionResolver(
+                properties, signingJwkResolver, diagnosticsLogger, clock, extensionRegistry);
     }
 
     @Bean
@@ -267,15 +350,12 @@ public class RestClientAutoConfiguration {
     @ConditionalOnMissingBean
     OAuth2AuthorizedClientService oAuth2AuthorizedClientService(
             ClientRegistrationRepository clientRegistrationRepository,
-            RestClientProperties properties
-    ) {
+            RestClientProperties properties,
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger) {
         OAuth2AuthorizedClientService delegate =
                 new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
         return new GrantAwareOAuth2AuthorizedClientService(
-                clientRegistrationRepository,
-                delegate,
-                properties
-        );
+                clientRegistrationRepository, delegate, properties, diagnosticsLogger);
     }
 
     @Bean
@@ -284,24 +364,27 @@ public class RestClientAutoConfiguration {
     OAuth2AuthorizedClientManager oAuth2AuthorizedClientManager(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientService authorizedClientService,
-            OAuth2AuthorizedClientProvider authorizedClientProvider
-    ) {
+            OAuth2AuthorizedClientProvider authorizedClientProvider,
+            RestClientProperties properties,
+            RequestContextManager requestContextManager,
+            OAuth2ExtensionRegistry extensionRegistry) {
         AuthorizedClientServiceOAuth2AuthorizedClientManager manager =
                 new AuthorizedClientServiceOAuth2AuthorizedClientManager(
-                        clientRegistrationRepository,
-                        authorizedClientService
-                );
+                        clientRegistrationRepository, authorizedClientService);
         manager.setAuthorizedClientProvider(authorizedClientProvider);
-        manager.setContextAttributesMapper(new OAuth2AuthorizationContextAttributesMapper());
+        manager.setContextAttributesMapper(
+                new OAuth2AuthorizationContextAttributesMapper(
+                        requestContextManager,
+                        requestContextJwtBearerClaimsEnabled(properties),
+                        blockedJwtBearerClaims(properties),
+                        extensionRegistry));
         return manager;
     }
 
     @Bean
     @ConditionalOnMissingBean
     KeyStoreManager keyStoreManager(
-            KeyStoreDefinitionSource keyStoreDefinitionSource,
-            ResourceLoader resourceLoader
-    ) {
+            KeyStoreDefinitionSource keyStoreDefinitionSource, ResourceLoader resourceLoader) {
         return new KeyStoreManager(keyStoreDefinitionSource, resourceLoader);
     }
 
@@ -316,13 +399,20 @@ public class RestClientAutoConfiguration {
     SpringSecurityAuthorizedClientTokenClient springSecurityAuthorizedClientTokenClient(
             ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
             ObjectProvider<OAuth2AuthorizedClientManager> authorizedClientManager,
-            ScopeValidator scopeValidator
-    ) {
+            ScopeValidator scopeValidator,
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            RestClientProperties properties,
+            RequestContextManager requestContextManager,
+            OAuth2ExtensionRegistry extensionRegistry) {
         return new SpringSecurityAuthorizedClientTokenClient(
                 clientRegistrationRepository.getIfAvailable(),
                 authorizedClientManager.getIfAvailable(),
-                scopeValidator
-        );
+                scopeValidator,
+                diagnosticsLogger,
+                requestContextManager,
+                requestContextJwtBearerClaimsEnabled(properties),
+                blockedJwtBearerClaims(properties),
+                extensionRegistry);
     }
 
     @Bean
@@ -372,20 +462,15 @@ public class RestClientAutoConfiguration {
     SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator(
             HostnameVerifierConfigurator hostnameVerifierConfigurator,
             SslContextFactory sslContextFactory,
-            ObjectProvider<SSLContext> sslContext
-    ) {
+            ObjectProvider<SSLContext> sslContext) {
         return new SslConnectionSocketFactoryConfigurator(
-                hostnameVerifierConfigurator,
-                sslContextFactory,
-                sslContext.getIfAvailable()
-        );
+                hostnameVerifierConfigurator, sslContextFactory, sslContext.getIfAvailable());
     }
 
     @Bean
     @ConditionalOnMissingBean
     RegistryConfigurator registryConfigurator(
-            SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator
-    ) {
+            SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator) {
         return new RegistryConfigurator(sslConnectionSocketFactoryConfigurator);
     }
 
@@ -399,9 +484,9 @@ public class RestClientAutoConfiguration {
     @ConditionalOnMissingBean
     HttpClientConnectionManagerConfigurator httpClientConnectionManagerConfigurator(
             RegistryConfigurator registryConfigurator,
-            SocketConfigConfigurator socketConfigConfigurator
-    ) {
-        return new HttpClientConnectionManagerConfigurator(registryConfigurator, socketConfigConfigurator);
+            SocketConfigConfigurator socketConfigConfigurator) {
+        return new HttpClientConnectionManagerConfigurator(
+                registryConfigurator, socketConfigConfigurator);
     }
 
     @Bean
@@ -429,23 +514,20 @@ public class RestClientAutoConfiguration {
             ConnectionReuseStrategyConfigurator connectionReuseStrategyConfigurator,
             KeepAliveStrategyConfigurator keepAliveStrategyConfigurator,
             RequestConfigConfigurator requestConfigConfigurator,
-            ObjectProvider<ApacheHttpClientBuilderCustomizer> customizers
-    ) {
+            ObjectProvider<ApacheHttpClientBuilderCustomizer> customizers) {
         return new ApacheHttpClientConfigurator(
                 connectionManagerConfigurator,
                 connectionReuseStrategyConfigurator,
                 keepAliveStrategyConfigurator,
                 requestConfigConfigurator,
-                orderedList(customizers)
-        );
+                orderedList(customizers));
     }
 
     @Bean
     @ConditionalOnMissingBean
     HttpClientConfigurator httpClientConfigurator(
             ApacheHttpClientConfigurator apacheHttpClientConfigurator,
-            ObjectProvider<ClientHttpRequestFactoryCustomizer> customizers
-    ) {
+            ObjectProvider<ClientHttpRequestFactoryCustomizer> customizers) {
         return new HttpClientConfigurator(apacheHttpClientConfigurator, orderedList(customizers));
     }
 
@@ -456,35 +538,40 @@ public class RestClientAutoConfiguration {
             ObjectProvider<OAuth2AuthorizedClientManager> authorizedClientManager,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClientService,
             CorrelationHeadersProvider correlationHeadersProvider,
+            RequestContextManager requestContextManager,
+            RestClientProperties properties,
             HttpExchangeAuditSink auditSink,
             HttpClientConfigurator httpClientConfigurator,
             HttpErrorResponseMapper errorResponseMapper,
             HttpErrorResponseBodyReader errorResponseBodyReader,
             ResilienceStateRegistry resilienceStateRegistry,
             ObjectProvider<MeterRegistry> meterRegistry,
-            ObjectProvider<RestClientBuilderCustomizer> customizers
-    ) {
+            ObjectProvider<RestClientBuilderCustomizer> customizers,
+            OAuth2ExtensionRegistry extensionRegistry) {
         return new ConfiguredRestClientFactory(
                 restClientBuilder,
                 authorizedClientManager.getIfAvailable(),
                 authorizedClientService.getIfAvailable(),
                 correlationHeadersProvider,
+                requestContextManager,
+                requestContextHeadersEnabled(properties),
+                requestContextJwtBearerClaimsEnabled(properties),
+                blockedRequestContextHeaders(properties),
+                blockedJwtBearerClaims(properties),
+                extensionRegistry,
                 auditSink,
                 httpClientConfigurator,
                 errorResponseMapper,
                 errorResponseBodyReader,
                 resilienceStateRegistry,
                 meterRegistry.getIfAvailable(),
-                orderedList(customizers)
-        );
+                orderedList(customizers));
     }
 
     @Bean
     @ConditionalOnMissingBean
     RestClientRegistry restClientRegistry(
-            HttpClientCatalog catalog,
-            ConfiguredRestClientFactory factory
-    ) {
+            HttpClientCatalog catalog, ConfiguredRestClientFactory factory) {
         return new DefaultRestClientRegistry(catalog, factory);
     }
 
@@ -496,6 +583,36 @@ public class RestClientAutoConfiguration {
 
     private <T> List<T> orderedList(ObjectProvider<T> provider) {
         return provider.orderedStream().toList();
+    }
+
+    private boolean requestContextHeadersEnabled(RestClientProperties properties) {
+        RestClientProperties.RequestContext requestContext = requestContext(properties);
+        return requestContext.isEnabled() && requestContext.isHeaders();
+    }
+
+    private boolean requestContextJwtBearerClaimsEnabled(RestClientProperties properties) {
+        RestClientProperties.RequestContext requestContext = requestContext(properties);
+        return requestContext.isEnabled() && requestContext.isJwtBearerClaims();
+    }
+
+    private RestClientProperties.RequestContext requestContext(RestClientProperties properties) {
+        if (properties == null || properties.getRequestContext() == null) {
+            return new RestClientProperties.RequestContext();
+        }
+        return properties.getRequestContext();
+    }
+
+    private java.util.Set<String> blockedRequestContextHeaders(RestClientProperties properties) {
+        return java.util.Set.copyOf(
+                java.util.Objects.requireNonNullElse(
+                        requestContext(properties).getBlockedHeaders(), java.util.Set.of()));
+    }
+
+    private java.util.Set<String> blockedJwtBearerClaims(RestClientProperties properties) {
+        return java.util.Set.copyOf(
+                java.util.Objects.requireNonNullElse(
+                        requestContext(properties).getBlockedJwtBearerClaims(),
+                        java.util.Set.of()));
     }
 
     private ObjectMapper fallbackObjectMapper() {

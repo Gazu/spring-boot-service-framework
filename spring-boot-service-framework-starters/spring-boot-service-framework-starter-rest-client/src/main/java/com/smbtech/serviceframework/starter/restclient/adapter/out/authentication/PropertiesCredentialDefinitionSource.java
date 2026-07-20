@@ -4,18 +4,22 @@ import com.smbtech.serviceframework.httpclient.domain.CredentialDefinition;
 import com.smbtech.serviceframework.httpclient.port.out.CredentialDefinitionSource;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
-
 import java.util.Map;
 import java.util.Optional;
 
+/** Provides properties credential definition source behavior. */
 public final class PropertiesCredentialDefinitionSource implements CredentialDefinitionSource {
 
     private final Map<String, CredentialDefinition> definitions;
 
+    /**
+     * Creates a properties credential definition source instance.
+     *
+     * @param properties properties value
+     * @param mapper mapper value
+     */
     public PropertiesCredentialDefinitionSource(
-            RestClientProperties properties,
-            CredentialPropertiesMapper mapper
-    ) {
+            RestClientProperties properties, CredentialPropertiesMapper mapper) {
         this.definitions = Map.copyOf(mapper.map(properties));
     }
 

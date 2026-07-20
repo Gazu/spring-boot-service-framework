@@ -8,19 +8,28 @@ import com.smbtech.serviceframework.httpclient.port.out.HttpExchangeAuditSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Provides slf4j http exchange audit sink behavior. */
 public final class Slf4jHttpExchangeAuditSink implements HttpExchangeAuditSink {
+    /** Creates a slf4j http exchange audit sink instance. */
+    public Slf4jHttpExchangeAuditSink() {}
 
     private static final Logger log = LoggerFactory.getLogger(Slf4jHttpExchangeAuditSink.class);
 
     @Override
     public void request(HttpClientDefinition definition, HttpExchangeAuditRequest event) {
-        log.info("HTTP client request client={} method={} uri={} headers={} body={}",
-                definition.name(), event.method(), event.uri(), event.headers(), event.body());
+        log.info(
+                "HTTP client request client={} method={} uri={} headers={} body={}",
+                definition.name(),
+                event.method(),
+                event.uri(),
+                event.headers(),
+                event.body());
     }
 
     @Override
     public void response(HttpClientDefinition definition, HttpExchangeAuditResponse event) {
-        log.info("HTTP client response client={} method={} uri={} status={} statusText={} durationMs={} headers={} body={}",
+        log.info(
+                "HTTP client response client={} method={} uri={} status={} statusText={} durationMs={} headers={} body={}",
                 definition.name(),
                 event.method(),
                 event.uri(),
@@ -33,7 +42,8 @@ public final class Slf4jHttpExchangeAuditSink implements HttpExchangeAuditSink {
 
     @Override
     public void failure(HttpClientDefinition definition, HttpExchangeAuditFailure event) {
-        log.warn("HTTP client failure client={} method={} uri={} status={} statusText={} durationMs={} headers={} requestBody={} responseBody={} exceptionType={} exceptionMessage={}",
+        log.warn(
+                "HTTP client failure client={} method={} uri={} status={} statusText={} durationMs={} headers={} requestBody={} responseBody={} exceptionType={} exceptionMessage={}",
                 definition.name(),
                 event.method(),
                 event.uri(),

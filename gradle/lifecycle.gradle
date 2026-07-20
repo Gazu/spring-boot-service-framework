@@ -1,0 +1,138 @@
+// Repository lifecycle tasks extracted from the root build.
+
+tasks.named('check') {
+    dependsOn tasks.named('documentationCheck')
+}
+
+tasks.register('verifyErrorNotificationReuse') {
+    group = 'verification'
+    description = 'Ensures error handling modules reuse notification types from commons.'
+
+    def errorModuleSources = files(
+            fileTree('spring-boot-service-framework-error-core/src/main/java') {
+                include '**/*.java'
+            },
+            fileTree('spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/src/main/java') {
+                include '**/*.java'
+            }
+    )
+    inputs.files(errorModuleSources)
+
+    doLast {
+        def commonsNotificationTypeNames = [
+                'Notification.java',
+                'NotificationSeverity.java',
+                'NotifyingException.java'
+        ] as Set
+        def duplicates = errorModuleSources.files.findAll {
+            commonsNotificationTypeNames.contains(it.name)
+        }
+        if (!duplicates.isEmpty()) {
+            throw new GradleException(
+                    'Error handling modules must reuse notification types from commons; duplicates found:\n' +
+                            duplicates.collect { rootDir.toPath().relativize(it.toPath()) }.sort().join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('baseline') {
+    group = 'verification'
+    description = 'Compiles and tests every framework module.'
+    dependsOn(
+            tasks.named('spotlessCheck'),
+            tasks.named('codeQualityCheck'),
+            tasks.named('documentationCheck'),
+            tasks.named('conventionPluginsCheck'),
+            tasks.named('openApiBuildLogicCheck'),
+            tasks.named('verifyErrorNotificationReuse'),
+            ':spring-boot-service-framework-logging-core:check',
+            ':spring-boot-service-framework-http-client-core:check',
+            ':spring-boot-service-framework-mock-core:check',
+            ':spring-boot-service-framework-error-core:check',
+            ':spring-boot-service-framework-commons:check',
+            ':spring-boot-service-framework-openapi-generator:check',
+            ':spring-boot-service-framework-openapi-contract-testing:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:check'
+    )
+}
+
+tasks.register('publishLocalArtifacts') {
+    group = 'publishing'
+    description = 'Publishes every framework artifact into module-local Maven repositories.'
+    dependsOn(
+            tasks.named('publishOpenApiArtifactsToLocalBuildRepository'),
+            ':spring-boot-service-framework-logging-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-http-client-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-mock-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-error-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-commons:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-openapi-generator:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-openapi-contract-testing:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:publishAllPublicationsToLocalBuildRepository'
+    )
+}
+
+tasks.register('loggingConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds the standalone logging example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/logging-consumer')
+    tasks = ['clean', 'test']
+}
+
+tasks.register('restClientConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds the standalone REST client example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/rest-client-consumer')
+    tasks = ['clean', 'test']
+}
+
+tasks.register('errorHandlingConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds the standalone error handling example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/error-handling-consumer')
+    tasks = ['clean', 'test']
+}
+
+tasks.register('consumerSmoke') {
+    group = 'verification'
+    description = 'Builds all standalone consumer examples against the published Maven artifacts.'
+    dependsOn(
+            tasks.named('errorHandlingConsumerSmoke'),
+            tasks.named('loggingConsumerSmoke'),
+            tasks.named('restClientConsumerSmoke')
+    )
+}
+
+tasks.register('errorHandlingCompatibilityCheck') {
+    group = 'verification'
+    description = 'Validates the error handling public API, runtime behavior, and published consumer contract.'
+    dependsOn(
+            tasks.named('verifyErrorNotificationReuse'),
+            tasks.named('errorHandlingConsumerSmoke'),
+            ':spring-boot-service-framework-error-core:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:check'
+    )
+}
+
+tasks.register('compatibilityCheck') {
+    group = 'verification'
+    description = 'Runs the framework baseline, generated artifact checks, and standalone consumer smoke tests against published artifacts.'
+    dependsOn(
+            tasks.named('documentationCheck'),
+            tasks.named('errorHandlingCompatibilityCheck'),
+            tasks.named('moduleCompatibilityCheck'),
+            tasks.named('openApiCompatibilityCheck'),
+            tasks.named('baseline'),
+            tasks.named('consumerSmoke')
+    )
+}

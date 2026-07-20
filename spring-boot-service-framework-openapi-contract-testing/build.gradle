@@ -1,0 +1,46 @@
+plugins {
+    id 'com.smbtech.service-framework.java-library'
+    id 'io.spring.dependency-management'
+}
+
+description = 'Executable OpenAPI contract testing for Spring MVC applications'
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+    }
+}
+
+dependencies {
+    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'jakarta.servlet:jakarta.servlet-api'
+    api 'org.springframework:spring-test'
+
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'org.springframework:spring-webmvc'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation']
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+            pom {
+                name = 'Spring Boot Service Framework - OpenAPI Contract Testing'
+            }
+        }
+    }
+}

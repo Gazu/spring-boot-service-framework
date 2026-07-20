@@ -1,13 +1,12 @@
 package com.smbtech.serviceframework.starter.logging.adapter.out.context;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
-
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class MdcCorrelationContextTest {
 
@@ -21,12 +20,12 @@ class MdcCorrelationContextTest {
         MDC.put("traceId", "trace-1");
         MdcCorrelationContext context = new MdcCorrelationContext();
 
-        try (CorrelationContext.Scope ignored =
-                     context.open(Map.of("transactionId", "tx-1"))) {
-            assertThat(context.snapshot()).containsExactlyInAnyOrderEntriesOf(Map.of(
-                    "traceId", "trace-1",
-                    "transactionId", "tx-1"
-            ));
+        try (CorrelationContext.Scope ignored = context.open(Map.of("transactionId", "tx-1"))) {
+            assertThat(context.snapshot())
+                    .containsExactlyInAnyOrderEntriesOf(
+                            Map.of(
+                                    "traceId", "trace-1",
+                                    "transactionId", "tx-1"));
         }
 
         assertThat(context.snapshot()).containsExactly(Map.entry("traceId", "trace-1"));

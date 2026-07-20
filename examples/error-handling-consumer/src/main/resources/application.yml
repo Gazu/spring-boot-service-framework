@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: error-handling-consumer-example
+  security:
+    user:
+      name: ${EXAMPLE_SECURITY_USERNAME:example-user}
+      password: ${EXAMPLE_SECURITY_PASSWORD:change-me}
+      roles: ${EXAMPLE_SECURITY_ROLES:USER}
+
+smbtech:
+  error-handling:
+    enabled: true
+    response:
+      exposure: PUBLIC
+      include-field-violations: true
+      metadata-allowlist:
+        - correlationId
+        - path
+        - violations
+    security:
+      enabled: true
+    logging:
+      enabled: false
+    metrics:
+      enabled: false

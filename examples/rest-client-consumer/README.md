@@ -1,7 +1,7 @@
 # REST Client consumer example
 
 Standalone Spring Boot application that consumes
-`com.smbtech:spring-boot-service-framework-starter-rest-client:0.2.0` from the local
+`com.smbtech:spring-boot-service-framework-starter-rest-client:0.3.0` from the local
 Maven repositories generated under each module `build/repository` directory.
 
 The example intentionally consumes published local artifacts instead of Gradle
@@ -25,7 +25,14 @@ It demonstrates:
 - JWT bearer grant (`urn:ietf:params:oauth:grant-type:jwt-bearer`);
 - signing keys loaded from base64 keystore properties;
 - token cache policy for `client_credentials` and JWT bearer grants;
+- OAuth2 configuration validation during startup;
+- request context propagation for dynamic headers and JWT bearer claims;
 - retry and circuit breaker configuration.
+
+Both configured clients use the current `token-request-id` property. The former
+`credential-token-requestor-id` key is not an alias. See the
+[names and properties migration guide](../../docs/guides/migrate-public-names-and-properties.md)
+when upgrading an existing application.
 
 ## Configured clients
 
@@ -77,6 +84,91 @@ Optional JWT bearer assertion overrides:
 | `PAYMENTS_JWT_BEARER_ISSUER` | resolved by the starter from the client registration/client id when omitted |
 | `PAYMENTS_JWT_BEARER_SUBJECT` | resolved by the starter from the client registration/client id when omitted |
 | `PAYMENTS_JWT_BEARER_AUDIENCE` | resolved by the starter from the token URI when omitted |
+
+## OAuth2 configuration validation
+
+The example keeps startup validation enabled:
+
+```yaml
+smbtech:
+  rest-clients:
+    validation:
+      enabled: true
+      fail-on-warnings: false
+      validate-key-store-content: false
+```
+
+This verifies that each enabled REST client references an existing Spring
+OAuth2 registration and that the grant type, authentication method, expected
+scopes, client assertion configuration, JWT bearer configuration, credential
+references, and keystore references are consistent.
+
+For manual CI-style checks with disposable test keystores, you can enable strict
+validation:
+
+```bash
+export SMBTECH_REST_CLIENTS_VALIDATION_FAIL_ON_WARNINGS=true
+export SMBTECH_REST_CLIENTS_VALIDATION_VALIDATE_KEY_STORE_CONTENT=true
+```
+
+Keep `validate-key-store-content=false` when running without keystore material,
+because that mode opens referenced stores and validates signing keys during
+startup.
+
+## Request context propagation
+
+The example enables request context propagation:
+
+```yaml
+smbtech:
+  rest-clients:
+    request-context:
+      enabled: true
+      headers: true
+      jwt-bearer-claims: true
+      blocked-headers:
+        - X-Internal-Secret
+      blocked-jwt-bearer-claims:
+        - customer_secret
+```
+
+Use `RequestContextManager` when a header or JWT bearer custom claim depends on
+the current business operation:
+
+```java
+import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
+import com.smbtech.serviceframework.starter.restclient.api.RequestContextScope;
+import org.springframework.stereotype.Service;
+
+@Service
+class DynamicPaymentService {
+
+    private final PaymentsApi paymentsApi;
+    private final RequestContextManager requestContextManager;
+
+    DynamicPaymentService(
+            PaymentsApi paymentsApi,
+            RequestContextManager requestContextManager
+    ) {
+        this.paymentsApi = paymentsApi;
+        this.requestContextManager = requestContextManager;
+    }
+
+    String dummy(String customerId, String channel) {
+        try (RequestContextScope ignored = requestContextManager.open(context -> context
+                .header("X-Channel", channel)
+                .jwtBearerClaim("customer_id", customerId)
+                .jwtBearerClaim("channel", channel))) {
+            return paymentsApi.dummy();
+        }
+    }
+}
+```
+
+Dynamic headers are applied to the outbound `RestClient` request. Dynamic JWT
+bearer claims are applied only while the JWT bearer grant assertion is generated.
+Sensitive headers, registered JWT claims, and token/secret-shaped claim names
+are removed before propagation.
 
 ## Manual run
 

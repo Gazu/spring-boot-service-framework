@@ -1,0 +1,83 @@
+def javaLibraryModules = [
+        'spring-boot-service-framework-commons',
+        'spring-boot-service-framework-logging-core',
+        'spring-boot-service-framework-http-client-core',
+        'spring-boot-service-framework-mock-core',
+        'spring-boot-service-framework-error-core',
+        'spring-boot-service-framework-openapi-generator',
+        'spring-boot-service-framework-openapi-contract-testing'
+]
+
+def springBootStarterModules = [
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging',
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client',
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock',
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling'
+]
+
+def conventionModuleBuildFiles = (javaLibraryModules + springBootStarterModules).collect {
+    file("${it}/build.gradle")
+}
+
+tasks.register('validateConventionPluginUsage') {
+    group = 'verification'
+    description = 'Ensures framework modules use centralized Gradle convention plugins.'
+    inputs.files(conventionModuleBuildFiles)
+
+    doLast {
+        def failures = []
+
+        javaLibraryModules.each { modulePath ->
+            def buildFile = file("${modulePath}/build.gradle")
+            if (!buildFile.text.contains("id 'com.smbtech.service-framework.java-library'")) {
+                failures << "${relativePath(buildFile)}: missing Java library convention plugin"
+            }
+        }
+
+        springBootStarterModules.each { modulePath ->
+            def buildFile = file("${modulePath}/build.gradle")
+            if (!buildFile.text.contains("id 'com.smbtech.service-framework.spring-boot-starter'")) {
+                failures << "${relativePath(buildFile)}: missing Spring Boot starter convention plugin"
+            }
+        }
+
+        def duplicatedConfiguration = [
+                'JavaLanguageVersion.of(21)'                       : 'Java 21 toolchain',
+                'withSourcesJar()'                                 : 'sources JAR',
+                'withJavadocJar()'                                 : 'Javadoc JAR',
+                "compilerArgs += ['-parameters']"                 : '-parameters compiler flag',
+                'useJUnitPlatform()'                               : 'JUnit Platform',
+                'org.junit.jupiter:junit-jupiter'                  : 'JUnit dependency',
+                'org.junit.platform:junit-platform-launcher'      : 'JUnit launcher dependency',
+                "name = 'localBuild'"                             : 'local publication repository',
+                "gradleProperty('privateMavenUrl')"               : 'private publication repository'
+        ]
+
+        conventionModuleBuildFiles.each { buildFile ->
+            duplicatedConfiguration.each { marker, concern ->
+                if (buildFile.text.contains(marker)) {
+                    failures << "${relativePath(buildFile)}: ${concern} must be configured by a convention plugin"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Gradle convention violations found:\n" + failures.sort().join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('conventionPluginsCheck') {
+    group = 'verification'
+    description = 'Compiles convention plugins and validates their use by framework modules.'
+    dependsOn(
+            gradle.includedBuild('build-logic').task(':conventions:check'),
+            tasks.named('validateConventionPluginUsage')
+    )
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('conventionPluginsCheck')
+}

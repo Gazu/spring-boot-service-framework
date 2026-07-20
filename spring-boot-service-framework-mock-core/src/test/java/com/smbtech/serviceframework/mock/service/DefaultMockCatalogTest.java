@@ -1,17 +1,16 @@
 package com.smbtech.serviceframework.mock.service;
 
-import com.smbtech.serviceframework.mock.domain.MockDefinition;
-import com.smbtech.serviceframework.mock.exception.MockException;
-import org.junit.jupiter.api.Test;
-
-import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.smbtech.serviceframework.mock.domain.MockDefinition;
+import com.smbtech.serviceframework.mock.exception.MockException;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class DefaultMockCatalogTest {
 
@@ -20,12 +19,15 @@ class DefaultMockCatalogTest {
         Map<String, MockDefinition> definitions = new LinkedHashMap<>();
         definitions.put(
                 " payments-success ",
-                new MockDefinition("", true, "classpath:mocks/payments-success.json", Duration.ofMillis(10))
-        );
+                new MockDefinition(
+                        "", true, "classpath:mocks/payments-success.json", Duration.ofMillis(10)));
         definitions.put(
                 "ignored-map-key",
-                new MockDefinition("payments-error", true, "classpath:mocks/payments-error.json", Duration.ZERO)
-        );
+                new MockDefinition(
+                        "payments-error",
+                        true,
+                        "classpath:mocks/payments-error.json",
+                        Duration.ZERO));
 
         DefaultMockCatalog catalog = new DefaultMockCatalog(() -> definitions);
 
@@ -46,10 +48,16 @@ class DefaultMockCatalogTest {
 
     @Test
     void exposesImmutableCollections() {
-        DefaultMockCatalog catalog = new DefaultMockCatalog(() -> Map.of(
-                "payments",
-                new MockDefinition("payments", true, "classpath:mocks/payments.json", Duration.ZERO)
-        ));
+        DefaultMockCatalog catalog =
+                new DefaultMockCatalog(
+                        () ->
+                                Map.of(
+                                        "payments",
+                                        new MockDefinition(
+                                                "payments",
+                                                true,
+                                                "classpath:mocks/payments.json",
+                                                Duration.ZERO)));
 
         assertThrows(UnsupportedOperationException.class, () -> catalog.all().clear());
         assertThrows(UnsupportedOperationException.class, () -> catalog.keys().clear());

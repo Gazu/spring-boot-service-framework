@@ -7,17 +7,18 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-public final class MicrometerHttpClientObservationInterceptor implements ClientHttpRequestInterceptor {
+/** Provides micrometer http client observation interceptor behavior. */
+public final class MicrometerHttpClientObservationInterceptor
+        implements ClientHttpRequestInterceptor {
 
     private static final String UNKNOWN = "unknown";
     private static final String NONE = "none";
@@ -25,20 +26,22 @@ public final class MicrometerHttpClientObservationInterceptor implements ClientH
     private final HttpClientDefinition definition;
     private final MeterRegistry meterRegistry;
 
+    /**
+     * Creates a micrometer http client observation interceptor instance.
+     *
+     * @param definition definition value
+     * @param meterRegistry meter registry value
+     */
     public MicrometerHttpClientObservationInterceptor(
-            HttpClientDefinition definition,
-            MeterRegistry meterRegistry
-    ) {
+            HttpClientDefinition definition, MeterRegistry meterRegistry) {
         this.definition = definition;
         this.meterRegistry = meterRegistry;
     }
 
     @Override
     public ClientHttpResponse intercept(
-            HttpRequest request,
-            byte[] body,
-            ClientHttpRequestExecution execution
-    ) throws IOException {
+            HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
+            throws IOException {
         long startedAt = System.nanoTime();
         int statusCode = -1;
         String exception = NONE;
@@ -60,12 +63,7 @@ public final class MicrometerHttpClientObservationInterceptor implements ClientH
         }
     }
 
-    private void record(
-            HttpRequest request,
-            long startedAt,
-            int statusCode,
-            String exception
-    ) {
+    private void record(HttpRequest request, long startedAt, int statusCode, String exception) {
         ObservabilityPolicy policy = definition.observability();
         if (!policy.enabled() || meterRegistry == null) {
             return;
@@ -91,11 +89,11 @@ public final class MicrometerHttpClientObservationInterceptor implements ClientH
 
     private Tags tags(HttpRequest request, int statusCode, String exception) {
         ObservabilityPolicy policy = definition.observability();
-        Tags tags = Tags.of(
-                "client", definition.name(),
-                "method", request.getMethod().name(),
-                "outcome", outcome(statusCode, exception)
-        );
+        Tags tags =
+                Tags.of(
+                        "client", definition.name(),
+                        "method", request.getMethod().name(),
+                        "outcome", outcome(statusCode, exception));
 
         if (policy.includeStatus()) {
             tags = tags.and("status", statusCode > 0 ? String.valueOf(statusCode) : UNKNOWN);
@@ -104,7 +102,12 @@ public final class MicrometerHttpClientObservationInterceptor implements ClientH
             tags = tags.and("exception", exception);
         }
         if (policy.includeUri()) {
-            tags = tags.and("uri", request.getURI().getPath().isBlank() ? "/" : request.getURI().getPath());
+            tags =
+                    tags.and(
+                            "uri",
+                            request.getURI().getPath().isBlank()
+                                    ? "/"
+                                    : request.getURI().getPath());
         }
         for (Map.Entry<String, String> entry : policy.tags().entrySet()) {
             if (entry.getKey() != null && !entry.getKey().isBlank() && entry.getValue() != null) {

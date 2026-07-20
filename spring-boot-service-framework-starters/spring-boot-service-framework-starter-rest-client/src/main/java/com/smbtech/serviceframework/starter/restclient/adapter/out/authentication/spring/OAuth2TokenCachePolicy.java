@@ -1,10 +1,9 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import java.util.Objects;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-
-import java.util.Objects;
 
 final class OAuth2TokenCachePolicy {
 
@@ -22,14 +21,12 @@ final class OAuth2TokenCachePolicy {
     }
 
     static OAuth2TokenCachePolicy from(RestClientProperties properties) {
-        RestClientProperties safeProperties = Objects.requireNonNullElseGet(
-                properties,
-                RestClientProperties::new
-        );
-        RestClientProperties.Authentication authentication = Objects.requireNonNullElseGet(
-                safeProperties.getAuthentication(),
-                RestClientProperties.Authentication::new
-        );
+        RestClientProperties safeProperties =
+                Objects.requireNonNullElseGet(properties, RestClientProperties::new);
+        RestClientProperties.Authentication authentication =
+                Objects.requireNonNullElseGet(
+                        safeProperties.getAuthentication(),
+                        RestClientProperties.Authentication::new);
         return new OAuth2TokenCachePolicy(authentication.getTokenCache());
     }
 

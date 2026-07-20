@@ -7,11 +7,18 @@ import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.web.client.RestClient;
 
-public final class ConfiguredRestClientFactoryBean implements FactoryBean<RestClient>, BeanFactoryAware {
+/** Provides configured rest client factory bean behavior. */
+public final class ConfiguredRestClientFactoryBean
+        implements FactoryBean<RestClient>, BeanFactoryAware {
 
     private final String clientName;
     private BeanFactory beanFactory;
 
+    /**
+     * Creates a configured rest client factory bean instance.
+     *
+     * @param clientName client name value
+     */
     public ConfiguredRestClientFactoryBean(String clientName) {
         this.clientName = clientName;
     }

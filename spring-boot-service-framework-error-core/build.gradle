@@ -1,0 +1,59 @@
+plugins {
+    id 'com.smbtech.service-framework.java-library'
+}
+
+description = 'Framework-independent error handling contracts and policies'
+
+dependencies {
+    api project(':spring-boot-service-framework-commons')
+}
+
+tasks.register('verifyHexagonalBoundaries') {
+    group = 'verification'
+    description = 'Ensures error core does not import Spring or adapter APIs.'
+    inputs.files(fileTree('src/main/java') {
+        include '**/*.java'
+    })
+
+    doLast {
+        def forbiddenImports = [
+                'org.springframework.',
+                'org.slf4j.',
+                'ch.qos.logback.',
+                'jakarta.servlet.',
+                'com.fasterxml.jackson.'
+        ]
+        def violations = []
+        inputs.files.files.each { source ->
+            source.eachLine { line, number ->
+                def trimmed = line.trim()
+                if (trimmed.startsWith('import ') &&
+                        forbiddenImports.any { trimmed.contains(it) }) {
+                    violations << "${source}:$number: $trimmed"
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException(
+                    "Hexagonal boundary violations:\n" + violations.join('\n')
+            )
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn(
+            tasks.named('verifyHexagonalBoundaries'),
+            rootProject.tasks.named('verifyErrorNotificationReuse')
+    )
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Error Core'
+            }
+        }
+    }
+}

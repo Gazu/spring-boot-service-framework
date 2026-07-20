@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: complete-operations-fixture
+  version: '1.0.0'
+paths:
+  /orders/{orderId}:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      operationId: replaceOrder
+      deprecated: true
+      parameters:
+        - name: priority
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: X-Correlation-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            minLength: 8
+        - name: session
+          in: cookie
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+      requestBody:
+        $ref: '#/components/requestBodies/ReplaceOrder'
+      responses:
+        '201':
+          $ref: '#/components/responses/OrderReplaced'
+    head:
+      operationId: orderExists
+      responses:
+        '204':
+          description: Order exists
+    options:
+      operationId: orderOptions
+      responses:
+        '204':
+          description: Options returned
+    trace:
+      operationId: traceOrder
+      responses:
+        '204':
+          description: Trace completed
+components:
+  parameters:
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 6
+  requestBodies:
+    ReplaceOrder:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReplaceOrderRequest'
+  responses:
+    OrderReplaced:
+      description: Order replaced
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OrderResponse'
+  schemas:
+    ReplaceOrderRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+    OrderResponse:
+      type: object
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string

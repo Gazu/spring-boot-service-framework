@@ -1,0 +1,58 @@
+spotless {
+    encoding 'UTF-8'
+
+    java {
+        target '**/src/**/*.java'
+        targetExclude(
+                '**/build/**',
+                '**/build/generated/smbtech-openapi/**'
+        )
+        importOrder(
+                'java',
+                'javax',
+                'jakarta',
+                'org',
+                'com',
+                '',
+                '\\#java',
+                '\\#javax',
+                '\\#jakarta',
+                '\\#org',
+                '\\#com',
+                '\\#'
+        )
+        removeUnusedImports()
+        forbidWildcardImports()
+        googleJavaFormat(googleJavaFormatVersion).aosp().reorderImports(false)
+        formatAnnotations()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+
+    format 'projectFiles', {
+        target(
+                '.editorconfig',
+                '.gitattributes',
+                '.gitignore',
+                'gradlew',
+                '**/*.gradle',
+                '**/*.json',
+                '**/*.md',
+                '**/*.properties',
+                '**/*.sh',
+                '**/*.txt',
+                '**/*.xml',
+                '**/*.yaml',
+                '**/*.yml'
+        )
+        targetExclude(
+                '**/.gradle/**',
+                '**/.idea/**',
+                '**/build/**',
+                '**/build/generated/smbtech-openapi/**',
+                'gradle/compatibility/contracts/**'
+        )
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}

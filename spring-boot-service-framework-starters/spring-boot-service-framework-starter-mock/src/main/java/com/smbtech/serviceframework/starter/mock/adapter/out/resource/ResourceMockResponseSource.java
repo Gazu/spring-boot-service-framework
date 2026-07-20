@@ -7,22 +7,29 @@ import com.smbtech.serviceframework.mock.domain.MockRequest;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.exception.MockException;
 import com.smbtech.serviceframework.mock.port.out.MockResponseSource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
-
 import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 
+/** Provides resource mock response source behavior. */
 public final class ResourceMockResponseSource implements MockResponseSource {
 
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a resource mock response source instance.
+     *
+     * @param resourceLoader resource loader value
+     * @param objectMapper object mapper value
+     */
     public ResourceMockResponseSource(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
-        this.resourceLoader = Objects.requireNonNull(resourceLoader, "resourceLoader must not be null");
+        this.resourceLoader =
+                Objects.requireNonNull(resourceLoader, "resourceLoader must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     }
 
@@ -34,10 +41,14 @@ public final class ResourceMockResponseSource implements MockResponseSource {
             Map<String, List<String>> headers = parseHeaders(root.path("headers"));
             byte[] body = parseBody(root.path("body"));
 
-            return new MockResponse(status, headers, body, definition.delay(), Map.of(
-                    "key", definition.key(),
-                    "file", definition.file()
-            ));
+            return new MockResponse(
+                    status,
+                    headers,
+                    body,
+                    definition.delay(),
+                    Map.of(
+                            "key", definition.key(),
+                            "file", definition.file()));
         } catch (MockException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -68,8 +79,7 @@ public final class ResourceMockResponseSource implements MockResponseSource {
             throw new MockException("Mock file location cannot be empty");
         }
 
-        if (location.startsWith("classpath:")
-                || location.startsWith("file:")) {
+        if (location.startsWith("classpath:") || location.startsWith("file:")) {
             return location;
         }
 

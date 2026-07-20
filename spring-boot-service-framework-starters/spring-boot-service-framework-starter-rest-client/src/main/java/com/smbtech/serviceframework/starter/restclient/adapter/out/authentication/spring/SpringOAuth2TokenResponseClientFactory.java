@@ -1,69 +1,186 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
+import com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionContext;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import java.time.Clock;
+import java.util.Objects;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.client.endpoint.AbstractOAuth2AuthorizationGrantRequest;
+import org.springframework.security.oauth2.client.endpoint.AbstractRestClientOAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.DefaultOAuth2TokenRequestHeadersConverter;
+import org.springframework.security.oauth2.client.endpoint.JwtBearerGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.NimbusJwtClientAuthenticationParametersConverter;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2ClientCredentialsGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientClientCredentialsTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.RestClientJwtBearerTokenResponseClient;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
-import java.time.Clock;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
+/** Provides spring OAuth2 token response client factory behavior. */
 public final class SpringOAuth2TokenResponseClientFactory {
 
-    private static final Set<String> REGISTERED_CLAIMS = Set.of("iss", "sub", "aud", "jti", "iat", "exp", "nbf");
-
     private final ClientAssertionJwkResolver jwkResolver;
+    private final OAuth2TokenDiagnosticsLogger diagnosticsLogger;
     private final Clock clock;
+    private final OAuth2ExtensionRegistry extensionRegistry;
+    private final ClientAssertionPipeline clientAssertionPipeline;
+    private final OAuth2TokenRequestPipeline tokenRequestPipeline;
+    private final ThreadLocal<AbstractOAuth2AuthorizationGrantRequest> tokenRequestHolder =
+            new ThreadLocal<>();
 
+    /**
+     * Creates a spring OAuth2 token response client factory instance.
+     *
+     * @param jwkResolver jwk resolver value
+     * @param clock clock value
+     */
     public SpringOAuth2TokenResponseClientFactory(
-            ClientAssertionJwkResolver jwkResolver,
-            Clock clock
-    ) {
-        this.jwkResolver = Objects.requireNonNull(jwkResolver, "jwkResolver must not be null");
-        this.clock = Objects.requireNonNull(clock, "clock must not be null");
+            ClientAssertionJwkResolver jwkResolver, Clock clock) {
+        this(jwkResolver, OAuth2TokenDiagnosticsLogger.disabled(), clock);
     }
 
-    public RestClientClientCredentialsTokenResponseClient createClientCredentials() {
+    /**
+     * Creates a spring OAuth2 token response client factory instance.
+     *
+     * @param jwkResolver jwk resolver value
+     * @param diagnosticsLogger diagnostics logger value
+     * @param clock clock value
+     */
+    public SpringOAuth2TokenResponseClientFactory(
+            ClientAssertionJwkResolver jwkResolver,
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            Clock clock) {
+        this(jwkResolver, diagnosticsLogger, clock, OAuth2ExtensionRegistry.empty());
+    }
+
+    /**
+     * Creates a spring OAuth2 token response client factory instance.
+     *
+     * @param jwkResolver jwk resolver value
+     * @param diagnosticsLogger diagnostics logger value
+     * @param clock clock value
+     * @param extensionRegistry extension registry value
+     */
+    public SpringOAuth2TokenResponseClientFactory(
+            ClientAssertionJwkResolver jwkResolver,
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            Clock clock,
+            OAuth2ExtensionRegistry extensionRegistry) {
+        this.jwkResolver = Objects.requireNonNull(jwkResolver, "jwkResolver must not be null");
+        this.diagnosticsLogger =
+                Objects.requireNonNull(diagnosticsLogger, "diagnosticsLogger must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.extensionRegistry =
+                Objects.requireNonNull(extensionRegistry, "extensionRegistry must not be null");
+        this.clientAssertionPipeline = new ClientAssertionPipeline(this.extensionRegistry);
+        this.tokenRequestPipeline = new OAuth2TokenRequestPipeline(this.extensionRegistry);
+    }
+
+    /**
+     * Creates client credentials.
+     *
+     * @return create client credentials result
+     */
+    public OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest>
+            createClientCredentials() {
         RestClientClientCredentialsTokenResponseClient tokenResponseClient =
                 new RestClientClientCredentialsTokenResponseClient();
         tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
-        return tokenResponseClient;
+        customizeTokenRequest(tokenResponseClient);
+        return new DiagnosticOAuth2AccessTokenResponseClient<>(
+                tokenResponseClient, diagnosticsLogger);
     }
 
-    public RestClientJwtBearerTokenResponseClient createJwtBearer() {
+    /**
+     * Creates JWT bearer.
+     *
+     * @return create JWT bearer result
+     */
+    public OAuth2AccessTokenResponseClient<JwtBearerGrantRequest> createJwtBearer() {
         RestClientJwtBearerTokenResponseClient tokenResponseClient =
                 new RestClientJwtBearerTokenResponseClient();
         tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
-        return tokenResponseClient;
+        customizeTokenRequest(tokenResponseClient);
+        return new DiagnosticOAuth2AccessTokenResponseClient<>(
+                tokenResponseClient, diagnosticsLogger);
     }
 
-    public <T extends AbstractOAuth2AuthorizationGrantRequest> NimbusJwtClientAuthenticationParametersConverter<T>
-    clientAuthenticationParametersConverter() {
+    /**
+     * Creates the converter that signs {@code private_key_jwt} client assertions.
+     *
+     * @param <T> OAuth2 authorization grant request type
+     * @return configured client authentication parameter converter
+     */
+    public <T extends AbstractOAuth2AuthorizationGrantRequest>
+            NimbusJwtClientAuthenticationParametersConverter<T>
+                    clientAuthenticationParametersConverter() {
         NimbusJwtClientAuthenticationParametersConverter<T> converter =
                 new NimbusJwtClientAuthenticationParametersConverter<>(jwkResolver::resolve);
-        converter.setJwtClientAssertionCustomizer(context -> {
-            String registrationId = context.getAuthorizationGrantRequest()
-                    .getClientRegistration()
-                    .getRegistrationId();
-            RestClientProperties.ClientAssertion assertion = jwkResolver.clientAssertion(registrationId);
+        converter.setJwtClientAssertionCustomizer(
+                context -> {
+                    String registrationId =
+                            context.getAuthorizationGrantRequest()
+                                    .getClientRegistration()
+                                    .getRegistrationId();
+                    RestClientProperties.ClientAssertion assertion =
+                            jwkResolver.clientAssertion(registrationId);
+                    ClientAssertionContext assertionContext =
+                            clientAssertionPipeline.resolve(
+                                    context.getAuthorizationGrantRequest(), assertion);
 
-            context.getClaims().expiresAt(clock.instant().plus(assertion.getTokenLifetime()));
-            for (Map.Entry<String, Object> entry : assertion.getCustomClaims().entrySet()) {
-                if (isCustomClaim(entry)) {
-                    context.getClaims().claim(entry.getKey(), entry.getValue());
-                }
-            }
-        });
+                    assertionContext.headers().forEach(context.getHeaders()::header);
+                    context.getClaims()
+                            .expiresAt(clock.instant().plus(assertionContext.tokenLifetime()));
+                    assertionContext.claims().forEach(context.getClaims()::claim);
+                    diagnosticsLogger.clientAssertionCreated(
+                            registrationId,
+                            assertionContext.tokenLifetime(),
+                            assertionContext.claims());
+                });
         return converter;
     }
 
-    private boolean isCustomClaim(Map.Entry<String, Object> entry) {
-        return entry.getKey() != null
-                && !entry.getKey().isBlank()
-                && !REGISTERED_CLAIMS.contains(entry.getKey())
-                && entry.getValue() != null;
+    /**
+     * Performs the extension registry operation.
+     *
+     * @return extension registry result
+     */
+    public OAuth2ExtensionRegistry extensionRegistry() {
+        return extensionRegistry;
+    }
+
+    private <T extends AbstractOAuth2AuthorizationGrantRequest> void customizeTokenRequest(
+            AbstractRestClientOAuth2AccessTokenResponseClient<T> tokenResponseClient) {
+        if (extensionRegistry.tokenRequestCustomizers().isEmpty()) {
+            return;
+        }
+        tokenResponseClient.addParametersConverter(
+                grantRequest -> {
+                    tokenRequestHolder.set(grantRequest);
+                    return new LinkedMultiValueMap<>();
+                });
+        tokenResponseClient.setParametersCustomizer(
+                parameters -> {
+                    AbstractOAuth2AuthorizationGrantRequest grantRequest = tokenRequestHolder.get();
+                    if (grantRequest == null) {
+                        return;
+                    }
+                    try {
+                        MultiValueMap<String, String> resolved =
+                                tokenRequestPipeline.resolveParameters(grantRequest, parameters);
+                        parameters.clear();
+                        parameters.addAll(resolved);
+                    } finally {
+                        tokenRequestHolder.remove();
+                    }
+                });
+        DefaultOAuth2TokenRequestHeadersConverter<T> headersConverter =
+                new DefaultOAuth2TokenRequestHeadersConverter<>();
+        tokenResponseClient.setHeadersConverter(
+                grantRequest -> {
+                    HttpHeaders headers = headersConverter.convert(grantRequest);
+                    return tokenRequestPipeline.resolveHeaders(grantRequest, headers);
+                });
     }
 }

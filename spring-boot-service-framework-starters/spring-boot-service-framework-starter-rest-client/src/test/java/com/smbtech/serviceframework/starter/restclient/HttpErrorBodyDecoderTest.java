@@ -1,5 +1,8 @@
 package com.smbtech.serviceframework.starter.restclient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorCategory;
@@ -8,18 +11,15 @@ import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseExcep
 import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
 import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecodingException;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class HttpErrorBodyDecoderTest {
 
-    private final HttpErrorBodyDecoder decoder = new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules());
+    private final HttpErrorBodyDecoder decoder =
+            new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules());
 
     @Test
     void implementsCoreBodyReaderContract() {
@@ -40,15 +40,15 @@ class HttpErrorBodyDecoderTest {
 
     @Test
     void decodesCompleteExceptionBodyIntoTypeReference() {
-        HttpClientResponseException exception = new HttpClientResponseException(error("""
+        HttpClientResponseException exception =
+                new HttpClientResponseException(
+                        error(
+                                """
                 {"errors":[{"code":"A"},{"code":"B"}]}
                 """));
 
-        Map<String, List<Map<String, String>>> payload = decoder.decode(
-                exception,
-                new TypeReference<>() {
-                }
-        );
+        Map<String, List<Map<String, String>>> payload =
+                decoder.decode(exception, new TypeReference<>() {});
 
         assertThat(payload.get("errors"))
                 .extracting(error -> error.get("code"))
@@ -67,11 +67,12 @@ class HttpErrorBodyDecoderTest {
 
     @Test
     void readsErrorBodyIntoGenericTypeThroughCoreContract() {
-        HttpErrorResponse error = error("""
+        HttpErrorResponse error =
+                error(
+                        """
                 {"errors":[{"code":"A"},{"code":"B"}]}
                 """);
-        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {
-        }.getType();
+        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {}.getType();
 
         Map<String, List<Map<String, String>>> payload = decoder.read(error, type);
 
@@ -82,11 +83,12 @@ class HttpErrorBodyDecoderTest {
 
     @Test
     void decodesErrorBodyIntoGenericType() {
-        HttpErrorResponse error = error("""
+        HttpErrorResponse error =
+                error(
+                        """
                 {"errors":[{"code":"A"},{"code":"B"}]}
                 """);
-        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {
-        }.getType();
+        Type type = new TypeReference<Map<String, List<Map<String, String>>>>() {}.getType();
 
         Map<String, List<Map<String, String>>> payload = decoder.decode(error, type);
 
@@ -106,8 +108,8 @@ class HttpErrorBodyDecoderTest {
     void returnsEmptyForTypeReferenceWhenBodyIsNotPresent() {
         HttpClientResponseException exception = new HttpClientResponseException(error(""));
 
-        assertThat(decoder.decodeIfPresent(exception, new TypeReference<Map<String, Object>>() {
-        })).isEmpty();
+        assertThat(decoder.decodeIfPresent(exception, new TypeReference<Map<String, Object>>() {}))
+                .isEmpty();
     }
 
     @Test
@@ -115,10 +117,12 @@ class HttpErrorBodyDecoderTest {
         HttpClientResponseException exception = new HttpClientResponseException(error(""));
 
         assertThatThrownBy(() -> decoder.decode(exception, ErrorPayload.class))
-                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
-                    assertThat(decodingException.error()).isSameAs(exception.error());
-                    assertThat(decodingException.getMessage()).contains("status=400");
-                });
+                .isInstanceOfSatisfying(
+                        HttpErrorBodyDecodingException.class,
+                        decodingException -> {
+                            assertThat(decodingException.error()).isSameAs(exception.error());
+                            assertThat(decodingException.getMessage()).contains("status=400");
+                        });
     }
 
     @Test
@@ -126,41 +130,53 @@ class HttpErrorBodyDecoderTest {
         HttpErrorResponse error = error("");
 
         assertThatThrownBy(() -> decoder.read(error, ErrorPayload.class))
-                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
-                    assertThat(decodingException.error()).isSameAs(error);
-                    assertThat(decodingException.getMessage())
-                            .contains("HTTP error response does not contain a body");
-                });
+                .isInstanceOfSatisfying(
+                        HttpErrorBodyDecodingException.class,
+                        decodingException -> {
+                            assertThat(decodingException.error()).isSameAs(error);
+                            assertThat(decodingException.getMessage())
+                                    .contains("HTTP error response does not contain a body");
+                        });
     }
 
     @Test
     void throwsSafeExceptionWithoutLeakingInvalidBodyInMessage() {
-        HttpClientResponseException exception = new HttpClientResponseException(error("""
+        HttpClientResponseException exception =
+                new HttpClientResponseException(
+                        error(
+                                """
                 {"secret":"should-not-appear"
                 """));
 
         assertThatThrownBy(() -> decoder.decode(exception, ErrorPayload.class))
-                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
-                    assertThat(decodingException.error()).isSameAs(exception.error());
-                    assertThat(decodingException.getMessage()).contains("target=");
-                    assertThat(decodingException.getMessage()).doesNotContain("should-not-appear");
-                });
+                .isInstanceOfSatisfying(
+                        HttpErrorBodyDecodingException.class,
+                        decodingException -> {
+                            assertThat(decodingException.error()).isSameAs(exception.error());
+                            assertThat(decodingException.getMessage()).contains("target=");
+                            assertThat(decodingException.getMessage())
+                                    .doesNotContain("should-not-appear");
+                        });
     }
 
     @Test
     void throwsSafeExceptionWithoutLeakingInvalidBodyWhenReadingGenericType() {
-        HttpErrorResponse error = error("""
+        HttpErrorResponse error =
+                error(
+                        """
                 {"secret":"should-not-appear"
                 """);
-        Type type = new TypeReference<Map<String, Object>>() {
-        }.getType();
+        Type type = new TypeReference<Map<String, Object>>() {}.getType();
 
         assertThatThrownBy(() -> decoder.read(error, type))
-                .isInstanceOfSatisfying(HttpErrorBodyDecodingException.class, decodingException -> {
-                    assertThat(decodingException.error()).isSameAs(error);
-                    assertThat(decodingException.getMessage()).contains("target=");
-                    assertThat(decodingException.getMessage()).doesNotContain("should-not-appear");
-                });
+                .isInstanceOfSatisfying(
+                        HttpErrorBodyDecodingException.class,
+                        decodingException -> {
+                            assertThat(decodingException.error()).isSameAs(error);
+                            assertThat(decodingException.getMessage()).contains("target=");
+                            assertThat(decodingException.getMessage())
+                                    .doesNotContain("should-not-appear");
+                        });
     }
 
     @Test
@@ -193,10 +209,8 @@ class HttpErrorBodyDecoderTest {
                 body,
                 "application/json",
                 "UTF-8",
-                false
-        );
+                false);
     }
 
-    private record ErrorPayload(String code, String message) {
-    }
+    private record ErrorPayload(String code, String message) {}
 }

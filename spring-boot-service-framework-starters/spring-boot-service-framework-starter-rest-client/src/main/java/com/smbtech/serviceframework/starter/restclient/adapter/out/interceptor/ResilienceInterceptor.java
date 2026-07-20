@@ -6,33 +6,35 @@ import com.smbtech.serviceframework.httpclient.domain.RetryPolicy;
 import com.smbtech.serviceframework.httpclient.exception.CircuitBreakerOpenException;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.resilience.ResilienceStateRegistry;
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
-import java.io.IOException;
-import java.io.InterruptedIOException;
-
+/** Provides resilience interceptor behavior. */
 public final class ResilienceInterceptor implements ClientHttpRequestInterceptor {
 
     private final HttpClientDefinition definition;
     private final ResilienceStateRegistry stateRegistry;
 
+    /**
+     * Creates a resilience interceptor instance.
+     *
+     * @param definition definition value
+     * @param stateRegistry state registry value
+     */
     public ResilienceInterceptor(
-            HttpClientDefinition definition,
-            ResilienceStateRegistry stateRegistry
-    ) {
+            HttpClientDefinition definition, ResilienceStateRegistry stateRegistry) {
         this.definition = definition;
         this.stateRegistry = stateRegistry;
     }
 
     @Override
     public ClientHttpResponse intercept(
-            HttpRequest request,
-            byte[] body,
-            ClientHttpRequestExecution execution
-    ) throws IOException {
+            HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
+            throws IOException {
         ResiliencePolicy resilience = definition.resilience();
         if (!resilience.enabled()) {
             return execution.execute(request, body);
@@ -68,12 +70,15 @@ public final class ResilienceInterceptor implements ClientHttpRequestInterceptor
         }
     }
 
-    private boolean isRetryableStatus(ClientHttpResponse response, RetryPolicy retry) throws IOException {
+    private boolean isRetryableStatus(ClientHttpResponse response, RetryPolicy retry)
+            throws IOException {
         return retry.enabled() && retry.shouldRetryStatus(response.getStatusCode().value());
     }
 
     private boolean isRetryableException(Exception exception, RetryPolicy retry) {
-        if (!retry.enabled() || !retry.retryOnExceptions() || exception instanceof CircuitBreakerOpenException) {
+        if (!retry.enabled()
+                || !retry.retryOnExceptions()
+                || exception instanceof CircuitBreakerOpenException) {
             return false;
         }
         if (exception instanceof HttpClientResponseException responseException) {
@@ -90,7 +95,8 @@ public final class ResilienceInterceptor implements ClientHttpRequestInterceptor
             Thread.sleep(retry.backoff().toMillis() * attempt);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            InterruptedIOException interrupted = new InterruptedIOException("Interrupted during HTTP client retry backoff");
+            InterruptedIOException interrupted =
+                    new InterruptedIOException("Interrupted during HTTP client retry backoff");
             interrupted.initCause(exception);
             throw interrupted;
         }

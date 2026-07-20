@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: pet-store-mock
+  version: '1.0.0'
+paths:
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      responses:
+        '200':
+          description: Pet found
+          headers:
+            X-Result-Source:
+              schema:
+                type: string
+                default: openapi
+          content:
+            application/json:
+              example:
+                id: pet-100
+                name: Luna
+        '404':
+          description: Pet not found
+          content:
+            application/problem+json:
+              examples:
+                not-found:
+                  value:
+                    code: pet_not_found
+                    message: Pet was not found
+    head:
+      operationId: petExists
+      responses:
+        '204':
+          description: Pet exists
+  /pets:
+    post:
+      operationId: createPet
+      responses:
+        '201':
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          minLength: 8
+        status:
+          type: string
+          enum:
+            - available
+            - adopted
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          minItems: 2
+          items:
+            type: string

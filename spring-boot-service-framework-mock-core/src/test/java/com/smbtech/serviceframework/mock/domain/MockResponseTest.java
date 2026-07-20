@@ -1,6 +1,10 @@
 package com.smbtech.serviceframework.mock.domain;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -8,12 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class MockResponseTest {
 
@@ -36,13 +35,9 @@ class MockResponseTest {
         headers.put("Content-Type", new ArrayList<>(List.of("application/json")));
         byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
 
-        MockResponse response = new MockResponse(
-                201,
-                headers,
-                body,
-                Duration.ofMillis(25),
-                Map.of("scenario", "created")
-        );
+        MockResponse response =
+                new MockResponse(
+                        201, headers, body, Duration.ofMillis(25), Map.of("scenario", "created"));
 
         headers.get("Content-Type").add("text/plain");
         body[0] = '[';
@@ -58,7 +53,9 @@ class MockResponseTest {
     void exposesImmutableMapsAndBodyCopy() {
         MockResponse response = MockResponse.ok("ok".getBytes(StandardCharsets.UTF_8));
 
-        assertThrows(UnsupportedOperationException.class, () -> response.headers().put("X-Test", List.of("one")));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> response.headers().put("X-Test", List.of("one")));
 
         byte[] body = response.body();
         body[0] = 'O';

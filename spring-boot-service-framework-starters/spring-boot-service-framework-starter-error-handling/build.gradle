@@ -1,0 +1,46 @@
+plugins {
+    id 'com.smbtech.service-framework.spring-boot-starter'
+}
+
+description = 'Reusable error handling starter for Spring Boot services'
+
+dependencies {
+    api project(':spring-boot-service-framework-error-core')
+
+    api project(':spring-boot-service-framework-logging-core')
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'io.micrometer:micrometer-core'
+
+    compileOnly project(':spring-boot-service-framework-http-client-core')
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'org.springframework.security:spring-security-core'
+    compileOnly 'org.springframework.security:spring-security-web'
+    compileOnly 'org.springframework.security:spring-security-oauth2-core'
+    compileOnly 'org.springframework.security:spring-security-oauth2-resource-server'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation'
+    testImplementation project(':spring-boot-service-framework-http-client-core')
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+    testImplementation 'org.springframework.security:spring-security-config'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.security:spring-security-oauth2-core'
+    testImplementation 'org.springframework.security:spring-security-oauth2-jose'
+    testImplementation 'org.springframework.security:spring-security-oauth2-resource-server'
+}
+
+tasks.named('check') {
+    dependsOn rootProject.tasks.named('verifyErrorNotificationReuse')
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Error Handling Starter'
+            }
+        }
+    }
+}

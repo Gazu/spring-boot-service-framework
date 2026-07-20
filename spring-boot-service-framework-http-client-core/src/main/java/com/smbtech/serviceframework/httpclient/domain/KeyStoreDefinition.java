@@ -2,6 +2,17 @@ package com.smbtech.serviceframework.httpclient.domain;
 
 import java.util.Objects;
 
+/**
+ * Carries immutable key store definition data.
+ *
+ * @param id id value
+ * @param location location value
+ * @param base64 base64 value
+ * @param type type value
+ * @param password password value
+ * @param keyAlias key alias value
+ * @param keyPassword key password value
+ */
 public record KeyStoreDefinition(
         String id,
         String location,
@@ -9,8 +20,8 @@ public record KeyStoreDefinition(
         String type,
         String password,
         String keyAlias,
-        String keyPassword
-) {
+        String keyPassword) {
+    /** Creates and validates the record components. */
     public KeyStoreDefinition {
         id = Objects.requireNonNullElse(id, "").trim();
         location = Objects.requireNonNullElse(location, "");
@@ -21,6 +32,11 @@ public record KeyStoreDefinition(
         keyPassword = keyPassword == null || keyPassword.isBlank() ? password : keyPassword;
     }
 
+    /**
+     * Reports whether inline content.
+     *
+     * @return has inline content result
+     */
     public boolean hasInlineContent() {
         return !base64.isBlank();
     }

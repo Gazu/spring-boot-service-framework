@@ -40,7 +40,7 @@ smbtech:
       payments:
         base-url: ${PAYMENTS_API_BASE_URL:http://localhost:9999}
         authentication-type: CLIENT_CREDENTIALS
-        credential-token-requestor-id: payments-client-credentials-token
+        token-request-id: payments-client-credentials-token
         default-headers:
           X-Application-Name: ${spring.application.name}
         scopes: payment.read
@@ -75,7 +75,7 @@ smbtech:
       payments-jwt-bearer:
         base-url: ${PAYMENTS_API_BASE_URL:http://localhost:9999}
         authentication-type: JWT_BEARER
-        credential-token-requestor-id: payments-jwt-bearer-token
+        token-request-id: payments-jwt-bearer-token
         default-headers:
           X-Application-Name: ${spring.application.name}
         scopes: payment.read
@@ -91,7 +91,29 @@ smbtech:
           include-body: true
           max-body-size: 4096
 
+    validation:
+      enabled: true
+      fail-on-warnings: false
+      validate-key-store-content: false
+
+    request-context:
+      enabled: true
+      headers: true
+      jwt-bearer-claims: true
+      blocked-headers:
+        - X-Internal-Secret
+      blocked-jwt-bearer-claims:
+        - customer_secret
+
     authentication:
+
+      diagnostics:
+        enabled: true
+        include-claims: true
+        include-cache-events: true
+        include-token-preview: true
+        token-preview-length: 24
+
       token-cache:
         client-credentials: true
         jwt-bearer: false

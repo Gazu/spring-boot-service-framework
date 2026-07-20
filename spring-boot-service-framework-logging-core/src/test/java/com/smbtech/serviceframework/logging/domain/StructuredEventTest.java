@@ -1,24 +1,24 @@
 package com.smbtech.serviceframework.logging.domain;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class StructuredEventTest {
 
     @Test
     void buildsImmutableStructuredEvent() {
-        StructuredEvent event = StructuredEvent.builder(EventType.AUDIT)
-                .message("Project {} updated", 42)
-                .with("projectId", 42)
-                .with("actor", actor -> actor.put("id", "user-7"))
-                .tag("PROJECT")
-                .sensitive()
-                .build();
+        StructuredEvent event =
+                StructuredEvent.builder(EventType.AUDIT)
+                        .message("Project {} updated", 42)
+                        .with("projectId", 42)
+                        .with("actor", actor -> actor.put("id", "user-7"))
+                        .tag("PROJECT")
+                        .sensitive()
+                        .build();
 
         assertEquals(EventType.AUDIT, event.type());
         assertEquals("Project {} updated", event.message());
@@ -33,8 +33,6 @@ class StructuredEventTest {
     void validatesTypeAndKeys() {
         assertThrows(IllegalArgumentException.class, () -> EventType.named(" "));
         assertThrows(
-                IllegalArgumentException.class,
-                () -> StructuredEvent.builder().with("", "value")
-        );
+                IllegalArgumentException.class, () -> StructuredEvent.builder().with("", "value"));
     }
 }

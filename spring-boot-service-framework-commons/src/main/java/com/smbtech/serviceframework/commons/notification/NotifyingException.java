@@ -6,59 +6,104 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Base runtime exception for failures that can expose one or more structured
- * notifications in addition to the normal exception message.
+ * Base runtime exception for failures that can expose one or more structured notifications in
+ * addition to the normal exception message.
+ *
+ * @serial exclude
  */
 public class NotifyingException extends RuntimeException {
 
-    @Serial
-    private static final long serialVersionUID = 4373313436990236182L;
+    @Serial private static final long serialVersionUID = 4373313436990236182L;
 
     private static final String DEFAULT_MESSAGE = "Notification exception";
 
     private final List<Notification> notifications;
 
+    /**
+     * Creates an exception carrying one notification.
+     *
+     * @param notification notification to expose
+     */
     public NotifyingException(Notification notification) {
         this(List.of(Objects.requireNonNull(notification, "notification must not be null")));
     }
 
+    /**
+     * Creates an exception carrying one notification and a cause.
+     *
+     * @param notification notification to expose
+     * @param cause underlying failure
+     */
     public NotifyingException(Notification notification, Throwable cause) {
         this(
                 List.of(Objects.requireNonNull(notification, "notification must not be null")),
                 defaultMessage(List.of(notification)),
-                cause
-        );
+                cause);
     }
 
+    /**
+     * Creates an exception carrying ordered notifications.
+     *
+     * @param notifications notifications to expose
+     */
     public NotifyingException(List<Notification> notifications) {
         this(notifications, defaultMessage(notifications));
     }
 
+    /**
+     * Creates an exception carrying ordered notifications and a cause.
+     *
+     * @param notifications notifications to expose
+     * @param cause underlying failure
+     */
     public NotifyingException(List<Notification> notifications, Throwable cause) {
         this(notifications, defaultMessage(notifications), cause);
     }
 
+    /**
+     * Creates an exception without structured notifications.
+     *
+     * @param message diagnostic exception message
+     */
     public NotifyingException(String message) {
         this(List.of(), message);
     }
 
+    /**
+     * Creates an exception without structured notifications.
+     *
+     * @param message diagnostic exception message
+     * @param cause underlying failure
+     */
     public NotifyingException(String message, Throwable cause) {
         this(List.of(), message, cause);
     }
 
+    /**
+     * Creates an exception with explicit notifications and diagnostic message.
+     *
+     * @param notifications notifications to expose
+     * @param message diagnostic exception message
+     */
     public NotifyingException(List<Notification> notifications, String message) {
         super(message);
         this.notifications = immutableNotifications(notifications);
     }
 
+    /**
+     * Creates an exception with explicit notifications, diagnostic message, and cause.
+     *
+     * @param notifications notifications to expose
+     * @param message diagnostic exception message
+     * @param cause underlying failure
+     */
     public NotifyingException(List<Notification> notifications, String message, Throwable cause) {
         super(message, cause);
         this.notifications = immutableNotifications(notifications);
     }
 
     /**
-     * Returns an immutable list of structured notifications associated with
-     * this exception.
+     * Returns an immutable list of structured notifications associated with this exception.
      *
      * @return notifications
      */

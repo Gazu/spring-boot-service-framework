@@ -1,0 +1,357 @@
+def maintainedJavaSources = fileTree(rootDir) {
+    include 'spring-boot-service-framework-*/src/**/*.java'
+    include 'spring-boot-service-framework-starters/*/src/**/*.java'
+    include 'build-logic/*/src/**/*.java'
+    exclude '**/build/**'
+    exclude '**/generated/**'
+}
+
+def stripJavaCommentsAndLiterals = { String source ->
+    def output = new StringBuilder(source.length())
+    def state = 'code'
+    def index = 0
+    while (index < source.length()) {
+        def current = source.charAt(index)
+        def next = index + 1 < source.length() ? source.charAt(index + 1) : (char) 0
+        def third = index + 2 < source.length() ? source.charAt(index + 2) : (char) 0
+
+        if (state == 'code') {
+            if (current == '/' && next == '/') {
+                output.append('  ')
+                index += 2
+                state = 'line-comment'
+                continue
+            }
+            if (current == '/' && next == '*') {
+                output.append('  ')
+                index += 2
+                state = 'block-comment'
+                continue
+            }
+            if (current == '"' && next == '"' && third == '"') {
+                output.append('   ')
+                index += 3
+                state = 'text-block'
+                continue
+            }
+            if (current == '"') {
+                output.append(' ')
+                index++
+                state = 'string'
+                continue
+            }
+            if (current == '\'') {
+                output.append(' ')
+                index++
+                state = 'character'
+                continue
+            }
+            output.append(current)
+            index++
+            continue
+        }
+
+        if (state == 'line-comment') {
+            output.append(current == '\n' ? '\n' : ' ')
+            index++
+            if (current == '\n') {
+                state = 'code'
+            }
+            continue
+        }
+
+        if (state == 'block-comment') {
+            if (current == '*' && next == '/') {
+                output.append('  ')
+                index += 2
+                state = 'code'
+            } else {
+                output.append(current == '\n' ? '\n' : ' ')
+                index++
+            }
+            continue
+        }
+
+        if (state == 'text-block') {
+            if (current == '"' && next == '"' && third == '"') {
+                output.append('   ')
+                index += 3
+                state = 'code'
+            } else {
+                output.append(current == '\n' ? '\n' : ' ')
+                index++
+            }
+            continue
+        }
+
+        def delimiter = state == 'string' ? '"' : '\''
+        if (current == '\\' && index + 1 < source.length()) {
+            output.append(' ')
+            output.append(source.charAt(index + 1) == '\n' ? '\n' : ' ')
+            index += 2
+        } else if (current == delimiter) {
+            output.append(' ')
+            index++
+            state = 'code'
+        } else {
+            output.append(current == '\n' ? '\n' : ' ')
+            index++
+        }
+    }
+    output.toString()
+}
+
+def extractNonJavadocComments = { String source ->
+    def comments = []
+    def buffer = new StringBuilder()
+    def state = 'code'
+    def index = 0
+    def line = 1
+    def commentLine = 1
+
+    while (index < source.length()) {
+        def current = source.charAt(index)
+        def next = index + 1 < source.length() ? source.charAt(index + 1) : (char) 0
+        def third = index + 2 < source.length() ? source.charAt(index + 2) : (char) 0
+
+        if (state == 'code') {
+            if (current == '/' && next == '/') {
+                buffer.setLength(0)
+                commentLine = line
+                index += 2
+                state = 'line-comment'
+                continue
+            }
+            if (current == '/' && next == '*') {
+                def javadoc = third == '*'
+                buffer.setLength(0)
+                commentLine = line
+                index += 2
+                state = javadoc ? 'javadoc' : 'block-comment'
+                continue
+            }
+            if (current == '"' && next == '"' && third == '"') {
+                index += 3
+                state = 'text-block'
+                continue
+            }
+            if (current == '"') {
+                index++
+                state = 'string'
+                continue
+            }
+            if (current == '\'') {
+                index++
+                state = 'character'
+                continue
+            }
+            if (current == '\n') {
+                line++
+            }
+            index++
+            continue
+        }
+
+        if (state == 'line-comment') {
+            if (current == '\n') {
+                comments << [line: commentLine, text: buffer.toString()]
+                line++
+                state = 'code'
+            } else {
+                buffer.append(current)
+            }
+            index++
+            continue
+        }
+
+        if (state in ['block-comment', 'javadoc']) {
+            if (current == '*' && next == '/') {
+                if (state == 'block-comment') {
+                    comments << [line: commentLine, text: buffer.toString()]
+                }
+                index += 2
+                state = 'code'
+            } else {
+                buffer.append(current)
+                if (current == '\n') {
+                    line++
+                }
+                index++
+            }
+            continue
+        }
+
+        if (state == 'text-block') {
+            if (current == '"' && next == '"' && third == '"') {
+                index += 3
+                state = 'code'
+            } else {
+                if (current == '\n') {
+                    line++
+                }
+                index++
+            }
+            continue
+        }
+
+        def delimiter = state == 'string' ? '"' : '\''
+        if (current == '\\' && index + 1 < source.length()) {
+            if (source.charAt(index + 1) == '\n') {
+                line++
+            }
+            index += 2
+        } else {
+            if (current == delimiter) {
+                state = 'code'
+            }
+            if (current == '\n') {
+                line++
+            }
+            index++
+        }
+    }
+
+    if (state == 'line-comment') {
+        comments << [line: commentLine, text: buffer.toString()]
+    }
+    comments
+}
+
+def looksLikeCommentedJavaCode = { String comment ->
+    def codePatterns = [
+            ~/^(?:package|import)\s+[A-Za-z_$][A-Za-z0-9_$.]*(?:\.\*)?\s*;$/,
+            ~/^@[A-Za-z_$][A-Za-z0-9_$.]*(?:\(.*\))?$/,
+            ~/^(?:(?:public|protected|private|static|final|abstract|synchronized|native|transient|volatile|sealed|non-sealed)\s+)+(?:class|interface|record|enum|[A-Za-z_$][A-Za-z0-9_$<>,.?\[\] ]*)\b.*[;{]$/,
+            ~/^(?:if|else|for|while|do|switch|case|default|try|catch|finally|return|throw|break|continue|yield|new)\b.*[;{]$/,
+            ~/^(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*[A-Za-z_$][A-Za-z0-9_$]*\s*\(.*\)\s*;$/,
+            ~/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*|\[[^]]+])*\s*(?:=|\+=|-=|\*=|\/=|%=|&&=|\|\|=|\+\+|--)\s*.*;$/,
+            ~/^(?:[A-Za-z_$][A-Za-z0-9_$.<>,?\[\]]*\s+)+[A-Za-z_$][A-Za-z0-9_$]*\s*(?:=.*)?;$/,
+            ~/^[{}]+;?$/
+    ]
+    comment.readLines().any { rawLine ->
+        def line = rawLine.trim().replaceFirst(/^\*\s?/, '')
+        !line.isEmpty() && codePatterns.any { line ==~ it }
+    }
+}
+
+tasks.register('validateForbiddenCodeNames') {
+    group = 'verification'
+    description = 'Rejects prohibited legacy names in maintained Java identifiers and file names.'
+    inputs.files(maintainedJavaSources)
+
+    doLast {
+        def forbiddenIdentifier = ~/(?i)\b[A-Za-z_$][A-Za-z0-9_$]*(?:requestor|transactionalid)[A-Za-z0-9_$]*\b/
+        def failures = []
+
+        maintainedJavaSources.files.sort().each { source ->
+            if (source.name =~ /(?i)(requestor|transactionalid)/) {
+                failures << "${relativePath(source)}: prohibited legacy name in file name"
+            }
+            stripJavaCommentsAndLiterals(source.getText('UTF-8')).eachLine { line, number ->
+                def matcher = line =~ forbiddenIdentifier
+                matcher.each { match ->
+                    failures << "${relativePath(source)}:${number}: prohibited legacy identifier '${match}'"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Prohibited code names found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateNoCommentedOutCode') {
+    group = 'verification'
+    description = 'Rejects Java statements and declarations left inside non-Javadoc comments.'
+    inputs.files(maintainedJavaSources)
+
+    doLast {
+        def failures = []
+        maintainedJavaSources.files.sort().each { source ->
+            extractNonJavadocComments(source.getText('UTF-8')).findAll {
+                looksLikeCommentedJavaCode(it.text)
+            }.each { comment ->
+                failures << "${relativePath(source)}:${comment.line}: remove commented-out Java code"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Commented-out code found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateCodeQualityRuleFixtures') {
+    group = 'verification'
+    description = 'Verifies naming and commented-code rules against representative source snippets.'
+
+    doLast {
+        def forbiddenIdentifier = ~/(?i)\b[A-Za-z_$][A-Za-z0-9_$]*(?:requestor|transactionalid)[A-Za-z0-9_$]*\b/
+        def identifierSource = '''
+            class Sample {
+                void tokenRequestor() {
+                    String removedProperty = "credential-token-requestor-id";
+                    // TransactionalId is retained only in migration documentation.
+                }
+            }
+        '''
+        def strippedIdentifierSource = stripJavaCommentsAndLiterals(identifierSource)
+        if (!(strippedIdentifierSource =~ forbiddenIdentifier).find()) {
+            throw new GradleException('Forbidden-name rule did not detect a legacy Java identifier')
+        }
+        if (stripJavaCommentsAndLiterals('String value = "credential-token-requestor-id";') =~ forbiddenIdentifier) {
+            throw new GradleException('Forbidden-name rule must ignore string literal migration references')
+        }
+        if (!looksLikeCommentedJavaCode('value = client.call();')) {
+            throw new GradleException('Commented-code rule did not detect a Java assignment')
+        }
+        if (looksLikeCommentedJavaCode('Compatibility hook for simple sinks.')) {
+            throw new GradleException('Commented-code rule rejected an explanatory comment')
+        }
+    }
+}
+
+def publicApiJavadocTasks = [
+        ':spring-boot-service-framework-commons:javadoc',
+        ':spring-boot-service-framework-logging-core:javadoc',
+        ':spring-boot-service-framework-http-client-core:javadoc',
+        ':spring-boot-service-framework-mock-core:javadoc',
+        ':spring-boot-service-framework-error-core:javadoc',
+        ':spring-boot-service-framework-openapi-generator:javadoc',
+        ':spring-boot-service-framework-openapi-contract-testing:javadoc',
+        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:javadoc',
+        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:javadoc',
+        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:javadoc',
+        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:javadoc'
+]
+
+tasks.register('publicApiJavadocCheck') {
+    group = 'verification'
+    description = 'Generates public API Javadocs with warnings treated as errors.'
+    dependsOn(publicApiJavadocTasks)
+    dependsOn gradle.includedBuild('build-logic').task(':openapi-generator-plugin:javadoc')
+}
+
+tasks.register('validatePublicPackageInfo') {
+    group = 'verification'
+    description = 'Validates package-info.java coverage for every supported public package.'
+    dependsOn tasks.named('validatePublicApiInventory')
+}
+
+tasks.register('codeQualityCheck') {
+    group = 'verification'
+    description = 'Validates formatting, public API documentation, package documentation, naming, and source hygiene.'
+    dependsOn(
+            tasks.named('spotlessCheck'),
+            tasks.named('publicApiJavadocCheck'),
+            tasks.named('validatePublicPackageInfo'),
+            tasks.named('validateForbiddenCodeNames'),
+            tasks.named('validateNoCommentedOutCode'),
+            tasks.named('validateCodeQualityRuleFixtures')
+    )
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('codeQualityCheck')
+}

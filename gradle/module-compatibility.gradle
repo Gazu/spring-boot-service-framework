@@ -1,0 +1,251 @@
+def publicApiModel = rootProject.ext.serviceFrameworkPublicApiModel
+
+def moduleCompatibilityContracts = [
+        commons           : [
+                taskName          : 'commonsCompatibilityCheck',
+                displayName       : 'Commons',
+                artifacts         : ['com.smbtech:spring-boot-service-framework-commons'],
+                autoConfiguration : [:],
+                pluginIds         : [],
+                verificationTasks : [':spring-boot-service-framework-commons:check']
+        ],
+        logging           : [
+                taskName          : 'loggingCompatibilityCheck',
+                displayName       : 'Logging',
+                artifacts         : [
+                        'com.smbtech:spring-boot-service-framework-logging-core',
+                        'com.smbtech:spring-boot-service-framework-starter-logging'
+                ],
+                autoConfiguration : [
+                        'com.smbtech:spring-boot-service-framework-starter-logging':
+                                'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+                ],
+                pluginIds         : [],
+                verificationTasks : [
+                        ':spring-boot-service-framework-logging-core:check',
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check'
+                ]
+        ],
+        httpClient        : [
+                taskName          : 'httpClientCompatibilityCheck',
+                displayName       : 'HTTP Client',
+                artifacts         : [
+                        'com.smbtech:spring-boot-service-framework-http-client-core',
+                        'com.smbtech:spring-boot-service-framework-starter-rest-client'
+                ],
+                autoConfiguration : [
+                        'com.smbtech:spring-boot-service-framework-starter-rest-client':
+                                'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+                ],
+                pluginIds         : [],
+                verificationTasks : [
+                        ':spring-boot-service-framework-http-client-core:check',
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check'
+                ]
+        ],
+        mock              : [
+                taskName          : 'mockCompatibilityCheck',
+                displayName       : 'Mock',
+                artifacts         : [
+                        'com.smbtech:spring-boot-service-framework-mock-core',
+                        'com.smbtech:spring-boot-service-framework-starter-mock'
+                ],
+                autoConfiguration : [
+                        'com.smbtech:spring-boot-service-framework-starter-mock':
+                                'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+                ],
+                pluginIds         : [],
+                verificationTasks : [
+                        ':spring-boot-service-framework-mock-core:check',
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check'
+                ]
+        ],
+        openApiGenerator  : [
+                taskName          : 'openApiGeneratorCompatibilityCheck',
+                displayName       : 'OpenAPI Generator',
+                artifacts         : ['com.smbtech:spring-boot-service-framework-openapi-generator'],
+                autoConfiguration : [:],
+                pluginIds         : [],
+                verificationTasks : [
+                        ':spring-boot-service-framework-openapi-generator:check',
+                        'validateOpenApiGeneratorModuleCompatibility'
+                ]
+        ],
+        contractTesting   : [
+                taskName          : 'contractTestingCompatibilityCheck',
+                displayName       : 'Contract Testing',
+                artifacts         : ['com.smbtech:spring-boot-service-framework-openapi-contract-testing'],
+                autoConfiguration : [:],
+                pluginIds         : [],
+                verificationTasks : [':spring-boot-service-framework-openapi-contract-testing:check']
+        ],
+        openApiGradlePlugin: [
+                taskName          : 'openApiGradlePluginCompatibilityCheck',
+                displayName       : 'OpenAPI Gradle Plugin',
+                artifacts         : ['Gradle plugin com.smbtech.service-framework.openapi-generator'],
+                autoConfiguration : [:],
+                pluginIds         : ['com.smbtech.service-framework.openapi-generator'],
+                verificationTasks : [
+                        'smbtechOpenApiBuildLogicCheck',
+                        'validateOpenApiTaskCompatibility'
+                ]
+        ]
+]
+
+def artifactByName = publicApiModel.artifacts.collectEntries { artifact ->
+    [(artifact.artifact): artifact]
+}
+
+def resolvePublicTypes = { Map artifact ->
+    publicApiModel.scanPublicTypes(artifact).findAll { type ->
+        publicApiModel.isConventionPublicPackage(artifact, type.packageName) ||
+                artifact.publicPackageExceptions.contains(type.packageName) ||
+                artifact.publicTypeExceptions.contains(type.qualifiedName)
+    }
+}
+
+def readAutoConfigurationImports = { String path ->
+    def importsFile = file(path)
+    if (!importsFile.isFile()) {
+        throw new GradleException("Missing auto-configuration imports file: ${path}")
+    }
+    importsFile.readLines('UTF-8')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() && !it.startsWith('#') }
+}
+
+def renderModuleCompatibilityContract = { String contractName, Map contract ->
+    def missingArtifacts = contract.artifacts.findAll { !artifactByName.containsKey(it) }
+    if (!missingArtifacts.isEmpty()) {
+        throw new GradleException(
+                "Unknown artifacts in ${contractName} compatibility contract: ${missingArtifacts}"
+        )
+    }
+
+    def publicTypes = []
+    def extensionPoints = []
+    def properties = []
+    contract.artifacts.each { artifactName ->
+        def artifact = artifactByName[artifactName]
+        resolvePublicTypes(artifact).each { type ->
+            publicTypes << "${artifactName}|${type.kind}|${type.qualifiedName}"
+            if (type.kind in ['interface', 'annotation']) {
+                extensionPoints << "${artifactName}|${type.kind}|${type.qualifiedName}"
+            }
+        }
+        publicApiModel.readConfigurationProperties(artifact).each { property ->
+            properties << "${artifactName}|${property}"
+        }
+    }
+
+    def autoConfigurationImports = contract.autoConfiguration.collectMany { artifactName, path ->
+        readAutoConfigurationImports(path).collect { importedType ->
+            "${artifactName}|${importedType}"
+        }
+    }
+    def pluginIds = contract.pluginIds.collect { pluginId ->
+        "${contract.artifacts.first()}|${pluginId}"
+    }
+
+    def output = new StringBuilder()
+    output << '# Generated by ./gradlew generateModuleCompatibilityContracts. Do not edit manually.\n'
+    output << 'schema-version=1\n'
+    output << "module=${contract.displayName}\n"
+    [
+            artifacts                   : contract.artifacts,
+            'public-api'                : publicTypes,
+            'extension-points'          : extensionPoints,
+            properties                  : properties,
+            'auto-configuration-imports': autoConfigurationImports,
+            'gradle-plugin-ids'         : pluginIds
+    ].each { section, values ->
+        output << "\n${section}:\n"
+        values.toSet().sort().each { value ->
+            output << "- ${value}\n"
+        }
+    }
+    output.toString()
+}
+
+def contractDirectory = layout.projectDirectory.dir('gradle/compatibility/contracts')
+def compatibilityContractInputs = files(
+        publicApiModel.artifacts.collect { artifact ->
+            fileTree(artifact.sourceDirectory) {
+                include '**/*.java'
+            }
+        },
+        publicApiModel.artifacts.findAll { it.propertyReference }.collect { it.propertyReference },
+        moduleCompatibilityContracts.values().collectMany { it.autoConfiguration.values() }
+)
+
+tasks.register('generateModuleCompatibilityContracts') {
+    group = 'build setup'
+    description = 'Generates reviewed compatibility baselines for supported framework modules.'
+    inputs.files(compatibilityContractInputs)
+    outputs.files(moduleCompatibilityContracts.keySet().collect { contractName ->
+        contractDirectory.file("${contractName}.txt")
+    })
+
+    doLast {
+        contractDirectory.asFile.mkdirs()
+        moduleCompatibilityContracts.each { contractName, contract ->
+            contractDirectory.file("${contractName}.txt").asFile.setText(
+                    renderModuleCompatibilityContract(contractName, contract),
+                    'UTF-8'
+            )
+        }
+    }
+}
+
+def moduleCompatibilityValidationTasks = []
+moduleCompatibilityContracts.each { contractName, contract ->
+    def contractFile = contractDirectory.file("${contractName}.txt")
+    def validationTask = tasks.register(
+            "validate${contractName.capitalize()}CompatibilityContract"
+    ) {
+        group = 'verification'
+        description = "Validates the reviewed ${contract.displayName} public compatibility contract."
+        mustRunAfter tasks.named('generateModuleCompatibilityContracts')
+        inputs.files(compatibilityContractInputs)
+        inputs.file(contractFile)
+
+        doLast {
+            if (!contractFile.asFile.isFile()) {
+                throw new GradleException(
+                        "Missing ${relativePath(contractFile.asFile)}. Run ./gradlew generateModuleCompatibilityContracts."
+                )
+            }
+            def expected = renderModuleCompatibilityContract(contractName, contract).replace('\r\n', '\n')
+            def actual = contractFile.asFile.getText('UTF-8').replace('\r\n', '\n')
+            if (actual != expected) {
+                throw new GradleException(
+                        "${contract.displayName} compatibility contract changed. " +
+                                'Run ./gradlew generateModuleCompatibilityContracts and review the contract diff.'
+                )
+            }
+        }
+    }
+    moduleCompatibilityValidationTasks << validationTask
+
+    tasks.register(contract.taskName) {
+        group = 'verification'
+        description = "Validates the ${contract.displayName} supported API and module behavior."
+        dependsOn(validationTask)
+        dependsOn(contract.verificationTasks)
+        if (contractName == 'openApiGradlePlugin') {
+            dependsOn gradle.includedBuild('build-logic').task(':openapi-generator-plugin:check')
+        }
+    }
+}
+
+tasks.register('validateModuleCompatibilityContracts') {
+    group = 'verification'
+    description = 'Validates every reviewed module compatibility baseline.'
+    dependsOn(moduleCompatibilityValidationTasks)
+}
+
+tasks.register('moduleCompatibilityCheck') {
+    group = 'verification'
+    description = 'Runs compatibility contracts and behavioral checks for every supported framework module.'
+    dependsOn(moduleCompatibilityContracts.values().collect { tasks.named(it.taskName) })
+}

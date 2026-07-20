@@ -11,8 +11,7 @@ import java.util.Map;
 
 final class ExceptionDetails {
 
-    private ExceptionDetails() {
-    }
+    private ExceptionDetails() {}
 
     static Map<String, Object> from(Throwable throwable) {
         if (throwable == null) {
@@ -43,7 +42,8 @@ final class ExceptionDetails {
         for (StackTraceElement element : throwable.getStackTrace()) {
             digest.update(element.getClassName().getBytes(StandardCharsets.UTF_8));
             digest.update(element.getMethodName().getBytes(StandardCharsets.UTF_8));
-            digest.update(Integer.toString(element.getLineNumber()).getBytes(StandardCharsets.UTF_8));
+            digest.update(
+                    Integer.toString(element.getLineNumber()).getBytes(StandardCharsets.UTF_8));
         }
         if (throwable.getCause() != null && throwable.getCause() != throwable) {
             update(digest, throwable.getCause());
