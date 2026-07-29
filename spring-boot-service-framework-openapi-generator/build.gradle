@@ -6,7 +6,7 @@ description = 'Build-time OpenAPI artifact generator for SMB Tech service contra
 
 dependencies {
     api 'tools.jackson.core:jackson-databind:3.1.4'
-    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4'
+    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml:3.2.1'
 
 }
 
