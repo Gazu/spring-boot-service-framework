@@ -1,23 +1,28 @@
 package com.smbtech.serviceframework.openapi.generator;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
-/** Provides open api spec reader behavior. */
+/** Reads and validates the identity of OpenAPI 3.0 and 3.1 documents. */
 public final class OpenApiSpecReader {
-    /** Creates an OpenAPI spec reader instance. */
-    public OpenApiSpecReader() {}
 
-    private static final Pattern JSON_INFO_BLOCK =
-            Pattern.compile("\"info\"\\s*:\\s*\\{(?<body>.*?)\\}", Pattern.DOTALL);
-    private static final Pattern JSON_STRING_PROPERTY =
-            Pattern.compile("\"%s\"\\s*:\\s*\"(?<value>(?:\\\\.|[^\"])*)\"");
+    private static final Pattern SUPPORTED_OPENAPI_VERSION = Pattern.compile("3\\.[01]\\.\\d+");
+
+    private final ObjectMapper jsonMapper;
+    private final ObjectMapper yamlMapper;
+
+    /** Creates an OpenAPI spec reader backed by Jackson 3 JSON and YAML mappers. */
+    public OpenApiSpecReader() {
+        this.jsonMapper = new ObjectMapper();
+        this.yamlMapper = new ObjectMapper(new YAMLFactory());
+    }
 
     /**
      * Performs the read operation.
@@ -27,8 +32,14 @@ public final class OpenApiSpecReader {
      * @throws IOException when the operation cannot be completed
      */
     public OpenApiSpecInfo read(Path source) throws IOException {
-        String fileName = source.getFileName().toString().toLowerCase();
-        return fileName.endsWith(".json") ? readJson(source) : readYaml(source);
+        Path safeSource = java.util.Objects.requireNonNull(source, "source must not be null");
+        JsonNode root = mapper(safeSource).readTree(safeSource.toFile());
+        validateDocument(root, safeSource);
+        JsonNode info = root.path("info");
+        return OpenApiSpecInfo.from(
+                safeSource,
+                requiredText(info, "title", safeSource),
+                requiredText(info, "version", safeSource));
     }
 
     /**
@@ -58,79 +69,30 @@ public final class OpenApiSpecReader {
         }
     }
 
-    private OpenApiSpecInfo readYaml(Path source) throws IOException {
-        boolean inInfo = false;
-        int infoIndent = -1;
-        String title = null;
-        String version = null;
-
-        for (String rawLine : Files.readAllLines(source, StandardCharsets.UTF_8)) {
-            String line = rawLine.replace("\t", "    ");
-            String trimmed = line.trim();
-            if (trimmed.isBlank() || trimmed.startsWith("#")) {
-                continue;
-            }
-
-            int indent = line.indexOf(trimmed);
-            if (!inInfo) {
-                if (trimmed.equals("info:") || trimmed.startsWith("info: #")) {
-                    inInfo = true;
-                    infoIndent = indent;
-                }
-                continue;
-            }
-
-            if (indent <= infoIndent && trimmed.matches("^[A-Za-z0-9_.-]+:.*")) {
-                break;
-            }
-
-            if (trimmed.startsWith("title:")) {
-                title = unquoteScalar(trimmed.substring("title:".length()));
-            } else if (trimmed.startsWith("version:")) {
-                version = unquoteScalar(trimmed.substring("version:".length()));
-            }
-        }
-
-        if (title == null) {
-            throw new IllegalArgumentException(source + ": missing info.title");
-        }
-        if (version == null) {
-            throw new IllegalArgumentException(source + ": missing info.version");
-        }
-        return OpenApiSpecInfo.from(source, title, version);
+    private ObjectMapper mapper(Path source) {
+        String fileName = source.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+        return fileName.endsWith(".json") ? jsonMapper : yamlMapper;
     }
 
-    private OpenApiSpecInfo readJson(Path source) throws IOException {
-        String content = Files.readString(source, StandardCharsets.UTF_8);
-        Matcher infoMatcher = JSON_INFO_BLOCK.matcher(content);
-        if (!infoMatcher.find()) {
+    private static void validateDocument(JsonNode root, Path source) {
+        if (root == null || !root.isObject()) {
+            throw new IllegalArgumentException(source + ": OpenAPI document must be an object");
+        }
+        String version = root.path("openapi").asString().trim();
+        if (!SUPPORTED_OPENAPI_VERSION.matcher(version).matches()) {
+            throw new IllegalArgumentException(
+                    source + ": openapi must declare a supported 3.0.x or 3.1.x version");
+        }
+        if (!root.path("info").isObject()) {
             throw new IllegalArgumentException(source + ": missing info object");
         }
-        String body = infoMatcher.group("body");
-        String title = jsonStringProperty(body, "title");
-        String version = jsonStringProperty(body, "version");
-        return OpenApiSpecInfo.from(source, title, version);
     }
 
-    private static String jsonStringProperty(String body, String property) {
-        Matcher matcher =
-                Pattern.compile(JSON_STRING_PROPERTY.pattern().formatted(property)).matcher(body);
-        if (!matcher.find()) {
-            throw new IllegalArgumentException("missing info." + property);
+    private static String requiredText(JsonNode parent, String name, Path source) {
+        String value = parent.path(name).asString().trim();
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException(source + ": missing info." + name);
         }
-        return matcher.group("value").replace("\\\"", "\"").replace("\\\\", "\\");
-    }
-
-    private static String unquoteScalar(String rawValue) {
-        String value = rawValue.trim();
-        int commentIndex = value.indexOf(" #");
-        if (commentIndex >= 0) {
-            value = value.substring(0, commentIndex).trim();
-        }
-        if ((value.startsWith("'") && value.endsWith("'"))
-                || (value.startsWith("\"") && value.endsWith("\""))) {
-            return value.substring(1, value.length() - 1).trim();
-        }
-        return value.trim();
+        return value;
     }
 }

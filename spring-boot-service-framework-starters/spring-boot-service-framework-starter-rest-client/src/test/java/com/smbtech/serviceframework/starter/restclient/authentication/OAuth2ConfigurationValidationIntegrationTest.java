@@ -6,6 +6,8 @@ import com.smbtech.serviceframework.starter.restclient.adapter.out.authenticatio
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidationRunner;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidator;
 import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.SpringOAuth2TokenResponseClientFactory;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -23,6 +25,8 @@ class OAuth2ConfigurationValidationIntegrationTest {
                     .withConfiguration(
                             AutoConfigurations.of(
                                     RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAuthenticationAutoConfiguration.class,
                                     OAuth2ClientAutoConfiguration.class));
 
     @Test

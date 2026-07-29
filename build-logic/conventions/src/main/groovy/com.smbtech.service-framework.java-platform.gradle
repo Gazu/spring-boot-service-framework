@@ -1,0 +1,108 @@
+plugins {
+    id 'java-platform'
+    id 'maven-publish'
+    id 'signing'
+}
+
+def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+
+javaPlatform {
+    allowDependencies()
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.javaPlatform
+            pom {
+                name = project.name
+                description = providers.provider { project.description }
+                url = projectUrl
+                inceptionYear = '2025'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'Gazu'
+                        name = 'Gazu'
+                        url = 'https://github.com/Gazu'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/Gazu/spring-boot-service-framework.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/Gazu/spring-boot-service-framework.git'
+                    url = projectUrl
+                    tag = "v${project.version}"
+                }
+                issueManagement {
+                    system = 'GitHub Issues'
+                    url = "${projectUrl}/issues"
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = layout.buildDirectory.dir('repository')
+        }
+
+        def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
+                .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
+                .orNull
+        if (privateRepositoryUrl) {
+            maven {
+                name = 'privateRegistry'
+                url = uri(privateRepositoryUrl)
+                credentials {
+                    username = providers.gradleProperty('privateMavenUsername')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
+                            .getOrElse('')
+                    password = providers.gradleProperty('privateMavenPassword')
+                            .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
+                            .getOrElse('')
+                }
+            }
+        }
+    }
+}
+
+def signingKey = providers.gradleProperty('signingKey')
+        .orElse(providers.environmentVariable('SIGNING_KEY'))
+def signingPassword = providers.gradleProperty('signingPassword')
+        .orElse(providers.environmentVariable('SIGNING_PASSWORD'))
+def releaseBuild = providers.gradleProperty('releaseBuild')
+        .map { it.toBoolean() }
+        .getOrElse(false)
+
+signing {
+    required = releaseBuild
+    if (signingKey.isPresent()) {
+        useInMemoryPgpKeys(signingKey.get(), signingPassword.getOrElse(''))
+    }
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    if (repository.name == 'privateRegistry') {
+        dependsOn ':validateReleaseTag'
+    }
+    doFirst {
+        if (repository.name == 'privateRegistry' && !releaseBuild) {
+            throw new GradleException('Remote publication requires -PreleaseBuild=true.')
+        }
+        if (repository.name == 'privateRegistry' && !signingKey.isPresent()) {
+            throw new GradleException('Remote publication requires SIGNING_KEY and SIGNING_PASSWORD.')
+        }
+    }
+}

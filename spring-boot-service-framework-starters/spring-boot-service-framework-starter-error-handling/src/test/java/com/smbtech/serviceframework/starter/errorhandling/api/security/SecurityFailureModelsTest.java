@@ -124,6 +124,14 @@ class SecurityFailureModelsTest {
         assertThat(resolution.hasOAuth2Error()).isTrue();
         assertThat(resolution.bearerChallenge()).isTrue();
 
+        ResolvedError replacement = resolvedError.withExposure(ErrorExposure.INTERNAL);
+        SecurityFailureResolution updated = resolution.withResolvedError(replacement);
+        assertThat(updated.resolvedError()).isSameAs(replacement);
+        assertThat(updated.reason()).isEqualTo(resolution.reason());
+        assertThat(updated.oauth2Error()).isEqualTo(resolution.oauth2Error());
+        assertThat(updated.bearerChallenge()).isEqualTo(resolution.bearerChallenge());
+        assertThat(resolution.resolvedError()).isSameAs(resolvedError);
+
         SecurityFailureResolution generic =
                 new SecurityFailureResolution(resolvedError, SecurityFailureReason.ACCESS_DENIED);
         assertThat(generic.hasOAuth2Error()).isFalse();

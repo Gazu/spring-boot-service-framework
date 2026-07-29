@@ -11,7 +11,7 @@ smbtech:
   error-handling:
     enabled: true
     response:
-      exposure: PUBLIC
+      exposure: INTERNAL
       include-field-violations: true
       metadata-allowlist:
         - correlationId

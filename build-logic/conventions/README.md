@@ -7,8 +7,9 @@ Boot starters.
 
 | Plugin | Applies to | Centralized behavior |
 |---|---|---|
-| `com.smbtech.service-framework.java-library` | Framework Java libraries | Java 21 toolchain, UTF-8, `-parameters`, JUnit Platform, JUnit dependencies, sources JAR, Javadoc JAR, Maven publication, and publication repositories. |
+| `com.smbtech.service-framework.java-library` | Framework Java libraries | Java 21 toolchain, UTF-8, `-parameters`, JUnit Platform, JaCoCo verification, reproducible sources/Javadoc/binary JARs, complete Maven POM metadata, signing, and publication repositories. |
 | `com.smbtech.service-framework.spring-boot-starter` | Spring Boot starters | Java library convention plus the Spring Boot BOM, configuration processor, starter test dependency, and resolved Maven version mapping. |
+| `com.smbtech.service-framework.java-platform` | Framework dependency platforms | Gradle platform dependency policy, complete Maven POM metadata, signing, reproducibility, and local/private publication repositories. |
 
 Module build files retain only their description, dependencies, specialized
 tasks, boundary checks, and human-readable POM name.
@@ -27,5 +28,5 @@ From the repository root:
 ./gradlew conventionPluginsCheck
 ```
 
-The check compiles and validates both plugins and rejects duplicated convention
+The check compiles and validates the plugins and rejects duplicated convention
 configuration in framework module build files.

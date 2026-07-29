@@ -2,13 +2,17 @@
 
 The `spring-boot-service-framework-openapi-contract-testing` module executes
 Spring MVC endpoints through `MockMvc` and checks their actual responses against
-an OpenAPI 3 YAML or JSON document. It is intended for application test scope.
+an OpenAPI 3.0 or 3.1 YAML/JSON document. It is intended for application test
+scope. Swagger 2 documents are rejected explicitly.
 
 ## Dependency
 
 ```groovy
 dependencies {
-    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing:0.3.0'
+    testImplementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 ```
@@ -103,7 +107,7 @@ with `MISSING_TEST_CASE` until a case is supplied.
 
 Current support includes:
 
-- OpenAPI 3 YAML and JSON documents;
+- OpenAPI 3.0 and 3.1 YAML and JSON documents;
 - operation lookup by unique `operationId`;
 - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, and `TRACE`;
 - path parameter substitution;

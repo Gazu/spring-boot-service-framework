@@ -2,9 +2,6 @@ package com.smbtech.serviceframework.openapi.contract;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -21,6 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.util.UriUtils;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 /** Provides open api mvc contract tester behavior. */
 public final class OpenApiMvcContractTester {
@@ -249,7 +249,7 @@ public final class OpenApiMvcContractTester {
     }
 
     private static JsonNode parameterValue(String value, JsonNode schema) {
-        String type = schema.path("type").asText();
+        String type = schema.path("type").asString();
         try {
             return switch (type) {
                 case "integer" -> JsonNodeFactory.instance.numberNode(Long.parseLong(value));
@@ -257,11 +257,11 @@ public final class OpenApiMvcContractTester {
                 case "boolean" ->
                         "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)
                                 ? JsonNodeFactory.instance.booleanNode(Boolean.parseBoolean(value))
-                                : JsonNodeFactory.instance.textNode(value);
-                default -> JsonNodeFactory.instance.textNode(value);
+                                : JsonNodeFactory.instance.stringNode(value);
+                default -> JsonNodeFactory.instance.stringNode(value);
             };
         } catch (NumberFormatException exception) {
-            return JsonNodeFactory.instance.textNode(value);
+            return JsonNodeFactory.instance.stringNode(value);
         }
     }
 
@@ -416,7 +416,7 @@ public final class OpenApiMvcContractTester {
             return;
         }
         if (declared.hasNonNull("$ref")) {
-            String reference = declared.path("$ref").asText();
+            String reference = declared.path("$ref").asString();
             if (!references.add(reference)) {
                 return;
             }
@@ -436,7 +436,7 @@ public final class OpenApiMvcContractTester {
             return;
         }
 
-        String type = declared.path("type").asText();
+        String type = declared.path("type").asString();
         if (!matchesType(actual, type)) {
             addSchemaViolation(
                     operationId,
@@ -451,7 +451,7 @@ public final class OpenApiMvcContractTester {
             declared.path("required")
                     .forEach(
                             required -> {
-                                String field = required.asText();
+                                String field = required.asString();
                                 if (!actual.has(field) || actual.path(field).isNull()) {
                                     addSchemaViolation(
                                             operationId,
@@ -520,8 +520,8 @@ public final class OpenApiMvcContractTester {
             JsonNode declared,
             OpenApiContractViolationCode violationCode,
             List<OpenApiContractViolation> violations) {
-        if (actual.isTextual()) {
-            int length = actual.textValue().length();
+        if (actual.isString()) {
+            int length = actual.stringValue().length();
             if (declared.has("minLength") && length < declared.path("minLength").asInt()) {
                 addSchemaViolation(
                         operationId,
@@ -539,8 +539,8 @@ public final class OpenApiMvcContractTester {
                         violations);
             }
             if (declared.hasNonNull("pattern")
-                    && !java.util.regex.Pattern.compile(declared.path("pattern").asText())
-                            .matcher(actual.textValue())
+                    && !java.util.regex.Pattern.compile(declared.path("pattern").asString())
+                            .matcher(actual.stringValue())
                             .find()) {
                 addSchemaViolation(
                         operationId,
@@ -582,7 +582,7 @@ public final class OpenApiMvcContractTester {
         return switch (type) {
             case "object" -> actual.isObject();
             case "array" -> actual.isArray();
-            case "string" -> actual.isTextual();
+            case "string" -> actual.isString();
             case "integer" -> actual.isIntegralNumber();
             case "number" -> actual.isNumber();
             case "boolean" -> actual.isBoolean();

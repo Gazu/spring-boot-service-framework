@@ -1,8 +1,8 @@
 package com.smbtech.serviceframework.starter.mock.api;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Optional;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.core.type.TypeReference;
 
 /** Defines the mock service contract. */
 public interface MockService {

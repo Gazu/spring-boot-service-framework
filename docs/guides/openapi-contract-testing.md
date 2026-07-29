@@ -7,7 +7,10 @@ implementation with the committed OpenAPI contract.
 
 ```groovy
 dependencies {
-    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing:0.3.0'
+    testImplementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 ```

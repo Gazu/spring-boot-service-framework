@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -68,6 +70,42 @@ class NotificationTest {
         metadata.put("clientName", "changed");
 
         assertEquals("catalog", notification.metadata().get("clientName"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recursivelyCopiesStructuredMetadata() {
+        List<Object> roles = new ArrayList<>(List.of("reader"));
+        Map<String, Object> security = new LinkedHashMap<>();
+        security.put("roles", roles);
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("security", security);
+
+        Notification notification =
+                Notification.builder().code("E_SECURITY_0001").metadata(metadata).build();
+        roles.add("writer");
+        security.put("scheme", "bearer");
+
+        Map<String, Object> immutableSecurity =
+                (Map<String, Object>) notification.metadata().get("security");
+        List<Object> immutableRoles = (List<Object>) immutableSecurity.get("roles");
+        assertEquals(List.of("reader"), immutableRoles);
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> immutableSecurity.put("scheme", "bearer"));
+        assertThrows(UnsupportedOperationException.class, () -> immutableRoles.add("writer"));
+    }
+
+    @Test
+    void preservesIdentityWhenReplacingMetadata() {
+        Notification source = Notification.error("E_SERVICE_0001", "Failure");
+
+        Notification updated = source.withMetadata(Map.of("category", "INTERNAL"));
+
+        assertEquals(source.code(), updated.code());
+        assertEquals(source.id(), updated.id());
+        assertEquals(source.timestamp(), updated.timestamp());
+        assertEquals(Map.of("category", "INTERNAL"), updated.metadata());
     }
 
     @Test

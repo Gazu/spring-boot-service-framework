@@ -1,8 +1,8 @@
 package com.smbtech.serviceframework.openapi.contract;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import java.util.Objects;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Carries immutable open api response data.

@@ -27,6 +27,8 @@ import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaim
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaimsContributor;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestContext;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestCustomizer;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
 import java.time.Instant;
@@ -64,6 +66,8 @@ class RestClientCompatibilityTest {
                     .withConfiguration(
                             AutoConfigurations.of(
                                     RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAuthenticationAutoConfiguration.class,
                                     OAuth2ClientAutoConfiguration.class));
 
     @Test
@@ -94,7 +98,11 @@ class RestClientCompatibilityTest {
         AtomicReference<RecordingOAuth2AuthorizedClientService> delegate = new AtomicReference<>();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(ClientRegistrationRepository.class, this::clientRegistrationRepository)
                 .withBean(
                         OAuth2AuthorizedClientService.class,
@@ -128,7 +136,11 @@ class RestClientCompatibilityTest {
     @Test
     void OAuth2ValidationDoesNotRequireLoggingStarterStructuredLoggerFactoryBean() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "smbtech.rest-clients.authentication.jwt-bearer.unused-token.key-store-id=unused-signing-key")
                 .run(
@@ -227,7 +239,11 @@ class RestClientCompatibilityTest {
                         RequestContext.ofHeaders(Map.of("X-Custom-Context", "enabled")));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(RequestContextManager.class, () -> customManager)
                 .run(
                         context -> {
@@ -247,7 +263,11 @@ class RestClientCompatibilityTest {
         AccessTokenClient customClient = new FixedAccessTokenClient("custom-client-token");
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(AccessTokenClient.class, () -> customClient)
                 .run(
                         context -> {
@@ -273,7 +293,11 @@ class RestClientCompatibilityTest {
                         "custom-provider-token:" + tokenRequestId + ":" + scopes;
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(AccessTokenProvider.class, () -> customProvider)
                 .run(
                         context -> {
@@ -298,7 +322,11 @@ class RestClientCompatibilityTest {
         RestClientRegistry customRegistry = new FixedRestClientRegistry();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(RestClientRegistry.class, () -> customRegistry)
                 .run(
                         context -> {
@@ -317,7 +345,11 @@ class RestClientCompatibilityTest {
         ApiClientFactory customFactory = new FixedApiClientFactory();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(ApiClientFactory.class, () -> customFactory)
                 .run(
                         context -> {
@@ -334,7 +366,11 @@ class RestClientCompatibilityTest {
         OAuth2AuthorizedClientManager customManager = request -> null;
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(ClientRegistrationRepository.class, this::clientRegistrationRepository)
                 .withBean(OAuth2AuthorizedClientManager.class, () -> customManager)
                 .run(
@@ -351,7 +387,11 @@ class RestClientCompatibilityTest {
         OAuth2AuthorizedClientProvider customProvider = context -> null;
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(ClientRegistrationRepository.class, this::clientRegistrationRepository)
                 .withBean(OAuth2AuthorizedClientProvider.class, () -> customProvider)
                 .run(
@@ -367,7 +407,11 @@ class RestClientCompatibilityTest {
     @Test
     void oauth2ExtensionBeansAreDiscoveredAndOrdered() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withUserConfiguration(OAuth2ExtensionBeansConfiguration.class)
                 .run(
                         context -> {

@@ -963,9 +963,17 @@ The version catalog validation rejects:
   current spec;
 - unsupported catalog key shapes.
 
-The current YAML parser is intentionally narrow and validates only the `info`
-block required for artifact coordinates. Full OpenAPI parsing belongs to the
-future Gradle plugin implementation.
+`validateOpenApiSpecs` is a typed Gradle task backed by Jackson 3. It parses the
+complete YAML or JSON document structurally, accepts explicit OpenAPI `3.0.x`
+and `3.1.x` declarations, and validates the `info` identity used for artifact
+coordinates. Swagger 2 documents, malformed input, unsupported versions, blank
+identity values, invalid artifact versions, and duplicate generated coordinates
+are rejected before generation.
+
+OpenAPI 3.1 document parsing does not imply support for every JSON Schema 2020-12
+keyword in generated Java sources. Generation remains limited to the schema and
+operation capabilities listed in this guide; unsupported constructs must fail a
+compatibility fixture before being documented as supported.
 
 Accepted:
 

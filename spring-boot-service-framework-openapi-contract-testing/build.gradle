@@ -12,11 +12,11 @@ dependencyManagement {
 }
 
 dependencies {
-    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'tools.jackson.core:jackson-databind'
     api 'jakarta.servlet:jakarta.servlet-api'
     api 'org.springframework:spring-test'
 
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.springframework:spring-webmvc'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

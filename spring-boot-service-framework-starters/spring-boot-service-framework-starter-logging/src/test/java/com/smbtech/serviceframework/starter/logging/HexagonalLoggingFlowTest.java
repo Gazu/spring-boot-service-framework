@@ -6,8 +6,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.logging.application.StructuredLoggingService;
 import com.smbtech.serviceframework.logging.domain.EventType;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
@@ -16,6 +14,8 @@ import com.smbtech.serviceframework.starter.logging.adapter.out.slf4j.Slf4jLogEv
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 class HexagonalLoggingFlowTest {
 

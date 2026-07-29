@@ -1,13 +1,14 @@
 package com.smbtech.serviceframework.starter.errorhandling.adapter.in.web;
 
 import com.smbtech.serviceframework.commons.notification.Notification;
-import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.ThrowableErrorResolutionPipeline;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorMetricsRecorder;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
 import com.smbtech.serviceframework.starter.errorhandling.customizer.StandardErrorMetadataCustomizer;
+import com.smbtech.serviceframework.starter.errorhandling.internal.ErrorResponsePipeline;
+import com.smbtech.serviceframework.starter.errorhandling.internal.PreparedErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Objects;
@@ -24,13 +25,7 @@ public final class ServiceFrameworkExceptionHandler {
 
     private final ThrowableErrorResolutionPipeline resolutionPipeline;
 
-    private final NotificationResponseFactory responseFactory;
-
-    private final ErrorReporter errorReporter;
-
-    private final ErrorMetricsRecorder metricsRecorder;
-
-    private final ErrorCustomizationPipeline customizationPipeline;
+    private final ErrorResponsePipeline responsePipeline;
 
     /**
      * Creates the framework MVC exception handler.
@@ -99,17 +94,41 @@ public final class ServiceFrameworkExceptionHandler {
             ErrorReporter errorReporter,
             ErrorMetricsRecorder metricsRecorder,
             ErrorCustomizationPipeline customizationPipeline) {
+        this(
+                resolutionPipeline,
+                responseFactory,
+                errorReporter,
+                metricsRecorder,
+                customizationPipeline,
+                new FinalNotificationResponseSanitizer());
+    }
+
+    /**
+     * Creates the framework MVC exception handler with a final response safety boundary.
+     *
+     * @param resolutionPipeline throwable resolution pipeline
+     * @param responseFactory notification response factory
+     * @param errorReporter resolved error reporter
+     * @param metricsRecorder error metrics recorder
+     * @param customizationPipeline error and response customization pipeline
+     * @param finalResponseSanitizer final response sanitizer
+     */
+    public ServiceFrameworkExceptionHandler(
+            ThrowableErrorResolutionPipeline resolutionPipeline,
+            NotificationResponseFactory responseFactory,
+            ErrorReporter errorReporter,
+            ErrorMetricsRecorder metricsRecorder,
+            ErrorCustomizationPipeline customizationPipeline,
+            FinalNotificationResponseSanitizer finalResponseSanitizer) {
         this.resolutionPipeline =
                 Objects.requireNonNull(resolutionPipeline, "resolutionPipeline must not be null");
-        this.responseFactory =
-                Objects.requireNonNull(responseFactory, "responseFactory must not be null");
-        this.errorReporter =
-                Objects.requireNonNull(errorReporter, "errorReporter must not be null");
-        this.metricsRecorder =
-                Objects.requireNonNull(metricsRecorder, "metricsRecorder must not be null");
-        this.customizationPipeline =
-                Objects.requireNonNull(
-                        customizationPipeline, "customizationPipeline must not be null");
+        this.responsePipeline =
+                new ErrorResponsePipeline(
+                        responseFactory,
+                        errorReporter,
+                        metricsRecorder,
+                        customizationPipeline,
+                        finalResponseSanitizer);
     }
 
     /**
@@ -125,35 +144,10 @@ public final class ServiceFrameworkExceptionHandler {
         Exception failure = Objects.requireNonNull(exception, "exception must not be null");
         HttpServletRequest httpRequest =
                 Objects.requireNonNull(request, "request must not be null");
-        ResolvedError resolvedError =
-                customizationPipeline.customize(
-                        failure, resolutionPipeline.resolve(failure), httpRequest);
-        ResponseEntity<Notification> response =
-                customizationPipeline.customize(
-                        responseFactory.create(resolvedError), resolvedError, httpRequest);
-        int statusCode = response.getStatusCode().value();
-        reportSafely(failure, resolvedError, httpRequest, statusCode);
-        recordSafely(resolvedError, statusCode);
-        return response;
-    }
-
-    private void reportSafely(
-            Throwable cause,
-            ResolvedError resolvedError,
-            HttpServletRequest request,
-            int statusCode) {
-        try {
-            errorReporter.report(cause, resolvedError, request, statusCode);
-        } catch (RuntimeException ignored) {
-            // Error reporting must never replace the original HTTP response.
-        }
-    }
-
-    private void recordSafely(ResolvedError resolvedError, int statusCode) {
-        try {
-            metricsRecorder.record(resolvedError, statusCode);
-        } catch (RuntimeException ignored) {
-            // Metrics must never replace the original HTTP response.
-        }
+        PreparedErrorResponse prepared =
+                responsePipeline.prepare(failure, resolutionPipeline.resolve(failure), httpRequest);
+        responsePipeline.report(prepared);
+        responsePipeline.record(prepared);
+        return prepared.response();
     }
 }

@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.mock.adapter.out.resource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockDefinition;
 import com.smbtech.serviceframework.mock.domain.MockRequest;
 import com.smbtech.serviceframework.mock.exception.MockException;
@@ -11,12 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
+import tools.jackson.databind.ObjectMapper;
 
 class ResourceMockResponseSourceTest {
 
     private final ResourceMockResponseSource source =
-            new ResourceMockResponseSource(
-                    new DefaultResourceLoader(), new ObjectMapper().findAndRegisterModules());
+            new ResourceMockResponseSource(new DefaultResourceLoader(), new ObjectMapper());
 
     @Test
     void loadsResponseWithDefaultStatusAndMetadata() {

@@ -1,6 +1,7 @@
 package com.smbtech.serviceframework.gradle.openapi;
 
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.gradle.api.Plugin;
@@ -14,6 +15,9 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
 
     /** Participates in the consuming build verification lifecycle. */
     public static final String BUILD_LOGIC_CHECK_TASK_NAME = "smbtechOpenApiBuildLogicCheck";
+
+    /** Preserves the public OpenAPI specification validation task name. */
+    public static final String VALIDATE_SPECS_TASK_NAME = "validateOpenApiSpecs";
 
     /** Creates the OpenAPI generator plugin. */
     public SmbtechOpenApiGeneratorPlugin() {}
@@ -52,25 +56,63 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                                                                     directory
                                                                             .getAsFile()
                                                                             .getPath()));
+                            task.getSpecConfigurations()
+                                    .set(
+                                            project.provider(
+                                                    () ->
+                                                            extension.getSpecs().stream()
+                                                                    .map(
+                                                                            SmbtechOpenApiGeneratorPlugin
+                                                                                    ::specConfiguration)
+                                                                    .collect(Collectors.toList())));
                         });
 
-        project.afterEvaluate(
-                ignored ->
-                        project.getTasks()
-                                .named(
-                                        BUILD_LOGIC_CHECK_TASK_NAME,
-                                        SmbtechOpenApiBuildLogicCheckTask.class)
-                                .configure(
-                                        task ->
-                                                task.getSpecConfigurations()
-                                                        .set(
-                                                                extension.getSpecs().stream()
-                                                                        .map(
-                                                                                SmbtechOpenApiGeneratorPlugin
-                                                                                        ::specConfiguration)
-                                                                        .collect(
-                                                                                Collectors
-                                                                                        .toList()))));
+        project.getTasks()
+                .register(
+                        VALIDATE_SPECS_TASK_NAME,
+                        SmbtechOpenApiValidateSpecsTask.class,
+                        task -> {
+                            task.setGroup("verification");
+                            task.setDescription(
+                                    "Validates OpenAPI 3.0/3.1 documents and generated artifact coordinates.");
+                            task.getRootDirectory().set(project.getLayout().getProjectDirectory());
+                            task.getSpecFiles()
+                                    .from(
+                                            project.fileTree(
+                                                    project.getRootDir(),
+                                                    patterns -> {
+                                                        patterns.include(
+                                                                List.of(
+                                                                        "**/src/main/openapi/*.yaml",
+                                                                        "**/src/main/openapi/*.yml",
+                                                                        "**/src/main/openapi/*.json",
+                                                                        "**/openapi/*.yaml",
+                                                                        "**/openapi/*.yml",
+                                                                        "**/openapi/*.json",
+                                                                        "**/swagger/*.yaml",
+                                                                        "**/swagger/*.yml",
+                                                                        "**/swagger/*.json"));
+                                                        patterns.exclude(
+                                                                List.of(
+                                                                        "**/.git/**",
+                                                                        "**/.gradle/**",
+                                                                        "**/build/**"));
+                                                    }))
+                                    .from(
+                                            project.provider(
+                                                    () ->
+                                                            extension.getSpecs().stream()
+                                                                    .filter(
+                                                                            spec ->
+                                                                                    spec.getInput()
+                                                                                            .isPresent())
+                                                                    .map(
+                                                                            spec ->
+                                                                                    spec.getInput()
+                                                                                            .get()
+                                                                                            .getAsFile())
+                                                                    .collect(Collectors.toList())));
+                        });
 
         applyGeneratorImplementation(project);
     }

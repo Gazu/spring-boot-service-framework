@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import com.smbtech.serviceframework.httpclient.domain.ClientAuthenticationMethod;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionContext;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -32,7 +31,7 @@ final class ClientAssertionPipeline {
                 new ClientAssertionContext(
                         registration.getRegistrationId(),
                         registration.getClientId(),
-                        tokenUri(registration),
+                        OAuth2RegistrationValues.tokenUri(registration),
                         ClientAuthenticationMethod.PRIVATE_KEY_JWT,
                         assertion.getTokenLifetime(),
                         Map.of(),
@@ -92,13 +91,5 @@ final class ClientAssertionPipeline {
 
     private boolean isRegisteredClaim(String name) {
         return REGISTERED_CLAIMS.contains(name.trim().toLowerCase(Locale.ROOT));
-    }
-
-    private URI tokenUri(ClientRegistration registration) {
-        String tokenUri = registration.getProviderDetails().getTokenUri();
-        if (tokenUri == null || tokenUri.isBlank()) {
-            return null;
-        }
-        return URI.create(tokenUri);
     }
 }

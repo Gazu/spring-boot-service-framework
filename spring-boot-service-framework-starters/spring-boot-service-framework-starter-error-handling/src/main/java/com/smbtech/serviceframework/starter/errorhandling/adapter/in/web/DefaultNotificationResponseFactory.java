@@ -13,6 +13,7 @@ import com.smbtech.serviceframework.error.metadata.StandardErrorMetadataKeys;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationHttpStatusResolver;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -22,16 +23,14 @@ import org.springframework.http.ResponseEntity;
 /** Creates sanitized JSON notification responses using category-based statuses. */
 public final class DefaultNotificationResponseFactory implements NotificationResponseFactory {
 
-    private static final Set<String> INTERNAL_METADATA_ALLOWLIST =
-            Set.of(
-                    StandardErrorMetadataKeys.SCHEMA_VERSION,
-                    StandardErrorMetadataKeys.CATEGORY,
-                    StandardErrorMetadataKeys.CORRELATION_ID,
-                    StandardErrorMetadataKeys.RETRYABLE,
-                    StandardErrorMetadataKeys.REQUEST);
+    private static final Set<String> PUBLIC_METADATA_ALLOWLIST =
+            Set.of(StandardErrorMetadataKeys.CATEGORY, StandardErrorMetadataKeys.CORRELATION_ID);
 
-    private static final NotificationSanitizer INTERNAL_NOTIFICATION_SANITIZER =
-            new DefaultNotificationSanitizer(INTERNAL_METADATA_ALLOWLIST);
+    private static final NotificationSanitizer PUBLIC_NOTIFICATION_SANITIZER =
+            new DefaultNotificationSanitizer(PUBLIC_METADATA_ALLOWLIST);
+
+    private static final Set<String> NON_RESPONSE_METADATA_KEYS =
+            Set.of("diagnostic", "diagnosticmessage");
 
     private final NotificationHttpStatusResolver statusResolver;
 
@@ -48,7 +47,7 @@ public final class DefaultNotificationResponseFactory implements NotificationRes
      * Creates a response factory with replaceable policies.
      *
      * @param statusResolver HTTP status resolver
-     * @param notificationSanitizer public notification sanitizer
+     * @param notificationSanitizer response notification sanitizer
      */
     public DefaultNotificationResponseFactory(
             NotificationHttpStatusResolver statusResolver,
@@ -60,7 +59,7 @@ public final class DefaultNotificationResponseFactory implements NotificationRes
      * Creates a response factory with replaceable policies.
      *
      * @param statusResolver HTTP status resolver
-     * @param notificationSanitizer public notification sanitizer
+     * @param notificationSanitizer response notification sanitizer
      * @param includeFieldViolations whether validation violations are included
      */
     public DefaultNotificationResponseFactory(
@@ -81,21 +80,17 @@ public final class DefaultNotificationResponseFactory implements NotificationRes
                 Objects.requireNonNull(resolvedError, "resolvedError must not be null");
         Notification responseNotification =
                 source.exposure() == ErrorExposure.PUBLIC
-                        ? publicNotification(source, includeFieldViolations)
-                        : internalNotification(source);
+                        ? publicNotification(source)
+                        : internalNotification(
+                                source, source.notification(), includeFieldViolations);
         Notification sanitized =
                 Objects.requireNonNull(
                         notificationSanitizer.sanitize(responseNotification),
                         "notificationSanitizer must not return null");
         Notification safeNotification =
                 source.exposure() == ErrorExposure.PUBLIC
-                        ? redactPublicNotification(sanitized)
-                        : internalNotification(
-                                new ResolvedError(
-                                        sanitized,
-                                        source.category(),
-                                        ErrorExposure.INTERNAL,
-                                        source.diagnosticMessage()));
+                        ? publicNotification(source)
+                        : internalNotification(source, sanitized, includeFieldViolations);
         return ResponseEntity.status(
                         Objects.requireNonNull(
                                 statusResolver.resolve(source),
@@ -122,73 +117,62 @@ public final class DefaultNotificationResponseFactory implements NotificationRes
         return notificationSanitizer;
     }
 
-    private static Notification publicNotification(
-            ResolvedError resolvedError, boolean includeFieldViolations) {
-        if (!includeFieldViolations || !resolvedError.hasFieldViolations()) {
-            return resolvedError.notification();
-        }
+    private static Notification publicNotification(ResolvedError resolvedError) {
         Notification source = resolvedError.notification();
-        Map<String, Object> metadata = new LinkedHashMap<>(source.metadata());
-        metadata.put(
-                "violations",
-                resolvedError.fieldViolations().stream()
-                        .map(DefaultNotificationResponseFactory::violationMetadata)
-                        .toList());
-        return copy(
-                source,
-                source.code(),
-                source.message(),
-                source.severity(),
-                source.fieldName(),
-                metadata);
-    }
-
-    private static Notification internalNotification(ResolvedError resolvedError) {
-        Notification source = resolvedError.notification();
-        Notification internal =
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put(StandardErrorMetadataKeys.CATEGORY, resolvedError.category().name());
+        copyText(source.metadata(), metadata, StandardErrorMetadataKeys.CORRELATION_ID);
+        Notification minimal =
                 copy(
                         source,
-                        FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE,
+                        source.code(),
                         FallbackThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE,
-                        NotificationSeverity.ERROR,
+                        source.severity(),
                         "",
-                        internalMetadata(resolvedError));
-        return INTERNAL_NOTIFICATION_SANITIZER.sanitize(internal);
+                        metadata);
+        return PUBLIC_NOTIFICATION_SANITIZER.sanitize(minimal);
     }
 
-    private static Notification redactPublicNotification(Notification notification) {
-        return new DefaultNotificationSanitizer(notification.metadata().keySet())
-                .sanitize(notification);
-    }
-
-    private static Map<String, Object> internalMetadata(ResolvedError resolvedError) {
-        Map<String, Object> source = resolvedError.notification().metadata();
-        Map<String, Object> metadata = new LinkedHashMap<>();
+    private static Notification internalNotification(
+            ResolvedError resolvedError,
+            Notification sanitizedNotification,
+            boolean includeFieldViolations) {
+        Notification source = resolvedError.notification();
+        Map<String, Object> metadata = new LinkedHashMap<>(sanitizedNotification.metadata());
+        removeNonResponseMetadata(metadata);
         metadata.put(
                 StandardErrorMetadataKeys.SCHEMA_VERSION,
                 StandardErrorMetadata.CURRENT_SCHEMA_VERSION);
         metadata.put(StandardErrorMetadataKeys.CATEGORY, resolvedError.category().name());
-        copyText(source, metadata, StandardErrorMetadataKeys.CORRELATION_ID);
-        if (source.get(StandardErrorMetadataKeys.RETRYABLE) instanceof Boolean retryable) {
-            metadata.put(StandardErrorMetadataKeys.RETRYABLE, retryable);
+        metadata.remove(StandardErrorMetadataKeys.CORRELATION_ID);
+        copyText(source.metadata(), metadata, StandardErrorMetadataKeys.CORRELATION_ID);
+        metadata.remove(StandardErrorMetadataKeys.VIOLATIONS);
+        if (includeFieldViolations && resolvedError.hasFieldViolations()) {
+            metadata.put(
+                    StandardErrorMetadataKeys.VIOLATIONS,
+                    resolvedError.fieldViolations().stream()
+                            .map(DefaultNotificationResponseFactory::violationMetadata)
+                            .toList());
         }
-        Map<String, Object> request =
-                safeRequestMetadata(source.get(StandardErrorMetadataKeys.REQUEST));
-        if (!request.isEmpty()) {
-            metadata.put(StandardErrorMetadataKeys.REQUEST, request);
-        }
-        return Map.copyOf(metadata);
+        Notification detailed =
+                copy(
+                        source,
+                        source.code(),
+                        sanitizedNotification.message(),
+                        source.severity(),
+                        source.fieldName(),
+                        metadata);
+        return new DefaultNotificationSanitizer(detailed.metadata().keySet()).sanitize(detailed);
     }
 
-    private static Map<String, Object> safeRequestMetadata(Object value) {
-        if (!(value instanceof Map<?, ?> source)) {
-            return Map.of();
-        }
-        Map<String, Object> request = new LinkedHashMap<>();
-        copyText(source, request, StandardErrorMetadataKeys.Request.METHOD);
-        copyText(source, request, StandardErrorMetadataKeys.Request.ROUTE);
-        copyText(source, request, StandardErrorMetadataKeys.Request.OPERATION_ID);
-        return Map.copyOf(request);
+    private static void removeNonResponseMetadata(Map<String, Object> metadata) {
+        metadata.keySet().removeIf(key -> NON_RESPONSE_METADATA_KEYS.contains(normalizeKey(key)));
+    }
+
+    private static String normalizeKey(String key) {
+        return Objects.requireNonNullElse(key, "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 
     private static void copyText(Map<?, ?> source, Map<String, Object> target, String key) {
@@ -211,9 +195,9 @@ public final class DefaultNotificationResponseFactory implements NotificationRes
 
     private static Map<String, Object> violationMetadata(FieldViolation violation) {
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("fieldName", violation.fieldName());
-        metadata.put("code", violation.code());
-        metadata.put("message", violation.message());
+        metadata.put(StandardErrorMetadataKeys.Violation.FIELD_NAME, violation.fieldName());
+        metadata.put(StandardErrorMetadataKeys.Violation.CODE, violation.code());
+        metadata.put(StandardErrorMetadataKeys.Violation.MESSAGE, violation.message());
         return Map.copyOf(metadata);
     }
 }

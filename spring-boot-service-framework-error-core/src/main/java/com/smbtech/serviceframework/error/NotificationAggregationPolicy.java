@@ -12,7 +12,7 @@ public interface NotificationAggregationPolicy {
      *
      * @param notifications notifications ordered by application priority
      * @param category category associated with the primary error
-     * @param exposure public exposure policy
+     * @param exposure target response audience and detail level
      * @param diagnosticMessage internal diagnostic message
      * @return aggregated resolved error
      */

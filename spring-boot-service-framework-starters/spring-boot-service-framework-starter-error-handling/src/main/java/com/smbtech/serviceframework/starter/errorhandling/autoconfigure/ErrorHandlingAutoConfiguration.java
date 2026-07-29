@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.errorhandling.autoconfigure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.DefaultNotificationAggregationPolicy;
 import com.smbtech.serviceframework.error.DefaultNotificationSanitizer;
@@ -23,6 +22,7 @@ import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.Se
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationHttpStatusResolver;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory;
+import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.FinalNotificationResponseSanitizer;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.HttpClientExceptionResolver;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.NotificationHttpMessageConverter;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.NotificationWebMvcConfigurer;
@@ -68,10 +68,12 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesBindin
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.servlet.DispatcherServlet;
+import tools.jackson.databind.ObjectMapper;
 
 /** Auto-configures reusable servlet error handling with replaceable defaults. */
 @AutoConfiguration(
@@ -87,6 +89,7 @@ import org.springframework.web.servlet.DispatcherServlet;
         havingValue = "true",
         matchIfMissing = true)
 @EnableConfigurationProperties(ErrorHandlingProperties.class)
+@ImportRuntimeHints(ErrorHandlingRuntimeHints.class)
 public class ErrorHandlingAutoConfiguration {
     /** Creates a error handling auto configuration instance. */
     public ErrorHandlingAutoConfiguration() {}
@@ -124,6 +127,14 @@ public class ErrorHandlingAutoConfiguration {
         return new DefaultNotificationResponseFactory(
                 statusResolver,
                 notificationSanitizer,
+                properties.getResponse().isIncludeFieldViolations());
+    }
+
+    @Bean
+    FinalNotificationResponseSanitizer finalNotificationResponseSanitizer(
+            ErrorHandlingProperties properties) {
+        return new FinalNotificationResponseSanitizer(
+                new DefaultNotificationSanitizer(properties.getResponse().getMetadataAllowlist()),
                 properties.getResponse().isIncludeFieldViolations());
     }
 
@@ -234,13 +245,15 @@ public class ErrorHandlingAutoConfiguration {
             NotificationResponseFactory responseFactory,
             ObjectProvider<ErrorReporter> errorReporter,
             ObjectProvider<ErrorMetricsRecorder> metricsRecorder,
-            ErrorCustomizationPipeline customizationPipeline) {
+            ErrorCustomizationPipeline customizationPipeline,
+            FinalNotificationResponseSanitizer finalResponseSanitizer) {
         return new ServiceFrameworkExceptionHandler(
                 resolutionPipeline,
                 responseFactory,
                 composeReporters(errorReporter),
                 metricsRecorder.getIfAvailable(ErrorMetricsRecorder::noop),
-                customizationPipeline);
+                customizationPipeline,
+                finalResponseSanitizer);
     }
 
     @Configuration(proxyBeanMethods = false)
@@ -341,7 +354,8 @@ public class ErrorHandlingAutoConfiguration {
                 ErrorCustomizationPipeline customizationPipeline,
                 SecurityAuthenticationFailureResolver failureResolver,
                 OAuth2SecurityMetadataFactory metadataFactory,
-                OAuth2SecurityChallengeWriter challengeWriter) {
+                OAuth2SecurityChallengeWriter challengeWriter,
+                FinalNotificationResponseSanitizer finalResponseSanitizer) {
             return new SecurityAuthenticationEntryPoint(
                     responseFactory,
                     responseWriter,
@@ -350,7 +364,8 @@ public class ErrorHandlingAutoConfiguration {
                     customizationPipeline,
                     failureResolver,
                     metadataFactory,
-                    challengeWriter);
+                    challengeWriter,
+                    finalResponseSanitizer);
         }
 
         @Bean
@@ -364,7 +379,8 @@ public class ErrorHandlingAutoConfiguration {
                 SecurityAuthorizationFailureResolver failureResolver,
                 RequiredScopeResolver requiredScopeResolver,
                 OAuth2SecurityMetadataFactory metadataFactory,
-                OAuth2SecurityChallengeWriter challengeWriter) {
+                OAuth2SecurityChallengeWriter challengeWriter,
+                FinalNotificationResponseSanitizer finalResponseSanitizer) {
             return new SecurityAccessDeniedHandler(
                     responseFactory,
                     responseWriter,
@@ -374,7 +390,8 @@ public class ErrorHandlingAutoConfiguration {
                     failureResolver,
                     requiredScopeResolver,
                     metadataFactory,
-                    challengeWriter);
+                    challengeWriter,
+                    finalResponseSanitizer);
         }
 
         @Configuration(proxyBeanMethods = false)

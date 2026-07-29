@@ -44,6 +44,13 @@ sink logs request, response, and failure events through SLF4J. Headers and
 bodies are disabled by default because they can contain secrets or personal
 data.
 
+Before any sink receives an event, the starter always redacts authentication
+headers, cookies, API keys, token-like query parameters, known secret fields in
+bodies, and authorization values embedded in exception messages. Raw
+throwables are not forwarded to audit sinks. This mandatory protection cannot
+be disabled, but it does not replace data classification: bodies may still
+contain business or personal data and should remain disabled unless required.
+
 ---
 
 ## Optional Resilience

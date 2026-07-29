@@ -80,4 +80,29 @@ class MockRequestTest {
 
         assertArrayEquals("request".getBytes(StandardCharsets.UTF_8), request.body());
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recursivelyCopiesAttributes() {
+        List<Object> values = new ArrayList<>(List.of("one"));
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("values", values);
+
+        MockRequest request =
+                new MockRequest(
+                        "payments",
+                        "GET",
+                        "/payments",
+                        Map.of(),
+                        Map.of(),
+                        null,
+                        Map.of("filter", nested));
+        values.add("two");
+
+        Map<String, Object> immutableNested =
+                (Map<String, Object>) request.attributes().get("filter");
+        List<Object> immutableValues = (List<Object>) immutableNested.get("values");
+        assertEquals(List.of("one"), immutableValues);
+        assertThrows(UnsupportedOperationException.class, () -> immutableValues.add("two"));
+    }
 }

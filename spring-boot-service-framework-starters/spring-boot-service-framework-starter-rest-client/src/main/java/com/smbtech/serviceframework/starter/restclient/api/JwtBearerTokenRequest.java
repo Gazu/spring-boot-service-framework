@@ -1,7 +1,5 @@
 package com.smbtech.serviceframework.starter.restclient.api;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -70,7 +68,6 @@ public record JwtBearerTokenRequest(
     }
 
     private static Map<String, Object> immutableCopy(Map<String, Object> customClaims) {
-        return Collections.unmodifiableMap(
-                new LinkedHashMap<>(Objects.requireNonNullElse(customClaims, Map.of())));
+        return ImmutableRequestValues.structuredMap(customClaims);
     }
 }

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -34,5 +37,32 @@ class StructuredEventTest {
         assertThrows(IllegalArgumentException.class, () -> EventType.named(" "));
         assertThrows(
                 IllegalArgumentException.class, () -> StructuredEvent.builder().with("", "value"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recursivelyCopiesArgumentsAndStructuredData() {
+        List<Object> scopes = new ArrayList<>(List.of("payment.read"));
+        Map<String, Object> oauth2 = new LinkedHashMap<>();
+        oauth2.put("scopes", scopes);
+
+        StructuredEvent event =
+                StructuredEvent.builder()
+                        .message("Token attributes {}", oauth2)
+                        .with("oauth2", oauth2)
+                        .build();
+        scopes.add("payment.write");
+        oauth2.put("grant", "client_credentials");
+
+        Map<String, Object> immutableData = (Map<String, Object>) event.data().get("oauth2");
+        List<Object> immutableScopes = (List<Object>) immutableData.get("scopes");
+        Map<String, Object> immutableArgument = (Map<String, Object>) event.arguments().getFirst();
+        assertEquals(List.of("payment.read"), immutableScopes);
+        assertEquals(Map.of("scopes", List.of("payment.read")), immutableArgument);
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> immutableData.put("grant", "client_credentials"));
+        assertThrows(
+                UnsupportedOperationException.class, () -> immutableScopes.add("payment.write"));
     }
 }

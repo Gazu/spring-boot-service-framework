@@ -8,7 +8,10 @@ HTTP client errors, unexpected failures, and Spring Security 401/403 responses.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }
 ```
 
@@ -27,7 +30,7 @@ smbtech:
   error-handling:
     enabled: true
     response:
-      exposure: INTERNAL
+      exposure: PUBLIC
       include-field-violations: true
       metadata-allowlist:
         - correlationId
@@ -47,38 +50,36 @@ after every resolver and `ResolvedErrorCustomizer`, so the selected value
 controls application errors, MVC and validation failures, downstream failures,
 Spring Security errors, and unexpected exceptions.
 
-Use the default `INTERNAL` mode when clients must always receive the generic
-framework notification:
-
-```yaml
-smbtech:
-  error-handling:
-    response:
-      exposure: INTERNAL
-```
-
-```json
-{
-  "code": "E_SERVICE_FRAMEWORK_INTERNAL_0001",
-  "message": "The request could not be completed",
-  "severity": "ERROR",
-  "field_name": "",
-  "metadata": {
-    "schema_version": "1",
-    "category": "NOT_FOUND"
-  }
-}
-```
-
-Use `PUBLIC` only when the public codes, messages, field violations, and safe
-metadata produced by all configured resolvers are part of the application's
-external API contract:
+Use the default `PUBLIC` mode for untrusted or external consumers. It preserves
+the stable error code while returning a generic message and minimal metadata:
 
 ```yaml
 smbtech:
   error-handling:
     response:
       exposure: PUBLIC
+```
+
+```json
+{
+  "code": "E_ORDER_0001",
+  "message": "The request could not be completed",
+  "severity": "ERROR",
+  "field_name": "",
+  "metadata": {
+    "category": "NOT_FOUND"
+  }
+}
+```
+
+Use `INTERNAL` explicitly only for trusted consumers that require detailed,
+sanitized messages, field violations, and metadata:
+
+```yaml
+smbtech:
+  error-handling:
+    response:
+      exposure: INTERNAL
 ```
 
 ```json
@@ -95,10 +96,19 @@ smbtech:
 ```
 
 > [!WARNING]
-> `PUBLIC` is not configurable by category or error code. Enabling it affects
-> every handled error in the application.
+> `INTERNAL` is not configurable by category or error code. Enabling it affects
+> every handled error in the application and exposes more operational context.
 
-`PUBLIC` never exposes
+| Response element | `PUBLIC` (default) | `INTERNAL` (explicit) |
+|---|---|---|
+| `code`, `severity`, `id`, `timestamp` | Preserved | Preserved |
+| `message` | Framework generic message | Resolved sanitized message |
+| `field_name` | Empty | Resolved sanitized field name |
+| `metadata` | `category` and optional `correlation_id` | Allowlisted, recursively sanitized metadata |
+| Field violations | Omitted | Included when configured |
+| Diagnostics, causes, stack traces, or secrets | Never included | Never included |
+
+Neither mode exposes
 `diagnosticMessage`, exception causes, stack traces, tokens, passwords,
 sensitive headers, or downstream bodies: metadata allowlisting, recursive
 sanitization, secret redaction, and snake-case serialization remain mandatory.
@@ -106,11 +116,10 @@ Applications that need a different selection policy can replace the
 `ErrorExposurePolicy` bean.
 
 > [!IMPORTANT]
-> The default `INTERNAL` mode changes the earlier mixed behavior, where each
-> resolver's own `ErrorExposure` determined the response. After upgrading, an
-> application that omits this property receives the generic internal
-> notification for every handled error. Set `exposure: PUBLIC` explicitly only
-> when existing public catalog codes and messages must remain part of the API.
+> The default `PUBLIC` mode is the safe external contract. Applications that
+> previously relied on detailed messages, field violations, OAuth2 metadata,
+> or request context must configure `exposure: INTERNAL` explicitly after
+> reviewing their consumers.
 
 ## Processing Pipeline
 
@@ -118,19 +127,29 @@ Applications that need a different selection policy can replace the
 flowchart LR
     Failure["Throwable"] --> Resolver["ThrowableErrorResolutionPipeline"]
     Resolver --> Resolved["ResolvedError"]
-    Resolved --> Customize["ResolvedErrorCustomizer"]
-    Customize --> Report["ErrorReporter and ErrorMetricsRecorder"]
-    Customize --> Factory["NotificationResponseFactory"]
-    Factory --> Sanitize["NotificationSanitizer"]
-    Sanitize --> Response["ResponseEntity<Notification>"]
-    Response --> ResponseCustomize["NotificationResponseCustomizer"]
-    ResponseCustomize --> Json["snake_case JSON"]
+    Resolved --> SecurityMetadata["Security metadata enrichment when applicable"]
+    SecurityMetadata --> Customize["Ordered ResolvedErrorCustomizer"]
+    Customize --> Exposure["ErrorExposurePolicy"]
+    Exposure --> Factory["NotificationResponseFactory"]
+    Factory --> ResponseCustomize["Ordered NotificationResponseCustomizer"]
+    ResponseCustomize --> Safety["Final exposure and sanitization boundary"]
+    Safety --> Prepared["PreparedErrorResponse"]
+    Prepared --> Report["ErrorReporter and ErrorMetricsRecorder"]
+    Prepared --> Json["Adapter writes snake_case JSON"]
 ```
 
 Resolvers run by ascending `order()`. The first supporting resolver wins. If no
 resolver supports the failure, `FallbackThrowableErrorResolver` returns a safe
 internal error. Diagnostics remain in `ResolvedError.diagnosticMessage()` for
 logging and are not copied to the response.
+
+MVC and Spring Security share the same internal response pipeline. For security
+failures, framework-controlled metadata is enriched before application
+`ResolvedErrorCustomizer` beans run, so customizers observe one complete error
+model. The exposure policy is always the last resolved-error decision. Response
+customizers run after the factory and their output passes through the mandatory
+final safety boundary before serialization. Reporter or metrics failures are
+isolated and never replace the HTTP response.
 
 ## Application Error Catalog
 
@@ -159,7 +178,10 @@ throw ServiceException.from(
 
 The category of the first catalog entry controls the default HTTP status. A
 `ServiceException` may contain multiple ordered notifications; notifications
-with `fieldName` become entries under `metadata.violations`.
+with `fieldName` become entries under `metadata.violations` in detailed
+`INTERNAL` responses. `ErrorDefinition.publicMessage()` is the safe resolved
+message candidate; the default `PUBLIC` response replaces it with the framework
+generic message.
 
 ## Default Status Mapping
 
@@ -196,10 +218,10 @@ shape is defined in the [snake-case contract](error-handling/json-contract.md).
 ## Downstream Errors
 
 When `HttpClientResponseException` is on the classpath,
-`HttpClientExceptionResolver` maps it to `DOWNSTREAM` or `RATE_LIMIT`. The
-public notification never includes the downstream URI, headers, body, cookies,
-cause, or source message. Complete details remain available only in the
-internal diagnostic path.
+`HttpClientExceptionResolver` maps it to `DOWNSTREAM` or `RATE_LIMIT`. Neither
+response exposure includes the downstream URI, headers, body, cookies, cause,
+or source message. Complete details remain available only in the diagnostic
+path used by reporters and logging.
 
 ## Spring Security
 
@@ -227,15 +249,16 @@ The complete catalog, RFC 6750 metadata contract, required-scope resolution,
 configuration, and replacement points are documented in
 [Security Error Handling](error-handling/security.md).
 
-## Public Metadata Safety
+## Metadata Safety
 
-In `PUBLIC` mode, only top-level metadata keys in
-`response.metadata-allowlist` can reach the response. Allowed values are still
-recursively sanitized. Tokens, credentials, passwords, authorization values,
-headers, bodies, causes, exceptions, stack traces, JWT-shaped values, and
-unsupported objects are redacted. Cyclic or excessively deep values are also
-replaced with `<redacted>`. This final redaction remains active when an
-application provides its own `NotificationSanitizer`.
+`PUBLIC` responses ignore resolved metadata except for `category` and an
+optional correlation ID. `response.metadata-allowlist` controls which top-level
+keys can reach a detailed `INTERNAL` response; it cannot expand a `PUBLIC`
+response. Allowed values are recursively sanitized. Tokens, credentials,
+passwords, authorization values, headers, bodies, causes, exceptions, stack
+traces, JWT-shaped values, and unsupported objects are redacted. Cyclic or
+excessively deep values are also replaced with `<redacted>`. Final redaction is
+applied even when an application provides its own `NotificationSanitizer`.
 
 Do not use the allowlist as a reason to place secrets in notifications. Keep
 diagnostic data in exception causes, diagnostic messages, and internal reports.

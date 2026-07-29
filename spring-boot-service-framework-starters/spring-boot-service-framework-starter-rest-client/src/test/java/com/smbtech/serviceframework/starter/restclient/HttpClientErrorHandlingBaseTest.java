@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.restclient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.NotificationSeverity;
 import com.smbtech.serviceframework.httpclient.domain.ApacheHttpClientPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuditPolicy;
@@ -36,13 +35,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
+import tools.jackson.databind.ObjectMapper;
 
 class HttpClientErrorHandlingBaseTest {
 
     private static final URI REQUEST_URI = URI.create("https://payments.example/v1/orders/123");
 
-    private final HttpErrorBodyDecoder bodyDecoder =
-            new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules());
+    private final HttpErrorBodyDecoder bodyDecoder = new HttpErrorBodyDecoder(new ObjectMapper());
 
     @Test
     void clientErrorProducesNotifyingExceptionWithCompleteDecodableBody() {

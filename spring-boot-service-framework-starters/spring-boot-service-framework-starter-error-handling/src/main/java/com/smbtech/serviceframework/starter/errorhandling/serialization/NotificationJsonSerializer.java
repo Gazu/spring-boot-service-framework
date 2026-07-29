@@ -1,18 +1,17 @@
 package com.smbtech.serviceframework.starter.errorhandling.serialization;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationSerializer;
-import java.io.IOException;
 import java.util.Objects;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  * Serializes {@link Notification} with a stable snake-case JSON contract. Registration is
  * intentionally local to the writer or mapper used for error responses.
  */
-public final class NotificationJsonSerializer extends JsonSerializer<Notification>
+public final class NotificationJsonSerializer extends ValueSerializer<Notification>
         implements NotificationSerializer {
 
     private final NotificationMetadataKeyNormalizer metadataKeyNormalizer;
@@ -35,19 +34,17 @@ public final class NotificationJsonSerializer extends JsonSerializer<Notificatio
 
     @Override
     public void serialize(
-            Notification notification, JsonGenerator generator, SerializerProvider serializers)
-            throws IOException {
+            Notification notification, JsonGenerator generator, SerializationContext serializers) {
         Notification source = Objects.requireNonNull(notification, "notification must not be null");
         generator.writeStartObject(source);
-        generator.writeStringField("code", source.code());
-        generator.writeStringField("message", source.message());
-        generator.writeStringField("severity", source.severity().name());
-        generator.writeStringField("field_name", source.fieldName());
-        generator.writeFieldName("metadata");
-        serializers.defaultSerializeValue(
-                metadataKeyNormalizer.normalize(source.metadata()), generator);
-        generator.writeStringField("id", source.id().toString());
-        generator.writeStringField("timestamp", source.timestamp().toString());
+        generator.writeStringProperty("code", source.code());
+        generator.writeStringProperty("message", source.message());
+        generator.writeStringProperty("severity", source.severity().name());
+        generator.writeStringProperty("field_name", source.fieldName());
+        generator.writeName("metadata");
+        serializers.writeValue(generator, metadataKeyNormalizer.normalize(source.metadata()));
+        generator.writeStringProperty("id", source.id().toString());
+        generator.writeStringProperty("timestamp", source.timestamp().toString());
         generator.writeEndObject();
     }
 

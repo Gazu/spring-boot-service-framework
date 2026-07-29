@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
@@ -112,6 +113,73 @@ class AuditLogInterceptorTest {
                                     .isEqualTo(HttpClientResponseException.class.getName());
                             assertThat(event.duration()).isGreaterThanOrEqualTo(Duration.ZERO);
                         });
+    }
+
+    @Test
+    void sanitizesSecretsBeforePublishingAuditEvents() throws Exception {
+        RecordingAuditSink sink = new RecordingAuditSink();
+        AuditLogInterceptor interceptor =
+                new AuditLogInterceptor(
+                        definition(new AuditPolicy(true, true, true, true, true, 4_096)), sink);
+        MockClientHttpRequest request =
+                new MockClientHttpRequest(
+                        HttpMethod.POST,
+                        URI.create("https://payments.example/v1/orders?access_token=query-secret"));
+        request.getHeaders().add(HttpHeaders.AUTHORIZATION, "Bearer request-token");
+        request.getHeaders().add(HttpHeaders.COOKIE, "session=cookie-secret");
+        request.getHeaders().add("X-Api-Key", "api-key-secret");
+
+        interceptor.intercept(
+                request,
+                "{\"password\":\"body-password\",\"nested\":{\"client_secret\":\"client-secret\"}}"
+                        .getBytes(StandardCharsets.UTF_8),
+                (httpRequest, body) -> {
+                    MockClientHttpResponse response =
+                            response(
+                                    200,
+                                    "{\"access_token\":\"response-token\",\"value\":\"safe\"}");
+                    response.getHeaders().add(HttpHeaders.SET_COOKIE, "session=response-cookie");
+                    return response;
+                });
+
+        assertThat(sink.request.get().uri()).contains("access_token=<redacted>");
+        assertThat(sink.request.get().headers())
+                .containsEntry(HttpHeaders.AUTHORIZATION, "<redacted>")
+                .containsEntry(HttpHeaders.COOKIE, "<redacted>")
+                .containsEntry("X-Api-Key", "<redacted>");
+        assertThat(sink.request.get().body())
+                .contains("\"password\":\"<redacted>\"")
+                .contains("\"client_secret\":\"<redacted>\"")
+                .doesNotContain("body-password", "client-secret");
+        assertThat(sink.response.get().headers())
+                .containsEntry(HttpHeaders.SET_COOKIE, "<redacted>");
+        assertThat(sink.response.get().body())
+                .contains("\"access_token\":\"<redacted>\"")
+                .doesNotContain("response-token");
+    }
+
+    @Test
+    void removesRawThrowableAndSanitizesFailureMessage() {
+        RecordingAuditSink sink = new RecordingAuditSink();
+        AuditLogInterceptor interceptor =
+                new AuditLogInterceptor(
+                        definition(new AuditPolicy(true, true, true, true, true, 4_096)), sink);
+        IllegalStateException exception =
+                new IllegalStateException("Bearer failure-token client_secret=downstream-secret");
+
+        assertThatThrownBy(
+                        () ->
+                                interceptor.intercept(
+                                        request(),
+                                        new byte[0],
+                                        (httpRequest, body) -> {
+                                            throw exception;
+                                        }))
+                .isSameAs(exception);
+
+        assertThat(sink.failure.get().exceptionMessage())
+                .isEqualTo("Bearer <redacted> client_secret=<redacted>");
+        assertThat(sink.failure.get().throwable()).isNull();
     }
 
     private MockClientHttpRequest request() {

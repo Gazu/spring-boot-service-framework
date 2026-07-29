@@ -2,8 +2,6 @@ package com.smbtech.serviceframework.starter.mock.adapter.in.openapi;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,12 +12,15 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
         classes = OpenApiMockServerIntegrationTest.TestApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
             "smbtech.mocks.openapi.enabled=true",
+            "smbtech.mocks.openapi.status-override-enabled=true",
             "smbtech.mocks.openapi.contracts.pets.location=classpath:fixtures/pet-store-mock.yaml",
             "smbtech.mocks.openapi.contracts.pets.base-path=/mock"
         })
@@ -39,8 +40,8 @@ class OpenApiMockServerIntegrationTest {
         assertThat(response.headers().firstValue("X-Result-Source")).contains("openapi");
         assertThat(response.headers().firstValue("X-Mock-Operation-Id")).contains("getPet");
         JsonNode body = objectMapper.readTree(response.body());
-        assertThat(body.path("id").asText()).isEqualTo("pet-100");
-        assertThat(body.path("name").asText()).isEqualTo("Luna");
+        assertThat(body.path("id").asString()).isEqualTo("pet-100");
+        assertThat(body.path("name").asString()).isEqualTo("Luna");
     }
 
     @Test
@@ -51,7 +52,7 @@ class OpenApiMockServerIntegrationTest {
         assertThat(response.headers().firstValue("Content-Type"))
                 .hasValueSatisfying(
                         value -> assertThat(value).startsWith("application/problem+json"));
-        assertThat(objectMapper.readTree(response.body()).path("code").asText())
+        assertThat(objectMapper.readTree(response.body()).path("code").asString())
                 .isEqualTo("pet_not_found");
     }
 
@@ -61,10 +62,10 @@ class OpenApiMockServerIntegrationTest {
 
         assertThat(response.statusCode()).isEqualTo(201);
         JsonNode body = objectMapper.readTree(response.body());
-        assertThat(body.path("id").asText()).hasSize(8);
-        assertThat(body.path("status").asText()).isEqualTo("available");
+        assertThat(body.path("id").asString()).hasSize(8);
+        assertThat(body.path("status").asString()).isEqualTo("available");
         assertThat(body.path("active").asBoolean()).isTrue();
-        assertThat(body.path("createdAt").asText()).isEqualTo("2000-01-01T00:00:00Z");
+        assertThat(body.path("createdAt").asString()).isEqualTo("2000-01-01T00:00:00Z");
         assertThat(body.path("tags")).hasSize(2);
     }
 

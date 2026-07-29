@@ -7,15 +7,16 @@ description = 'Configured RestClient starter for Spring Boot services'
 dependencies {
     api project(':spring-boot-service-framework-http-client-core')
     api 'org.springframework.boot:spring-boot-starter-restclient'
-    api 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    compileOnly 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
     implementation project(':spring-boot-service-framework-logging-core')
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.apache.httpcomponents.client5:httpclient5'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    api 'tools.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation 'org.slf4j:slf4j-api'
     testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 }
 
 publishing {
@@ -26,4 +27,24 @@ publishing {
             }
         }
     }
+}
+
+tasks.register('verifyOAuth2DependencyIsolation') {
+    group = 'verification'
+    description = 'Verifies that Spring Security OAuth2 is not published transitively.'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+
+    def generatedPom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml')
+    inputs.file(generatedPom)
+
+    doLast {
+        if (generatedPom.get().asFile.text.contains('spring-boot-starter-oauth2-client')) {
+            throw new GradleException(
+                    'spring-boot-starter-oauth2-client must remain an optional compile-time integration')
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyOAuth2DependencyIsolation')
 }

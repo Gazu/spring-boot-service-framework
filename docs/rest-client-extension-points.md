@@ -66,6 +66,7 @@ consumer can publish as beans. The starter provides defaults with
 | Correlation headers | `CorrelationHeadersProvider` | Reads correlation values from MDC. | Provide a bean to integrate with a different tracing context. |
 | Audit events | `HttpExchangeAuditSink` | Emits audit events through SLF4J. | Provide a bean to send audit events to a queue, SIEM, or internal audit service. |
 | Error body decoding | `HttpErrorResponseBodyReader` | Uses `HttpErrorBodyDecoder` backed by the application `ObjectMapper` when available. | Provide a bean to use another decoder or error format. |
+| Authentication mechanism | `RestClientAuthenticationConfigurer` | Basic authentication is built in; OAuth2 contributes a configurer only when Spring Security OAuth2 Client is present. | Provide an ordered bean for `OTHER` or to override a supported authentication type. |
 | OAuth2 authorized client service | `OAuth2AuthorizedClientService` | Uses Spring Security in-memory service decorated with grant-aware cache policy. | User-provided services remain usable and may be decorated for cache policy. |
 | OAuth2 authorized client provider | `OAuth2AuthorizedClientProvider` | Composes client credentials and JWT bearer providers. | Provide a bean to replace grant provider composition. |
 | OAuth2 authorized client manager | `OAuth2AuthorizedClientManager` | Uses `AuthorizedClientServiceOAuth2AuthorizedClientManager`. | Provide a bean for full OAuth2 authorization control. |
@@ -120,6 +121,7 @@ component would be too heavy.
 | `RestClientBuilderCustomizer` | `RestClient.Builder` for each configured client | Add interceptors, default request attributes, message converters, or client-specific builder settings. |
 | `ApacheHttpClientBuilderCustomizer` | Apache `HttpClientBuilder` | Add Apache interceptors, connection behavior, route planning, or low-level HTTP settings. |
 | `ClientHttpRequestFactoryCustomizer` | Spring `ClientHttpRequestFactory` | Tune request factory details after the starter builds it. |
+| `RestClientAuthenticationConfigurer` | Authentication for a configured client | Add an authentication mechanism without coupling the REST client factory to its implementation library. |
 
 Customizers are collected from the application context with
 `ObjectProvider#orderedStream()`, so `@Order` is supported.
@@ -234,7 +236,8 @@ class CompanyTokenConfiguration {
 ### Add JWT Bearer Claims
 
 Use `JwtBearerClaimsContributor` when the application only needs to add dynamic
-claims. The context is immutable and the contributor returns only the claims it
+claims. The context, including nested structured containers, is immutable and
+the contributor returns only the claims it
 wants to add:
 
 ```java

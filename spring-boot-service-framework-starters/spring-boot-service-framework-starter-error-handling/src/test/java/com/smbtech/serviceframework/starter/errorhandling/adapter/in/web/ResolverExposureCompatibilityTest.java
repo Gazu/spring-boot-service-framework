@@ -52,7 +52,7 @@ class ResolverExposureCompatibilityTest {
             String resolverName, ResolvedError resolvedError, String sourceCode) {
         assertEquals(ErrorExposure.INTERNAL, resolvedError.exposure());
         assertEquals(sourceCode, resolvedError.notification().code());
-        assertResponseCode(resolvedError, FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE);
+        assertResponseCode(resolvedError, sourceCode);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -62,7 +62,7 @@ class ResolverExposureCompatibilityTest {
         ResolvedError effective = applyGlobalExposure(resolvedError, ErrorExposure.INTERNAL);
 
         assertEquals(ErrorExposure.INTERNAL, effective.exposure());
-        assertResponseCode(effective, FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE);
+        assertResponseCode(effective, resolvedError.notification().code());
     }
 
     @ParameterizedTest(name = "{0}")

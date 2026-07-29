@@ -12,14 +12,16 @@ This file freezes the currently visible source-level contract per published arti
 | `com.smbtech:spring-boot-service-framework-logging-core` | 8 | 4 | 0 | 0 | 1 |
 | `com.smbtech:spring-boot-service-framework-http-client-core` | 43 | 10 | 0 | 5 | 3 |
 | `com.smbtech:spring-boot-service-framework-mock-core` | 8 | 4 | 0 | 1 | 2 |
+| `com.smbtech:spring-boot-service-framework-actuator-core` | 7 | 3 | 0 | 0 | 0 |
 | `com.smbtech:spring-boot-service-framework-error-core` | 27 | 4 | 0 | 1 | 0 |
 | `com.smbtech:spring-boot-service-framework-openapi-generator` | 19 | 0 | 0 | 0 | 0 |
 | `com.smbtech:spring-boot-service-framework-openapi-contract-testing` | 9 | 0 | 0 | 0 | 0 |
-| `com.smbtech:spring-boot-service-framework-starter-logging` | 1 | 0 | 11 | 0 | 5 |
-| `com.smbtech:spring-boot-service-framework-starter-rest-client` | 21 | 13 | 88 | 1 | 59 |
-| `com.smbtech:spring-boot-service-framework-starter-mock` | 1 | 1 | 11 | 0 | 10 |
-| `com.smbtech:spring-boot-service-framework-starter-error-handling` | 20 | 14 | 13 | 0 | 23 |
-| `Gradle plugin com.smbtech.service-framework.openapi-generator` | 2 | 0 | 8 | 0 | 2 |
+| `com.smbtech:spring-boot-service-framework-starter-logging` | 1 | 0 | 14 | 0 | 8 |
+| `com.smbtech:spring-boot-service-framework-starter-actuator` | 0 | 0 | 7 | 0 | 0 |
+| `com.smbtech:spring-boot-service-framework-starter-rest-client` | 23 | 14 | 88 | 1 | 56 |
+| `com.smbtech:spring-boot-service-framework-starter-mock` | 1 | 1 | 14 | 0 | 10 |
+| `com.smbtech:spring-boot-service-framework-starter-error-handling` | 20 | 14 | 13 | 0 | 26 |
+| `Gradle plugin com.smbtech.service-framework.openapi-generator` | 2 | 0 | 8 | 0 | 3 |
 
 ## com.smbtech:spring-boot-service-framework-commons
 
@@ -267,6 +269,56 @@ Discovered top-level public types: **10**.
 - `com.smbtech.serviceframework.mock.service.DefaultMockCatalog` (class)
 - `com.smbtech.serviceframework.mock.service.DefaultMockResponder` (class)
 
+## com.smbtech:spring-boot-service-framework-actuator-core
+
+Discovered top-level public types: **8**.
+
+### Convention Public Packages
+
+- `com.smbtech.serviceframework.actuator.domain`
+- `com.smbtech.serviceframework.actuator.port.in`
+- `com.smbtech.serviceframework.actuator.port.out`
+
+### Documented Public Package Exceptions
+
+- None.
+
+### Documented Public Type Exceptions
+
+- None.
+
+### Public Types
+
+- `com.smbtech.serviceframework.actuator.domain.ComponentHealth` (record)
+- `com.smbtech.serviceframework.actuator.domain.ComponentStatus` (enum)
+- `com.smbtech.serviceframework.actuator.domain.FrameworkDiagnosticsSnapshot` (record)
+- `com.smbtech.serviceframework.actuator.domain.FrameworkModuleInfo` (record)
+- `com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics` (interface)
+- `com.smbtech.serviceframework.actuator.port.out.DiagnosticProbe` (interface)
+- `com.smbtech.serviceframework.actuator.port.out.FrameworkModuleInfoProvider` (interface)
+
+### Extension Points
+
+- `com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics`
+- `com.smbtech.serviceframework.actuator.port.out.DiagnosticProbe`
+- `com.smbtech.serviceframework.actuator.port.out.FrameworkModuleInfoProvider`
+
+### Configuration Properties
+
+- None.
+
+### Supported Public Exceptions
+
+- None.
+
+### Public Infrastructure Types
+
+- `com.smbtech.serviceframework.actuator.service.DefaultFrameworkDiagnostics` (class)
+
+### Public Internal Types To Review
+
+- None.
+
 ## com.smbtech:spring-boot-service-framework-error-core
 
 Discovered top-level public types: **27**.
@@ -445,7 +497,7 @@ Discovered top-level public types: **9**.
 
 ## com.smbtech:spring-boot-service-framework-starter-logging
 
-Discovered top-level public types: **8**.
+Discovered top-level public types: **11**.
 
 ### Convention Public Packages
 
@@ -469,11 +521,14 @@ Discovered top-level public types: **8**.
 
 ### Configuration Properties
 
+- `smbtech.logging.async.critical-event-protection-enabled`
 - `smbtech.logging.async.discarding-threshold`
 - `smbtech.logging.async.enabled`
 - `smbtech.logging.async.max-flush-time-ms`
 - `smbtech.logging.async.never-block`
+- `smbtech.logging.async.observability.enabled`
 - `smbtech.logging.async.queue-size`
+- `smbtech.logging.async.saturation-policy`
 - `smbtech.logging.level`
 - `smbtech.logging.production`
 - `smbtech.logging.transaction.accept-incoming`
@@ -492,15 +547,80 @@ Discovered top-level public types: **8**.
 
 ### Public Internal Types To Review
 
+- `com.smbtech.serviceframework.starter.logging.adapter.in.metrics.AsyncLoggingMetrics` (class)
 - `com.smbtech.serviceframework.starter.logging.adapter.in.servlet.TransactionIdFilter` (class)
 - `com.smbtech.serviceframework.starter.logging.adapter.out.context.MdcCorrelationContext` (class)
+- `com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender` (class)
 - `com.smbtech.serviceframework.starter.logging.adapter.out.logback.ServiceFrameworkStructuredLogFormatter` (class)
 - `com.smbtech.serviceframework.starter.logging.adapter.out.slf4j.Slf4jLogEventSink` (class)
 - `com.smbtech.serviceframework.starter.logging.adapter.out.slf4j.Slf4jStructuredLoggerFactory` (class)
+- `com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingMetricsAutoConfiguration` (class)
+
+## com.smbtech:spring-boot-service-framework-starter-actuator
+
+Discovered top-level public types: **17**.
+
+### Convention Public Packages
+
+- None.
+
+### Documented Public Package Exceptions
+
+- None.
+
+### Documented Public Type Exceptions
+
+- None.
+
+### Public Types
+
+- None.
+
+### Extension Points
+
+- None.
+
+### Configuration Properties
+
+- `smbtech.actuator.diagnostics.cache-ttl`
+- `smbtech.actuator.diagnostics.max-components`
+- `smbtech.actuator.diagnostics.max-modules`
+- `smbtech.actuator.diagnostics.operation-timeout`
+- `smbtech.actuator.enabled`
+- `smbtech.actuator.metrics.cache-ttl`
+- `smbtech.actuator.metrics.enabled`
+
+### Supported Public Exceptions
+
+- None.
+
+### Public Infrastructure Types
+
+- `com.smbtech.serviceframework.starter.actuator.adapter.in.endpoint.ServiceFrameworkDiagnosticsEndpoint` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.in.health.ServiceFrameworkHealthIndicator` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.in.info.ServiceFrameworkInfoContributor` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.diagnostics.GuardedFrameworkDiagnostics` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.ErrorHandlingModuleInfoProvider` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.LoggingModuleInfoProvider` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.MockModuleInfoProvider` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientDiagnosticProbe` (class)
+- `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientModuleInfoProvider` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorInfoAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorIntegrationsAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorMetricsAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorProperties` (class)
+
+### Public Internal Types To Review
+
+- None.
 
 ## com.smbtech:spring-boot-service-framework-starter-rest-client
 
-Discovered top-level public types: **82**.
+Discovered top-level public types: **81**.
 
 ### Convention Public Packages
 
@@ -521,6 +641,7 @@ Discovered top-level public types: **82**.
 - `com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.ApiClientFactory` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.HttpApiClient` (annotation)
+- `com.smbtech.serviceframework.starter.restclient.api.HttpApiClientRuntimeHints` (class)
 - `com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder` (class)
 - `com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecodingException` (class)
 - `com.smbtech.serviceframework.starter.restclient.api.JwtBearerTokenRequest` (record)
@@ -530,6 +651,7 @@ Discovered top-level public types: **82**.
 - `com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.ApacheHttpClientBuilderCustomizer` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.ClientHttpRequestFactoryCustomizer` (interface)
+- `com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientAuthenticationConfigurer` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer` (interface)
 - `com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyContext` (record)
 - `com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver` (interface)
@@ -550,6 +672,7 @@ Discovered top-level public types: **82**.
 - `com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry`
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.ApacheHttpClientBuilderCustomizer`
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.ClientHttpRequestFactoryCustomizer`
+- `com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientAuthenticationConfigurer`
 - `com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer`
 - `com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver`
 - `com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionCustomizer`
@@ -674,16 +797,11 @@ Discovered top-level public types: **82**.
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesKeyStoreDefinitionSource` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreManager` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.PrivateKeyLoader` (class)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.AccessTokenCacheKeyPipeline` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.ClientAssertionJwkResolver` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.GrantAwareOAuth2AuthorizedClientService` (class)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.JwtBearerAuthorizationAttributes` (class)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.JwtBearerClaimsPipeline` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2AuthorizationContextAttributesMapper` (class)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2ConfigurationValidationIssue` (record)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2ConfigurationValidationResult` (class)
-- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2ConfigurationValidationSeverity` (enum)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2ExtensionRegistry` (class)
+- `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientAuthenticationConfigurer` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidationRunner` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2RestClientConfigurationValidator` (class)
 - `com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring.OAuth2TokenDiagnosticSanitizer` (class)
@@ -715,6 +833,8 @@ Discovered top-level public types: **82**.
 - `com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper` (class)
 - `com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialResolver` (class)
 - `com.smbtech.serviceframework.starter.restclient.autoconfigure.KeyStorePropertiesMapper` (class)
+- `com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration` (class)
+- `com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration` (class)
 - `com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientBeanRegistrar` (class)
 - `com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientPropertiesMapper` (class)
 
@@ -747,6 +867,7 @@ Discovered top-level public types: **13**.
 - `smbtech.mocks.endpoints.<key>.delay`
 - `smbtech.mocks.endpoints.<key>.enabled`
 - `smbtech.mocks.endpoints.<key>.file`
+- `smbtech.mocks.openapi.allow-in-production`
 - `smbtech.mocks.openapi.contracts.<key>.base-path`
 - `smbtech.mocks.openapi.contracts.<key>.delay`
 - `smbtech.mocks.openapi.contracts.<key>.enabled`
@@ -754,7 +875,9 @@ Discovered top-level public types: **13**.
 - `smbtech.mocks.openapi.enabled`
 - `smbtech.mocks.openapi.fail-fast`
 - `smbtech.mocks.openapi.include-optional-properties`
+- `smbtech.mocks.openapi.production-profiles`
 - `smbtech.mocks.openapi.status-header`
+- `smbtech.mocks.openapi.status-override-enabled`
 
 ### Supported Public Exceptions
 
@@ -780,7 +903,7 @@ Discovered top-level public types: **13**.
 
 ## com.smbtech:spring-boot-service-framework-starter-error-handling
 
-Discovered top-level public types: **45**.
+Discovered top-level public types: **48**.
 
 ### Convention Public Packages
 
@@ -871,6 +994,7 @@ Discovered top-level public types: **45**.
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationHttpStatusResolver` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory` (class)
+- `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.FinalNotificationResponseSanitizer` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.HttpClientExceptionResolver` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.NotificationHttpMessageConverter` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.NotificationWebMvcConfigurer` (class)
@@ -882,13 +1006,15 @@ Discovered top-level public types: **45**.
 - `com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ConfiguredErrorExposurePolicy` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.customizer.StandardErrorMetadataCustomizer` (class)
+- `com.smbtech.serviceframework.starter.errorhandling.internal.ErrorResponsePipeline` (class)
+- `com.smbtech.serviceframework.starter.errorhandling.internal.PreparedErrorResponse` (record)
 - `com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonResponseWriter` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonSerializer` (class)
 - `com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationMetadataKeyNormalizer` (class)
 
 ## Gradle plugin com.smbtech.service-framework.openapi-generator
 
-Discovered top-level public types: **4**.
+Discovered top-level public types: **5**.
 
 ### Convention Public Packages
 
@@ -935,6 +1061,7 @@ Discovered top-level public types: **4**.
 
 - `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiBuildLogicCheckTask` (class)
 - `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGeneratorPlugin` (class)
+- `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiValidateSpecsTask` (class)
 
 ## Maintenance
 

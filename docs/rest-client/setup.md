@@ -15,9 +15,28 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
 }
 ```
+
+OAuth2 support is opt-in. Applications using `CLIENT_CREDENTIALS`,
+`JWT_BEARER`, or `AccessTokenClient` must also add Spring Boot OAuth2 Client:
+
+```groovy
+dependencies {
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+}
+```
+
+Applications using only `NO_AUTH`, `BASIC_AUTH`, SSL, resilience,
+observability, or audit do not need Spring Security on the runtime classpath.
 
 The repository also supports module-local build repositories used by the smoke
 examples:

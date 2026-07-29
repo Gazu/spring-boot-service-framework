@@ -16,13 +16,17 @@ mock, or another concrete framework area.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-commons:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-commons'
 }
 ```
 
 ## Public API
 
-- `notification.Notification`: immutable structured notification model.
+- `notification.Notification`: recursively immutable structured notification
+  model with identity-preserving metadata replacement.
 - `notification.NotificationSeverity`: notification severity values.
 - `notification.NotifyingException`: runtime exception base class that carries
   structured notifications.

@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.errorhandling.adapter.in.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationSerializer;
 import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonResponseWriter;
@@ -13,6 +12,7 @@ import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import tools.jackson.databind.ObjectMapper;
 
 /** Writes notification responses with an isolated Jackson serializer. */
 public final class NotificationHttpMessageConverter

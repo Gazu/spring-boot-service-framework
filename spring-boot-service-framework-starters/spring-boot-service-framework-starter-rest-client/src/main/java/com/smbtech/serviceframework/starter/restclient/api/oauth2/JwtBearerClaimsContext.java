@@ -3,6 +3,7 @@ package com.smbtech.serviceframework.starter.restclient.api.oauth2;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable context passed to {@link JwtBearerClaimsContributor}.
@@ -19,7 +20,7 @@ import java.util.Set;
 public record JwtBearerClaimsContext(
         String registrationId,
         String clientId,
-        URI tokenUri,
+        @Nullable URI tokenUri,
         Set<String> requestedScopes,
         String expectedScopes,
         Map<String, Object> configuredClaims,

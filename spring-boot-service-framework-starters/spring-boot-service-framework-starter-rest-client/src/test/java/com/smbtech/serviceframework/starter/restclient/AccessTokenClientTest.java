@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class AccessTokenClientTest {
 
     @Test
-    void dynamicJwtBearerMethodsAreBackwardCompatibleDefaults() {
+    void dynamicJwtBearerMethodsDelegateCompleteRequest() {
         RecordingAccessTokenClient client = new RecordingAccessTokenClient();
 
         AccessToken token =
@@ -25,10 +25,11 @@ class AccessTokenClientTest {
         assertThat(token.value()).isEqualTo("jwt-token");
         assertThat(client.tokenRequestId).isEqualTo("payments-jwt-bearer-token");
         assertThat(client.expectedScopes).isEqualTo("payment.read");
+        assertThat(client.customClaims).containsEntry("customer_id", "17952397-3");
     }
 
     @Test
-    void explicitJwtBearerRequestUsesDefaultDelegation() {
+    void explicitJwtBearerRequestPreservesCustomClaims() {
         RecordingAccessTokenClient client = new RecordingAccessTokenClient();
 
         client.jwtBearer(
@@ -39,12 +40,14 @@ class AccessTokenClientTest {
 
         assertThat(client.tokenRequestId).isEqualTo("payments-jwt-bearer-token");
         assertThat(client.expectedScopes).isEqualTo("payment.write");
+        assertThat(client.customClaims).containsEntry("customer_id", "17952397-3");
     }
 
     private static final class RecordingAccessTokenClient implements AccessTokenClient {
 
         private String tokenRequestId;
         private String expectedScopes;
+        private Map<String, Object> customClaims = Map.of();
 
         @Override
         public AccessToken clientCredentials(String tokenRequestId) {
@@ -63,8 +66,14 @@ class AccessTokenClientTest {
 
         @Override
         public AccessToken jwtBearer(String tokenRequestId, String expectedScopes) {
-            this.tokenRequestId = tokenRequestId;
-            this.expectedScopes = expectedScopes;
+            return AccessTokenClient.super.jwtBearer(tokenRequestId, expectedScopes);
+        }
+
+        @Override
+        public AccessToken jwtBearer(JwtBearerTokenRequest request) {
+            this.tokenRequestId = request.tokenRequestId();
+            this.expectedScopes = request.expectedScopes();
+            this.customClaims = request.customClaims();
             return token("jwt-token");
         }
 

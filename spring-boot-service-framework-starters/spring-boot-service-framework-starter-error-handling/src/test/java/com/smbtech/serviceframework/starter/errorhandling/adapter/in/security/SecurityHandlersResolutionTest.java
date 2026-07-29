@@ -2,8 +2,6 @@ package com.smbtech.serviceframework.starter.errorhandling.adapter.in.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorMetricsRecorder;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
@@ -12,6 +10,7 @@ import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityF
 import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
 import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonResponseWriter;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -26,6 +25,8 @@ import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.servlet.HandlerMapping;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class SecurityHandlersResolutionTest {
 
@@ -51,15 +52,8 @@ class SecurityHandlersResolutionTest {
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(notification.path("code").asText())
                 .isEqualTo(SecurityErrorCatalog.BEARER_TOKEN_INVALID.code());
-        assertThat(notification.at("/metadata/security/reason").asText())
-                .isEqualTo("invalid_token");
-        assertThat(notification.at("/metadata/security/authentication_scheme").asText())
-                .isEqualTo("bearer");
-        assertThat(notification.at("/metadata/oauth2/error").asText()).isEqualTo("invalid_token");
-        assertThat(notification.at("/metadata/oauth2/error_description").asText())
-                .isEqualTo("The access token is invalid");
-        assertThat(notification.at("/metadata/oauth2/error_uri").asText())
-                .isEqualTo("https://www.rfc-editor.org/rfc/rfc6750#section-3.1");
+        assertThat(notification.at("/metadata/category").asText()).isEqualTo("AUTHENTICATION");
+        assertThat(notification.path("metadata").size()).isEqualTo(1);
         assertThat(response.getHeader(HttpHeaders.WWW_AUTHENTICATE))
                 .isEqualTo(
                         "Bearer error=\"invalid_token\", "
@@ -140,10 +134,8 @@ class SecurityHandlersResolutionTest {
         assertThat(response.getStatus()).isEqualTo(403);
         assertThat(notification.path("code").asText())
                 .isEqualTo(SecurityErrorCatalog.INSUFFICIENT_SCOPE.code());
-        assertThat(notification.at("/metadata/oauth2/error").asText())
-                .isEqualTo("insufficient_scope");
-        assertThat(notification.at("/metadata/oauth2/scope").asText())
-                .isEqualTo("payment.read payment.write");
+        assertThat(notification.at("/metadata/category").asText()).isEqualTo("AUTHORIZATION");
+        assertThat(notification.path("metadata").size()).isEqualTo(1);
         assertThat(response.getHeader(HttpHeaders.WWW_AUTHENTICATE))
                 .isEqualTo(
                         "Bearer error=\"insufficient_scope\", "
@@ -212,6 +204,40 @@ class SecurityHandlersResolutionTest {
         assertThat(resolvedContext.get().route()).isEqualTo("/payments/{paymentId}");
         assertThat(resolvedContext.get().bearerCredentialsPresent()).isFalse();
         assertThat(resolvedContext.get().authenticationType()).isEmpty();
+    }
+
+    @Test
+    void enrichesSecurityMetadataBeforeResolvedErrorCustomizers() throws Exception {
+        AtomicReference<Map<String, Object>> observedMetadata = new AtomicReference<>();
+        ErrorCustomizationPipeline customizationPipeline =
+                new ErrorCustomizationPipeline(
+                        List.of(
+                                (cause, resolvedError, request) -> {
+                                    observedMetadata.set(resolvedError.notification().metadata());
+                                    return resolvedError;
+                                }),
+                        List.of());
+        SecurityAuthenticationEntryPoint entryPoint =
+                new SecurityAuthenticationEntryPoint(
+                        new DefaultNotificationResponseFactory(),
+                        new NotificationJsonResponseWriter(objectMapper),
+                        ErrorReporter.noop(),
+                        ErrorMetricsRecorder.noop(),
+                        customizationPipeline,
+                        new DefaultSecurityAuthenticationFailureResolver(),
+                        new DefaultOAuth2SecurityMetadataFactory(),
+                        new DefaultOAuth2SecurityChallengeWriter());
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/payments");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bearer-token-secret");
+
+        entryPoint.commence(
+                request,
+                new MockHttpServletResponse(),
+                new OAuth2AuthenticationException(BearerTokenErrors.invalidToken("detail")));
+
+        assertThat(observedMetadata.get())
+                .containsEntry("category", "AUTHENTICATION")
+                .containsKey("oauth2");
     }
 
     private static ErrorCustomizationPipeline emptyCustomizationPipeline() {

@@ -11,7 +11,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework:spring-web'
     implementation 'org.springframework:spring-webmvc'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    api 'tools.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
 
     compileOnly project(':spring-boot-service-framework-http-client-core')

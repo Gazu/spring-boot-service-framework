@@ -1,0 +1,157 @@
+// Binary API compatibility against the latest released pre-1.0 baseline.
+
+def baselineVersion = providers.gradleProperty('binaryCompatibilityBaselineVersion').get()
+def japicmpVersion = providers.gradleProperty('japicmpVersion').get()
+def currentVersion = providers.gradleProperty('frameworkVersion').get()
+def baselineTag = "v${baselineVersion}"
+
+def binaryModules = [
+        [path: ':spring-boot-service-framework-commons', directory: 'spring-boot-service-framework-commons', artifact: 'spring-boot-service-framework-commons'],
+        [path: ':spring-boot-service-framework-logging-core', directory: 'spring-boot-service-framework-logging-core', artifact: 'spring-boot-service-framework-logging-core'],
+        [path: ':spring-boot-service-framework-http-client-core', directory: 'spring-boot-service-framework-http-client-core', artifact: 'spring-boot-service-framework-http-client-core'],
+        [path: ':spring-boot-service-framework-mock-core', directory: 'spring-boot-service-framework-mock-core', artifact: 'spring-boot-service-framework-mock-core'],
+        [path: ':spring-boot-service-framework-error-core', directory: 'spring-boot-service-framework-error-core', artifact: 'spring-boot-service-framework-error-core'],
+        [path: ':spring-boot-service-framework-openapi-generator', directory: 'spring-boot-service-framework-openapi-generator', artifact: 'spring-boot-service-framework-openapi-generator'],
+        [path: ':spring-boot-service-framework-openapi-contract-testing', directory: 'spring-boot-service-framework-openapi-contract-testing', artifact: 'spring-boot-service-framework-openapi-contract-testing'],
+        [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging', artifact: 'spring-boot-service-framework-starter-logging'],
+        [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client', artifact: 'spring-boot-service-framework-starter-rest-client'],
+        [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock', artifact: 'spring-boot-service-framework-starter-mock'],
+        [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling', artifact: 'spring-boot-service-framework-starter-error-handling']
+]
+
+configurations {
+    japicmpTool
+}
+
+dependencies {
+    japicmpTool("com.github.siom79.japicmp:japicmp:${japicmpVersion}:jar-with-dependencies") {
+        transitive = false
+    }
+}
+
+def baselineRoot = layout.buildDirectory.dir("binary-compatibility/${baselineVersion}")
+def baselineArchive = baselineRoot.map { it.file('source.tar') }
+def baselineSource = baselineRoot.map { it.dir('source') }
+def baselineJar = { module ->
+    baselineSource.map {
+        it.file("${module.directory}/build/libs/${module.artifact}-${baselineVersion}.jar")
+    }
+}
+def currentJar = { module ->
+    layout.projectDirectory.file(
+            "${module.directory}/build/libs/${module.artifact}-${currentVersion}.jar")
+}
+
+def archiveBaseline = tasks.register('archiveBinaryCompatibilityBaseline', Exec) {
+    group = 'verification'
+    description = "Archives the ${baselineTag} source used for binary API comparison."
+    outputs.file(baselineArchive)
+    mustRunAfter tasks.named('clean')
+
+    doFirst {
+        baselineArchive.get().asFile.parentFile.mkdirs()
+    }
+    commandLine(
+            'git',
+            'archive',
+            '--format=tar',
+            "--output=${baselineArchive.get().asFile.absolutePath}",
+            baselineTag)
+}
+
+def unpackBaseline = tasks.register('unpackBinaryCompatibilityBaseline', Sync) {
+    group = 'verification'
+    description = 'Unpacks the released source baseline into the build directory.'
+    dependsOn archiveBaseline
+    from baselineArchive.map { tarTree(it) }
+    into baselineSource
+}
+
+def baselineJarTasks = binaryModules.collect { "${it.path}:jar" }
+def buildBaseline = tasks.register('buildBinaryCompatibilityBaseline', Exec) {
+    group = 'verification'
+    description = "Builds released ${baselineVersion} JARs for japicmp."
+    dependsOn unpackBaseline
+    inputs.file(baselineArchive)
+    outputs.files(binaryModules.collect { baselineJar(it) })
+    workingDir baselineSource
+    commandLine(['bash', 'gradlew', '--no-daemon'] + baselineJarTasks)
+}
+
+def approvedBreaksFile = layout.projectDirectory.file(
+        'gradle/compatibility/binary-breaking-changes.txt')
+def approvedBreaks = providers.fileContents(approvedBreaksFile).asText.map { content ->
+    content.readLines()
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() && !it.startsWith('#') }
+            .collect { line ->
+                def separator = line.indexOf('|')
+                if (separator < 1 || separator == line.length() - 1) {
+                    throw new GradleException(
+                            "Invalid binary compatibility exception: ${line}")
+                }
+                [artifact: line.substring(0, separator), member: line.substring(separator + 1)]
+            }
+}
+
+def publicApiModel = rootProject.ext.serviceFrameworkPublicApiModel
+def publicArtifactByName = publicApiModel.artifacts.collectEntries { artifact ->
+    [(artifact.artifact): artifact]
+}
+
+def binaryChecks = binaryModules.collect { module ->
+    def artifactCoordinate = "com.smbtech:${module.artifact}"
+    def publicArtifact = publicArtifactByName[artifactCoordinate]
+    if (publicArtifact == null) {
+        throw new GradleException("Missing public API model for ${artifactCoordinate}")
+    }
+    def taskSuffix = module.artifact.split('-').collect { it.capitalize() }.join('')
+    tasks.register("japicmp${taskSuffix}", JavaExec) {
+        group = 'verification'
+        description = "Checks ${module.artifact} binary compatibility against ${baselineVersion}."
+        dependsOn buildBaseline, "${module.path}:jar"
+        classpath = configurations.japicmpTool
+        mainClass = 'japicmp.JApiCmp'
+        inputs.files(baselineJar(module), currentJar(module), approvedBreaksFile)
+
+        doFirst {
+            def publicTypes = publicApiModel.scanPublicTypes(publicArtifact).findAll { type ->
+                publicApiModel.isConventionPublicPackage(publicArtifact, type.packageName) ||
+                        publicArtifact.publicPackageExceptions.contains(type.packageName) ||
+                        publicArtifact.publicTypeExceptions.contains(type.qualifiedName)
+            }
+            def fullPackages = publicTypes.findAll { type ->
+                publicApiModel.isConventionPublicPackage(publicArtifact, type.packageName) ||
+                        publicArtifact.publicPackageExceptions.contains(type.packageName)
+            }.collect { it.packageName }.toSet()
+            def exactTypes = publicTypes.findAll { type ->
+                publicArtifact.publicTypeExceptions.contains(type.qualifiedName)
+            }.collect { it.qualifiedName }.toSet()
+            def includes = (fullPackages + exactTypes).sort().join(';')
+            def excludes = approvedBreaks.get()
+                    .findAll { it.artifact == module.artifact }
+                    .collect { it.member }
+                    .sort()
+                    .join(';')
+
+            args = [
+                    '--old', baselineJar(module).get().asFile.absolutePath,
+                    '--new', currentJar(module).asFile.absolutePath,
+                    '--only-incompatible',
+                    '--ignore-missing-classes',
+                    '--error-on-binary-incompatibility',
+                    '--report-only-filename',
+                    '--include', includes
+            ]
+            if (!excludes.isEmpty()) {
+                args += ['--exclude', excludes, '--no-error-on-exclusion-incompatibility']
+            }
+        }
+    }
+}
+
+tasks.register('binaryCompatibilityCheck') {
+    group = 'verification'
+    description = "Checks supported binary APIs against release ${baselineVersion} with japicmp."
+    dependsOn binaryChecks
+}

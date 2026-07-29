@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: actuator-consumer-example
+  security:
+    user:
+      name: ${EXAMPLE_ACTUATOR_USERNAME:actuator-user}
+      password: ${EXAMPLE_ACTUATOR_PASSWORD:change-me}
+      roles: ACTUATOR
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
+      roles: ACTUATOR
+    serviceframework:
+      access: read-only
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,serviceframework
+  health:
+    service-framework:
+      enabled: true
+  info:
+    service-framework:
+      enabled: true
+
+smbtech:
+  actuator:
+    diagnostics:
+      cache-ttl: 5s
+      operation-timeout: 2s
+      max-components: 64
+      max-modules: 64
+    metrics:
+      enabled: true
+      cache-ttl: 10s

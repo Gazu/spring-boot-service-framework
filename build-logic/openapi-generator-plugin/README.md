@@ -22,6 +22,11 @@ artifact assembly, and Maven publication wiring. Applying the plugin is enough
 to expose the complete OpenAPI build workflow; the root build does not apply a
 separate generator script.
 
+`validateOpenApiSpecs` is a typed, path-sensitive task. It parses OpenAPI 3.0
+and 3.1 YAML/JSON with Jackson 3, includes both discovered and explicitly
+configured specs, and validates artifact coordinates before generation. DSL
+values are wired through providers without `afterEvaluate`.
+
 The plugin should own Gradle-facing behavior only:
 
 - plugin id and plugin metadata;

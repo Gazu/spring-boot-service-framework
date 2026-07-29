@@ -1,0 +1,6 @@
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorAutoConfiguration
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorInfoAutoConfiguration
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorIntegrationsAutoConfiguration
+com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorMetricsAutoConfiguration

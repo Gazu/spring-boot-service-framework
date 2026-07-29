@@ -5,8 +5,8 @@ plugins {
 description = 'Build-time OpenAPI artifact generator for SMB Tech service contracts'
 
 dependencies {
-    api 'com.fasterxml.jackson.core:jackson-databind:2.21.4'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.4'
+    api 'tools.jackson.core:jackson-databind:3.1.4'
+    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4'
 
 }
 

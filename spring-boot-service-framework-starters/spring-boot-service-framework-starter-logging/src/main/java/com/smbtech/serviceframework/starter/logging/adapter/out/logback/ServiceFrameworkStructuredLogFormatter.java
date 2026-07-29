@@ -2,13 +2,6 @@ package com.smbtech.serviceframework.starter.logging.adapter.out.logback;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxy;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.json.JsonWriteFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smbtech.serviceframework.logging.domain.EventType;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
 import java.time.Instant;
@@ -20,6 +13,11 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Marker;
 import org.springframework.boot.logging.structured.StructuredLogFormatter;
+import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.core.json.JsonWriteFeature;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Spring Boot structured logging formatter that preserves the service framework JSON contract. */
 public final class ServiceFrameworkStructuredLogFormatter
@@ -31,14 +29,13 @@ public final class ServiceFrameworkStructuredLogFormatter
 
     /** Creates a service framework structured log formatter instance. */
     public ServiceFrameworkStructuredLogFormatter() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(JsonWriteFeature.ESCAPE_NON_ASCII.mappedFeature());
-        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-        mapper.disable(JsonGenerator.Feature.FLUSH_PASSED_TO_STREAM);
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.registerModule(new JavaTimeModule());
-        mapper.registerModule(new Jdk8Module());
-        this.writer = mapper.writer();
+        this.writer =
+                JsonMapper.builder()
+                        .enable(JsonWriteFeature.ESCAPE_NON_ASCII)
+                        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                        .disable(StreamWriteFeature.FLUSH_PASSED_TO_STREAM)
+                        .build()
+                        .writer();
     }
 
     @Override

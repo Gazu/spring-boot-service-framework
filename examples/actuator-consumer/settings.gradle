@@ -1,0 +1,15 @@
+pluginManagement {
+    def frameworkProperties = new Properties()
+    file('../../gradle.properties').withInputStream { frameworkProperties.load(it) }
+    plugins {
+        id 'org.springframework.boot' version frameworkProperties.getProperty('springBootVersion')
+        id 'org.graalvm.buildtools.native' version frameworkProperties.getProperty('graalvmNativeBuildToolsVersion')
+        id 'io.spring.dependency-management' version frameworkProperties.getProperty('springDependencyManagementVersion')
+    }
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'actuator-consumer-example'

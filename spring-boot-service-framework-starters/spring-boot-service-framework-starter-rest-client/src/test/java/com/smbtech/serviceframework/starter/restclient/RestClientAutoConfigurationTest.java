@@ -22,6 +22,8 @@ import com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextScope;
 import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
 import com.sun.net.httpserver.HttpServer;
@@ -55,7 +57,11 @@ class RestClientAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
-                    .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                    .withConfiguration(
+                            AutoConfigurations.of(
+                                    RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAutoConfiguration.class,
+                                    OAuth2RestClientAuthenticationAutoConfiguration.class))
                     .withPropertyValues(
                             "smbtech.rest-clients.clients.projects.base-url=https://projects.example",
                             "smbtech.rest-clients.clients.projects.default-headers.X-Application-Name=test-service",
@@ -180,7 +186,11 @@ class RestClientAutoConfigurationTest {
     @Test
     void failsStartupWhenOAuth2ClientReferencesRegistrationButRepositoryIsMissing() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
                         "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
@@ -200,7 +210,11 @@ class RestClientAutoConfigurationTest {
     @Test
     void rejectsRemovedLegacyTokenRequestProperty() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
                         "smbtech.rest-clients.clients.payments.authentication-type=CLIENT_CREDENTIALS",
@@ -217,7 +231,11 @@ class RestClientAutoConfigurationTest {
     @Test
     void skipsStartupOAuth2ConfigurationValidationWhenDisabled() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "smbtech.rest-clients.validation.enabled=false",
                         "smbtech.rest-clients.clients.payments.base-url=https://payments.example",
@@ -474,7 +492,11 @@ class RestClientAutoConfigurationTest {
     @Test
     void doesNotBindSpringOAuth2PropertiesWithoutSpringBootOAuth2AutoConfiguration() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "spring.security.oauth2.client.provider.my-provider.token-uri=https://auth.example/oauth2/token",
                         "spring.security.oauth2.client.registration.payments-token.provider=my-provider",
@@ -543,6 +565,8 @@ class RestClientAutoConfigurationTest {
                 .withConfiguration(
                         AutoConfigurations.of(
                                 RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class,
                                 OAuth2ClientAutoConfiguration.class))
                 .withPropertyValues(
                         "spring.security.oauth2.client.provider.my-provider.token-uri=https://auth.example/oauth2/token",

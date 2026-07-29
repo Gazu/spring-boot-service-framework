@@ -1,11 +1,12 @@
 plugins {
     id 'java'
     id 'org.springframework.boot'
+    id 'org.graalvm.buildtools.native'
     id 'io.spring.dependency-management'
 }
 
 group = 'com.smbtech.examples'
-version = '0.3.0'
+version = '0.4.0'
 
 java {
     toolchain {
@@ -16,6 +17,10 @@ java {
 def frameworkRoot = file('../..')
 
 repositories {
+    maven {
+        name = 'platformBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-platform/build/repository")
+    }
     maven {
         name = 'errorHandlingStarterBuild'
         url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/build/repository")
@@ -40,11 +45,13 @@ repositories {
 }
 
 dependencies {
+    implementation platform('com.smbtech:spring-boot-service-framework-platform:0.4.0')
+
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0'
-    implementation 'com.smbtech:spring-boot-service-framework-http-client-core:0.3.0'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
+    implementation 'com.smbtech:spring-boot-service-framework-http-client-core'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'

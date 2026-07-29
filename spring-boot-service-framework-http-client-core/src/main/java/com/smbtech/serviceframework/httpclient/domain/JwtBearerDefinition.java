@@ -1,7 +1,6 @@
 package com.smbtech.serviceframework.httpclient.domain;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -41,8 +40,7 @@ public record JwtBearerDefinition(
                 tokenLifetime == null || tokenLifetime.isZero() || tokenLifetime.isNegative()
                         ? Duration.ofMinutes(5)
                         : tokenLifetime;
-        customClaims =
-                Map.copyOf(new LinkedHashMap<>(Objects.requireNonNullElse(customClaims, Map.of())));
+        customClaims = ImmutableHttpClientValues.structuredMap(customClaims);
     }
 
     /**

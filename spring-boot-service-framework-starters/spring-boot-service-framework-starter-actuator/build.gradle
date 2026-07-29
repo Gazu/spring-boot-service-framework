@@ -1,0 +1,78 @@
+plugins {
+    id 'com.smbtech.service-framework.spring-boot-starter'
+}
+
+description = 'Spring Boot Actuator adapter for Service Framework diagnostics'
+
+dependencies {
+    api project(':spring-boot-service-framework-actuator-core')
+    api 'org.springframework.boot:spring-boot-starter-actuator'
+
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+
+    compileOnly project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
+    )
+    compileOnly project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock'
+    )
+    compileOnly project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging'
+    )
+    compileOnly project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling'
+    )
+
+    testImplementation project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
+    )
+    testImplementation project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock'
+    )
+    testImplementation project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging'
+    )
+    testImplementation project(
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling'
+    )
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Actuator Starter'
+            }
+        }
+    }
+}
+
+tasks.register('verifyOptionalActuatorIntegrations') {
+    group = 'verification'
+    description = 'Verifies that optional framework integrations are not published transitively.'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+
+    def generatedPom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml')
+    inputs.file(generatedPom)
+
+    doLast {
+        def pomText = generatedPom.get().asFile.getText('UTF-8')
+        def forbiddenArtifacts = [
+                'spring-boot-service-framework-starter-rest-client',
+                'spring-boot-service-framework-starter-mock',
+                'spring-boot-service-framework-starter-logging',
+                'spring-boot-service-framework-starter-error-handling'
+        ]
+        def publishedIntegrations = forbiddenArtifacts.findAll { pomText.contains(it) }
+        if (!publishedIntegrations.isEmpty()) {
+            throw new GradleException(
+                    'Actuator optional integrations must not be published transitively: '
+                            + publishedIntegrations.join(', ')
+            )
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyOptionalActuatorIntegrations')
+}

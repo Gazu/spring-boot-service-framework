@@ -1,1 +1,3 @@
 com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration
+com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration
+com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration

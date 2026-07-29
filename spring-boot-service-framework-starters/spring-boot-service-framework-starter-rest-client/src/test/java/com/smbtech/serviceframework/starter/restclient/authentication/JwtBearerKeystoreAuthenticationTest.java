@@ -3,6 +3,8 @@ package com.smbtech.serviceframework.starter.restclient.authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.httpclient.port.out.AccessTokenProvider;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -50,7 +52,11 @@ class JwtBearerKeystoreAuthenticationTest {
         TokenEndpoint endpoint = startTokenEndpoint();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerRegistrationRepository(endpoint.url()))
@@ -110,7 +116,11 @@ class JwtBearerKeystoreAuthenticationTest {
         TokenEndpoint endpoint = startTokenEndpoint();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerRegistrationRepository(endpoint.url()))
@@ -146,7 +156,11 @@ class JwtBearerKeystoreAuthenticationTest {
         TokenEndpoint endpoint = startTokenEndpoint();
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerRegistrationRepository(endpoint.url()))

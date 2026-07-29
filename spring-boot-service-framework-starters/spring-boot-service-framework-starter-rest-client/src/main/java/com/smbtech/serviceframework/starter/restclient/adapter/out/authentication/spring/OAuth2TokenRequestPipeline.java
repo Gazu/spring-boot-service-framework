@@ -1,9 +1,6 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
-import com.smbtech.serviceframework.httpclient.domain.ClientAuthenticationMethod;
-import com.smbtech.serviceframework.httpclient.domain.GrantType;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestContext;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +44,9 @@ final class OAuth2TokenRequestPipeline {
         OAuth2TokenRequestContext context =
                 new OAuth2TokenRequestContext(
                         registration.getRegistrationId(),
-                        grantType(grantRequest),
-                        clientAuthenticationMethod(registration),
-                        tokenUri(registration),
+                        OAuth2RegistrationValues.grantType(grantRequest),
+                        OAuth2RegistrationValues.clientAuthenticationMethod(registration),
+                        OAuth2RegistrationValues.tokenUri(registration),
                         registration.getScopes(),
                         toParametersMap(parameters),
                         headers);
@@ -159,39 +156,5 @@ final class OAuth2TokenRequestPipeline {
         if (value != null) {
             values.add(name, value.toString());
         }
-    }
-
-    private GrantType grantType(AbstractOAuth2AuthorizationGrantRequest grantRequest) {
-        String value = grantRequest.getGrantType().getValue();
-        if (GrantType.JWT_BEARER.value().equals(value)) {
-            return GrantType.JWT_BEARER;
-        }
-        return GrantType.CLIENT_CREDENTIALS;
-    }
-
-    private ClientAuthenticationMethod clientAuthenticationMethod(ClientRegistration registration) {
-        org.springframework.security.oauth2.core.ClientAuthenticationMethod method =
-                registration.getClientAuthenticationMethod();
-        if (org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_POST
-                .equals(method)) {
-            return ClientAuthenticationMethod.CLIENT_SECRET_POST;
-        }
-        if (org.springframework.security.oauth2.core.ClientAuthenticationMethod.PRIVATE_KEY_JWT
-                .equals(method)) {
-            return ClientAuthenticationMethod.PRIVATE_KEY_JWT;
-        }
-        if (org.springframework.security.oauth2.core.ClientAuthenticationMethod.NONE.equals(
-                method)) {
-            return ClientAuthenticationMethod.NONE;
-        }
-        return ClientAuthenticationMethod.CLIENT_SECRET_BASIC;
-    }
-
-    private URI tokenUri(ClientRegistration registration) {
-        String tokenUri = registration.getProviderDetails().getTokenUri();
-        if (tokenUri == null || tokenUri.isBlank()) {
-            return null;
-        }
-        return URI.create(tokenUri);
     }
 }

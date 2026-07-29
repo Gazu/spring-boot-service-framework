@@ -1,9 +1,5 @@
 package com.smbtech.serviceframework.starter.mock.adapter.in.openapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -11,6 +7,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 
 final class OpenApiExampleGenerator {
 
@@ -32,7 +32,7 @@ final class OpenApiExampleGenerator {
             return JsonNodeFactory.instance.nullNode();
         }
         if (schema.hasNonNull("$ref")) {
-            String reference = schema.path("$ref").asText();
+            String reference = schema.path("$ref").asString();
             if (!references.add(reference)) {
                 return JsonNodeFactory.instance.nullNode();
             }
@@ -65,7 +65,7 @@ final class OpenApiExampleGenerator {
             return generate(alternatives.get(0), references);
         }
 
-        String type = schema.path("type").asText();
+        String type = schema.path("type").asString();
         if (type.isBlank() && schema.path("properties").isObject()) {
             type = "object";
         }
@@ -83,7 +83,7 @@ final class OpenApiExampleGenerator {
     private ObjectNode object(JsonNode schema, Set<String> references) {
         ObjectNode result = JsonNodeFactory.instance.objectNode();
         Set<String> required = new HashSet<>();
-        schema.path("required").forEach(value -> required.add(value.asText()));
+        schema.path("required").forEach(value -> required.add(value.asString()));
         Iterator<Map.Entry<String, JsonNode>> properties =
                 schema.path("properties").properties().iterator();
         while (properties.hasNext()) {
@@ -123,7 +123,7 @@ final class OpenApiExampleGenerator {
 
     private JsonNode string(JsonNode schema) {
         String value =
-                switch (schema.path("format").asText()) {
+                switch (schema.path("format").asString()) {
                     case "date" -> "2000-01-01";
                     case "date-time" -> "2000-01-01T00:00:00Z";
                     case "uuid" -> "00000000-0000-0000-0000-000000000000";
@@ -131,7 +131,7 @@ final class OpenApiExampleGenerator {
                     case "uri", "url" -> "https://example.test/mock";
                     default -> "string";
                 };
-        value = matchingPatternValue(schema.path("pattern").asText(), value);
+        value = matchingPatternValue(schema.path("pattern").asString(), value);
         int minimumLength = schema.path("minLength").asInt(0);
         if (value.length() < minimumLength) {
             value = value + "x".repeat(minimumLength - value.length());
@@ -140,7 +140,7 @@ final class OpenApiExampleGenerator {
         if (value.length() > maximumLength) {
             value = value.substring(0, maximumLength);
         }
-        return JsonNodeFactory.instance.textNode(value);
+        return JsonNodeFactory.instance.stringNode(value);
     }
 
     private static String matchingPatternValue(String expression, String fallback) {

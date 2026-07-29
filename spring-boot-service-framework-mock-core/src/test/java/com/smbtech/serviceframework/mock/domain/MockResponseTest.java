@@ -62,4 +62,22 @@ class MockResponseTest {
 
         assertArrayEquals("ok".getBytes(StandardCharsets.UTF_8), response.body());
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recursivelyCopiesMetadata() {
+        List<Object> values = new ArrayList<>(List.of("created"));
+        Map<String, Object> nested = new LinkedHashMap<>();
+        nested.put("states", values);
+
+        MockResponse response =
+                new MockResponse(200, Map.of(), null, Duration.ZERO, Map.of("scenario", nested));
+        values.add("updated");
+
+        Map<String, Object> immutableNested =
+                (Map<String, Object>) response.metadata().get("scenario");
+        List<Object> immutableValues = (List<Object>) immutableNested.get("states");
+        assertEquals(List.of("created"), immutableValues);
+        assertThrows(UnsupportedOperationException.class, () -> immutableValues.add("updated"));
+    }
 }

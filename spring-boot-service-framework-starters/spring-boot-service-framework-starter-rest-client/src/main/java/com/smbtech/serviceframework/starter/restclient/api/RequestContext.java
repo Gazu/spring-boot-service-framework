@@ -163,7 +163,7 @@ public record RequestContext(Map<String, String> headers, Map<String, Object> jw
                                 copy.put(
                                         normalizeName(name, "claim name"),
                                         requireValue(value, name)));
-        return Collections.unmodifiableMap(copy);
+        return ImmutableRequestValues.structuredMap(copy);
     }
 
     private static String normalizeName(String value, String name) {

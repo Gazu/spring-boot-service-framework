@@ -1,12 +1,19 @@
 # REST Client consumer example
 
-Standalone Spring Boot application that consumes
-`com.smbtech:spring-boot-service-framework-starter-rest-client:0.3.0` from the local
-Maven repositories generated under each module `build/repository` directory.
+Standalone Spring Boot application that imports
+`com.smbtech:spring-boot-service-framework-platform:0.4.0` and consumes
+`com.smbtech:spring-boot-service-framework-starter-rest-client` without an
+individual version from the local Maven repositories generated under each
+module `build/repository` directory.
 
 The example intentionally consumes published local artifacts instead of Gradle
 `project(...)` dependencies. This validates the same POMs and JARs that another
 repository would consume.
+
+It declares `spring-boot-starter-oauth2-client` explicitly because OAuth2 is an
+optional integration and is not pulled transitively by the framework starter.
+See [Dependency Management](../../docs/dependency-management.md) for the
+platform contract and publication options.
 
 From the framework root:
 
@@ -188,6 +195,29 @@ cd examples/rest-client-consumer
 
 The default `application.yml` uses `http://localhost:9999` as an example URL.
 Tests override it dynamically with a local HTTP server.
+
+## AOT and native image
+
+The example registers `PaymentsApi` through `HttpApiClientRuntimeHints`, because
+declarative interfaces created dynamically by `ApiClientFactory` must be fixed
+at native-image build time.
+
+Validate AOT generation without GraalVM:
+
+```bash
+./gradlew publishLocalArtifacts
+cd examples/rest-client-consumer
+../../gradlew processAot
+```
+
+With GraalVM 25 and `native-image` installed, build the executable with:
+
+```bash
+../../gradlew nativeCompile
+```
+
+See the [native image guide](../../docs/native-image.md) for application setup
+and resource-hint conventions.
 
 ## Tests
 

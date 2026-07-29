@@ -1,7 +1,13 @@
 // Repository lifecycle tasks extracted from the root build.
 
 tasks.named('check') {
-    dependsOn tasks.named('documentationCheck')
+    dependsOn(
+            tasks.named('actuatorContractCheck'),
+            tasks.named('asyncLoggingContractCheck'),
+            tasks.named('documentationCheck'),
+            'compatibilityCheck',
+            'supplyChainCheck'
+    )
 }
 
 tasks.register('verifyErrorNotificationReuse') {
@@ -41,11 +47,15 @@ tasks.register('baseline') {
     description = 'Compiles and tests every framework module.'
     dependsOn(
             tasks.named('spotlessCheck'),
+            tasks.named('actuatorContractCheck'),
+            tasks.named('asyncLoggingContractCheck'),
             tasks.named('codeQualityCheck'),
             tasks.named('documentationCheck'),
             tasks.named('conventionPluginsCheck'),
             tasks.named('openApiBuildLogicCheck'),
+            tasks.named('platformCompatibilityCheck'),
             tasks.named('verifyErrorNotificationReuse'),
+            ':spring-boot-service-framework-actuator-core:check',
             ':spring-boot-service-framework-logging-core:check',
             ':spring-boot-service-framework-http-client-core:check',
             ':spring-boot-service-framework-mock-core:check',
@@ -53,6 +63,7 @@ tasks.register('baseline') {
             ':spring-boot-service-framework-commons:check',
             ':spring-boot-service-framework-openapi-generator:check',
             ':spring-boot-service-framework-openapi-contract-testing:check',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check',
@@ -65,6 +76,8 @@ tasks.register('publishLocalArtifacts') {
     description = 'Publishes every framework artifact into module-local Maven repositories.'
     dependsOn(
             tasks.named('publishOpenApiArtifactsToLocalBuildRepository'),
+            ':spring-boot-service-framework-platform:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-actuator-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-logging-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-http-client-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-mock-core:publishAllPublicationsToLocalBuildRepository',
@@ -72,6 +85,7 @@ tasks.register('publishLocalArtifacts') {
             ':spring-boot-service-framework-commons:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-openapi-generator:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-openapi-contract-testing:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:publishAllPublicationsToLocalBuildRepository',
@@ -81,35 +95,79 @@ tasks.register('publishLocalArtifacts') {
 
 tasks.register('loggingConsumerSmoke', GradleBuild) {
     group = 'verification'
-    description = 'Builds the standalone logging example against the published Maven artifacts.'
+    description = 'Builds and AOT-processes the standalone logging example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/logging-consumer')
-    tasks = ['clean', 'test']
+    tasks = ['clean', 'test', 'processAot']
 }
 
 tasks.register('restClientConsumerSmoke', GradleBuild) {
     group = 'verification'
-    description = 'Builds the standalone REST client example against the published Maven artifacts.'
+    description = 'Builds and AOT-processes the standalone REST client example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/rest-client-consumer')
-    tasks = ['clean', 'test']
+    tasks = ['clean', 'test', 'processAot']
 }
 
 tasks.register('errorHandlingConsumerSmoke', GradleBuild) {
     group = 'verification'
-    description = 'Builds the standalone error handling example against the published Maven artifacts.'
+    description = 'Builds and AOT-processes the standalone error handling example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/error-handling-consumer')
-    tasks = ['clean', 'test']
+    tasks = ['clean', 'test', 'processAot']
+}
+
+tasks.register('actuatorConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Builds and AOT-processes the standalone Actuator example against the published Maven artifacts.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/actuator-consumer')
+    tasks = ['clean', 'test', 'processAot']
 }
 
 tasks.register('consumerSmoke') {
     group = 'verification'
     description = 'Builds all standalone consumer examples against the published Maven artifacts.'
     dependsOn(
+            tasks.named('actuatorConsumerSmoke'),
             tasks.named('errorHandlingConsumerSmoke'),
             tasks.named('loggingConsumerSmoke'),
             tasks.named('restClientConsumerSmoke')
+    )
+}
+
+tasks.register('loggingConsumerAot') {
+    group = 'verification'
+    description = 'Runs Spring AOT processing for the standalone logging consumer.'
+    dependsOn tasks.named('loggingConsumerSmoke')
+}
+
+tasks.register('restClientConsumerAot') {
+    group = 'verification'
+    description = 'Runs Spring AOT processing for the standalone REST client consumer.'
+    dependsOn tasks.named('restClientConsumerSmoke')
+}
+
+tasks.register('errorHandlingConsumerAot') {
+    group = 'verification'
+    description = 'Runs Spring AOT processing for the standalone error handling consumer.'
+    dependsOn tasks.named('errorHandlingConsumerSmoke')
+}
+
+tasks.register('actuatorConsumerAot') {
+    group = 'verification'
+    description = 'Runs Spring AOT processing for the standalone Actuator consumer.'
+    dependsOn tasks.named('actuatorConsumerSmoke')
+}
+
+tasks.register('nativeAotCheck') {
+    group = 'verification'
+    description = 'Validates Spring Boot AOT processing for every published consumer.'
+    dependsOn(
+            tasks.named('actuatorConsumerAot'),
+            tasks.named('errorHandlingConsumerAot'),
+            tasks.named('loggingConsumerAot'),
+            tasks.named('restClientConsumerAot')
     )
 }
 
@@ -130,9 +188,22 @@ tasks.register('compatibilityCheck') {
     dependsOn(
             tasks.named('documentationCheck'),
             tasks.named('errorHandlingCompatibilityCheck'),
+            tasks.named('binaryCompatibilityCheck'),
             tasks.named('moduleCompatibilityCheck'),
             tasks.named('openApiCompatibilityCheck'),
+            tasks.named('platformCompatibilityCheck'),
             tasks.named('baseline'),
             tasks.named('consumerSmoke')
+    )
+}
+
+tasks.register('releaseGate') {
+    group = 'verification'
+    description = 'Runs every verification required before releasing framework artifacts.'
+    dependsOn(
+            tasks.named('compatibilityCheck'),
+            tasks.named('nativeAotCheck'),
+            tasks.named('platformCompatibilityCheck'),
+            tasks.named('supplyChainCheck')
     )
 }

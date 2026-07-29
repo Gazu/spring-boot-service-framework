@@ -23,7 +23,10 @@ builders and handlers after contract tests pass.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }
 ```
 
@@ -66,9 +69,10 @@ throw ServiceException.from(
 );
 ```
 
-Do not move the old `detail` map into public notification metadata. Put internal
+Do not move the old `detail` map into notification metadata. Put internal
 details in the diagnostic message, cause, structured reporter, or audit event.
-Only explicitly safe metadata should use the configured allowlist.
+Only explicitly safe metadata should use the configured allowlist, which
+applies to detailed `INTERNAL` responses.
 
 ## Step 4: Replace Validation Exceptions
 
@@ -91,7 +95,8 @@ throw new ServiceException(List.of(customerId), "Domain validation failed");
 Configure the REST client error decoder to produce
 `HttpClientResponseException`. Remove local code that copies downstream headers,
 bodies, and causes into API responses. The starter keeps those details in the
-internal diagnostic and returns a generic downstream notification.
+diagnostic path. `PUBLIC` returns the generic framework message; `INTERNAL`
+returns the resolved downstream message after sanitization.
 
 ## Step 6: Replace Response Builders
 
@@ -104,10 +109,15 @@ coordinate the response contract change with consumers. Do not configure a
 custom serializer solely to preserve fields that expose stack traces or raw
 details.
 
-Humanized title and description fields have no direct core equivalent. Keep the
-public message as the primary human-readable text. If a client contract requires
-additional safe metadata, define a stable metadata schema, add only that key to
-the allowlist, and test its JSON representation.
+Humanized title and description fields have no direct core equivalent. Use the
+catalog message as the safe resolved text for detailed `INTERNAL` responses.
+The default `PUBLIC` mode uses the framework generic message. If a trusted
+client contract requires additional safe metadata, define a stable schema, add
+only that key to the allowlist, and test its JSON representation.
+
+Configure `smbtech.error-handling.response.exposure=INTERNAL` only after
+reviewing every consumer. The setting is global and cannot be scoped by code or
+category.
 
 ## Step 7: Replace Web And Security Handlers
 

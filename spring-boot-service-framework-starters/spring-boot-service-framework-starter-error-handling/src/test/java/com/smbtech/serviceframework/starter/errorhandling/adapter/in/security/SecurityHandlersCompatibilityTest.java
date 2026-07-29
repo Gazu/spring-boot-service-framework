@@ -3,8 +3,7 @@ package com.smbtech.serviceframework.starter.errorhandling.adapter.in.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonResponseWriter;
 import java.time.Instant;
@@ -16,6 +15,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class SecurityHandlersCompatibilityTest {
 
@@ -42,12 +43,7 @@ class SecurityHandlersCompatibilityTest {
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(response.getContentType()).startsWith("application/json");
         assertNotification(
-                response,
-                "E_SERVICE_FRAMEWORK_SECURITY_AUTHENTICATION_0001",
-                "Authentication is required",
-                "AUTHENTICATION",
-                "authentication_required",
-                "GET");
+                response, "E_SERVICE_FRAMEWORK_SECURITY_AUTHENTICATION_0001", "AUTHENTICATION");
         assertThat(response.getContentAsString())
                 .doesNotContain(
                         failure.getMessage(),
@@ -73,12 +69,7 @@ class SecurityHandlersCompatibilityTest {
         assertThat(response.getStatus()).isEqualTo(403);
         assertThat(response.getContentType()).startsWith("application/json");
         assertNotification(
-                response,
-                "E_SERVICE_FRAMEWORK_SECURITY_AUTHORIZATION_0001",
-                "Access is denied",
-                "AUTHORIZATION",
-                "access_denied",
-                "POST");
+                response, "E_SERVICE_FRAMEWORK_SECURITY_AUTHORIZATION_0001", "AUTHORIZATION");
         assertThat(response.getContentAsString())
                 .doesNotContain(
                         failure.getMessage(),
@@ -89,12 +80,7 @@ class SecurityHandlersCompatibilityTest {
     }
 
     private void assertNotification(
-            MockHttpServletResponse response,
-            String expectedCode,
-            String expectedMessage,
-            String expectedCategory,
-            String expectedReason,
-            String expectedMethod)
+            MockHttpServletResponse response, String expectedCode, String expectedCategory)
             throws Exception {
         JsonNode json = objectMapper.readTree(response.getContentAsByteArray());
 
@@ -104,16 +90,13 @@ class SecurityHandlersCompatibilityTest {
                                 .collect(Collectors.toSet()))
                 .containsExactlyInAnyOrderElementsOf(NOTIFICATION_FIELDS);
         assertThat(json.path("code").asText()).isEqualTo(expectedCode);
-        assertThat(json.path("message").asText()).isEqualTo(expectedMessage);
+        assertThat(json.path("message").asText())
+                .isEqualTo(FallbackThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE);
         assertThat(json.path("severity").asText()).isEqualTo("ERROR");
         assertThat(json.path("field_name").asText()).isEmpty();
         assertThat(json.path("metadata").isObject()).isTrue();
-        assertThat(json.at("/metadata/schema_version").asText()).isEqualTo("1");
         assertThat(json.at("/metadata/category").asText()).isEqualTo(expectedCategory);
-        assertThat(json.at("/metadata/retryable").asBoolean()).isFalse();
-        assertThat(json.at("/metadata/request/method").asText()).isEqualTo(expectedMethod);
-        assertThat(json.at("/metadata/security/reason").asText()).isEqualTo(expectedReason);
-        assertThat(json.at("/metadata/oauth2").isMissingNode()).isTrue();
+        assertThat(json.path("metadata").size()).isEqualTo(1);
         assertThatCode(() -> UUID.fromString(json.path("id").asText())).doesNotThrowAnyException();
         assertThatCode(() -> Instant.parse(json.path("timestamp").asText()))
                 .doesNotThrowAnyException();

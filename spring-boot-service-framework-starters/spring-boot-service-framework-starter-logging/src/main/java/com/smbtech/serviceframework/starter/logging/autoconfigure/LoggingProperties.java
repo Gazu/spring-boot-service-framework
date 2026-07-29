@@ -74,9 +74,12 @@ public class LoggingProperties {
 
         private boolean enabled = true;
         private int queueSize = 2048;
+        private SaturationPolicy saturationPolicy = SaturationPolicy.BLOCK;
+        private boolean criticalEventProtectionEnabled = true;
         private int discardingThreshold;
         private boolean neverBlock;
         private int maxFlushTimeMs = 1000;
+        private final Observability observability = new Observability();
 
         /**
          * Reports whether enabled.
@@ -112,6 +115,42 @@ public class LoggingProperties {
          */
         public void setQueueSize(int queueSize) {
             this.queueSize = queueSize;
+        }
+
+        /**
+         * Returns the configured queue saturation policy.
+         *
+         * @return queue saturation policy
+         */
+        public SaturationPolicy getSaturationPolicy() {
+            return saturationPolicy;
+        }
+
+        /**
+         * Sets the queue saturation policy.
+         *
+         * @param saturationPolicy queue saturation policy
+         */
+        public void setSaturationPolicy(SaturationPolicy saturationPolicy) {
+            this.saturationPolicy = saturationPolicy;
+        }
+
+        /**
+         * Reports whether critical events are protected from saturation-based discarding.
+         *
+         * @return whether critical event protection is enabled
+         */
+        public boolean isCriticalEventProtectionEnabled() {
+            return criticalEventProtectionEnabled;
+        }
+
+        /**
+         * Sets whether critical events are protected from saturation-based discarding.
+         *
+         * @param criticalEventProtectionEnabled whether critical event protection is enabled
+         */
+        public void setCriticalEventProtectionEnabled(boolean criticalEventProtectionEnabled) {
+            this.criticalEventProtectionEnabled = criticalEventProtectionEnabled;
         }
 
         /**
@@ -166,6 +205,55 @@ public class LoggingProperties {
          */
         public void setMaxFlushTimeMs(int maxFlushTimeMs) {
             this.maxFlushTimeMs = maxFlushTimeMs;
+        }
+
+        /**
+         * Returns the asynchronous logging observability settings.
+         *
+         * @return observability settings
+         */
+        public Observability getObservability() {
+            return observability;
+        }
+
+        /** Provides asynchronous logging observability behavior. */
+        public static class Observability {
+            /** Creates an observability settings instance. */
+            public Observability() {}
+
+            private boolean enabled = true;
+
+            /**
+             * Reports whether asynchronous logging metrics are enabled.
+             *
+             * @return whether metrics are enabled
+             */
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            /**
+             * Sets whether asynchronous logging metrics are enabled.
+             *
+             * @param enabled whether metrics are enabled
+             */
+            public void setEnabled(boolean enabled) {
+                this.enabled = enabled;
+            }
+        }
+
+        /** Explicit behavior applied when the asynchronous queue approaches capacity. */
+        public enum SaturationPolicy {
+            /** Blocks the producer when the queue is full. */
+            BLOCK,
+
+            /** Discards TRACE, DEBUG, and INFO events near capacity and blocks critical levels. */
+            DISCARD_LOW_PRIORITY,
+
+            /**
+             * Never blocks the producer and may drop events of any level when the queue is full.
+             */
+            DROP_WHEN_FULL
         }
     }
 

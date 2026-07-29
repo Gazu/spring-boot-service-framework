@@ -1,8 +1,5 @@
 package com.smbtech.serviceframework.starter.errorhandling.serialization;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseWriter;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationSerializer;
@@ -15,6 +12,9 @@ import java.util.Objects;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.module.SimpleModule;
 
 /** Writes notification JSON with a dedicated mapper copy and snake-case serializer. */
 public final class NotificationJsonResponseWriter implements NotificationResponseWriter {
@@ -49,13 +49,15 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
      */
     public NotificationJsonResponseWriter(
             ObjectMapper objectMapper, NotificationSerializer serializer) {
-        ObjectMapper isolatedMapper =
-                Objects.requireNonNull(objectMapper, "objectMapper must not be null").copy();
         SimpleModule module = new SimpleModule("service-framework-notification-json");
         NotificationSerializer safeSerializer =
                 Objects.requireNonNull(serializer, "serializer must not be null");
         module.addSerializer(Notification.class, new JsonSerializerAdapter(safeSerializer));
-        isolatedMapper.registerModule(module);
+        ObjectMapper isolatedMapper =
+                Objects.requireNonNull(objectMapper, "objectMapper must not be null")
+                        .rebuild()
+                        .addModule(module)
+                        .build();
         this.objectWriter = isolatedMapper.writerFor(Notification.class);
     }
 
@@ -107,7 +109,7 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
     }
 
     private static final class JsonSerializerAdapter
-            extends com.fasterxml.jackson.databind.JsonSerializer<Notification> {
+            extends tools.jackson.databind.ValueSerializer<Notification> {
         private final NotificationSerializer serializer;
 
         private JsonSerializerAdapter(NotificationSerializer serializer) {
@@ -117,10 +119,14 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
         @Override
         public void serialize(
                 Notification notification,
-                com.fasterxml.jackson.core.JsonGenerator generator,
-                com.fasterxml.jackson.databind.SerializerProvider serializers)
-                throws IOException {
-            serializer.serialize(notification, generator, serializers);
+                tools.jackson.core.JsonGenerator generator,
+                tools.jackson.databind.SerializationContext serializers) {
+            try {
+                serializer.serialize(notification, generator, serializers);
+            } catch (IOException exception) {
+                throw tools.jackson.core.JacksonException.wrapWithPath(
+                        exception, notification, "notification");
+            }
         }
     }
 }

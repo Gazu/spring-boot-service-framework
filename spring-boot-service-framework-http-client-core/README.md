@@ -20,7 +20,10 @@ Spring, Apache HttpClient, Micrometer, Jackson, or Spring Security.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-http-client-core:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-http-client-core'
 }
 ```
 

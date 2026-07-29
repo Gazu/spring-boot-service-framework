@@ -1,9 +1,9 @@
 package com.smbtech.serviceframework.starter.errorhandling.api;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
 
 /** Serializes the public notification response contract. */
 @FunctionalInterface
@@ -18,6 +18,6 @@ public interface NotificationSerializer {
      * @throws IOException when serialization fails
      */
     void serialize(
-            Notification notification, JsonGenerator generator, SerializerProvider serializers)
+            Notification notification, JsonGenerator generator, SerializationContext serializers)
             throws IOException;
 }

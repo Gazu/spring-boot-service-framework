@@ -11,8 +11,8 @@ dependencies {
     implementation 'org.springframework:spring-core'
     implementation 'org.springframework:spring-web'
     implementation 'org.springframework:spring-webmvc'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    api 'tools.jackson.core:jackson-databind'
+    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc'
 }

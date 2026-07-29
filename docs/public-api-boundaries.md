@@ -48,7 +48,19 @@ Public implementation classes may be required by Spring, Gradle, reflection,
 configuration binding, or cross-package wiring. They may change without the
 source-compatibility guarantees applied to supported API. They are tracked as
 `Public Infrastructure Types` or `Public Internal Types To Review` in the
-inventory.
+inventory. Their reviewed names are frozen separately in
+`gradle/compatibility/public-internal-types.txt` so the accidental surface can
+shrink but cannot grow unnoticed.
+
+## Nullability Contract
+
+Every supported Java package declares JSpecify `@NullMarked` in its
+`package-info.java`. Unannotated types in those packages are non-null by
+default; nullable components, parameters, and returns use `@Nullable`.
+
+Implementation packages do not carry a supported nullability contract.
+`validatePublicApiNullability` prevents a supported package from being added
+without an explicit nullness default.
 
 ## Package Exceptions
 
@@ -138,8 +150,13 @@ For every new or modified public type:
 2. Keep implementation types package-private where possible.
 3. Do not add a package or type exception without documenting its consumer need.
 4. Regenerate the inventory with `./gradlew generatePublicApiInventory`.
-5. Review any addition under `Public Internal Types To Review`.
-6. Run `./gradlew validatePublicApiInventory` and `./gradlew compatibilityCheck`.
+5. Review any addition under `Public Internal Types To Review`; prefer reducing
+   visibility and regenerate `generatePublicInternalTypeBaseline` only after
+   intentional review.
+6. Run `./gradlew validatePublicApiInventory`,
+   `./gradlew validatePublicApiNullability`, and
+   `./gradlew binaryCompatibilityCheck`.
+7. Run `./gradlew compatibilityCheck`.
 
 The inventory validates that documented package/type exceptions and public
 infrastructure declarations still resolve to real source types. Any drift must

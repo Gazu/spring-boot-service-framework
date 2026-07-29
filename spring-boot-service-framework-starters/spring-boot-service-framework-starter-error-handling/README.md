@@ -16,7 +16,10 @@ framework-neutral contracts or custom adapters.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }
 ```
 
@@ -39,6 +42,18 @@ and [Public API Boundaries](../../docs/public-api-boundaries.md).
 - It does not contain application-specific error catalogs.
 - It does not expose internal diagnostics by default.
 - It does not provide reactive WebFlux exception handling.
+
+## Response Exposure
+
+The starter defaults to `smbtech.error-handling.response.exposure=PUBLIC`.
+`PUBLIC` preserves the stable code but returns a generic message and only
+category plus optional correlation metadata. Configure `INTERNAL` explicitly
+for trusted consumers that require resolved sanitized messages, field
+violations, and allowlisted metadata. Diagnostics, causes, stack traces, and
+secrets are never response fields in either mode.
+
+See the canonical [Error Handling Guide](../../docs/error-handling.md) for the
+complete comparison and configuration contract.
 
 ## Main documentation
 

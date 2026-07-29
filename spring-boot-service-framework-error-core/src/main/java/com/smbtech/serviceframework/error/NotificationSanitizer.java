@@ -3,7 +3,7 @@ package com.smbtech.serviceframework.error;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import java.util.Objects;
 
-/** Sanitizes notifications before they are exposed outside the application. */
+/** Sanitizes notifications before they are written to an HTTP response. */
 public interface NotificationSanitizer {
 
     /**
@@ -15,7 +15,7 @@ public interface NotificationSanitizer {
     Notification sanitize(Notification notification);
 
     /**
-     * Sanitizes the public notification of a resolved error while preserving its internal
+     * Sanitizes the response notification of a resolved error while preserving its separate
      * diagnostic information.
      *
      * @param resolvedError resolved error to sanitize
@@ -24,11 +24,6 @@ public interface NotificationSanitizer {
     default ResolvedError sanitize(ResolvedError resolvedError) {
         ResolvedError safeError =
                 Objects.requireNonNull(resolvedError, "resolvedError must not be null");
-        return new ResolvedError(
-                sanitize(safeError.notification()),
-                safeError.category(),
-                safeError.exposure(),
-                safeError.diagnosticMessage(),
-                safeError.fieldViolations());
+        return safeError.withNotification(sanitize(safeError.notification()));
     }
 }

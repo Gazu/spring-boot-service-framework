@@ -3,6 +3,10 @@ spring:
     name: logging-consumer-example
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
   tracing:
     enabled: true
     sampling:
@@ -15,6 +19,13 @@ smbtech:
     production: false
     level: INFO
     async:
-      enabled: false
+      enabled: ${EXAMPLE_ASYNC_LOGGING_ENABLED:true}
+      queue-size: ${EXAMPLE_ASYNC_LOGGING_QUEUE_SIZE:2048}
+      saturation-policy: ${EXAMPLE_ASYNC_LOGGING_SATURATION_POLICY:BLOCK}
+      critical-event-protection-enabled: ${EXAMPLE_ASYNC_LOGGING_CRITICAL_PROTECTION:true}
+      discarding-threshold: ${EXAMPLE_ASYNC_LOGGING_DISCARDING_THRESHOLD:0}
+      max-flush-time-ms: ${EXAMPLE_ASYNC_LOGGING_MAX_FLUSH_TIME_MS:1000}
+      observability:
+        enabled: true
     transaction:
       enabled: true

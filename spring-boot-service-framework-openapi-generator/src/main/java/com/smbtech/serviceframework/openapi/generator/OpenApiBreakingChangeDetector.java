@@ -1,8 +1,5 @@
 package com.smbtech.serviceframework.openapi.generator;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -12,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /** Provides open api breaking change detector behavior. */
 public final class OpenApiBreakingChangeDetector {
@@ -122,8 +122,8 @@ public final class OpenApiBreakingChangeDetector {
             JsonNode previous,
             JsonNode current,
             List<OpenApiChange> changes) {
-        String previousOperationId = previous.path("operationId").asText();
-        String currentOperationId = current.path("operationId").asText();
+        String previousOperationId = previous.path("operationId").asString();
+        String currentOperationId = current.path("operationId").asString();
         if (!previousOperationId.equals(currentOperationId)) {
             add(
                     changes,
@@ -366,8 +366,8 @@ public final class OpenApiBreakingChangeDetector {
                 || current.isMissingNode()) {
             return;
         }
-        String previousReference = previous.path("$ref").asText();
-        String currentReference = current.path("$ref").asText();
+        String previousReference = previous.path("$ref").asString();
+        String currentReference = current.path("$ref").asString();
         if (!previousReference.equals(currentReference)) {
             add(
                     changes,
@@ -393,12 +393,12 @@ public final class OpenApiBreakingChangeDetector {
         compareConstraints(location, previous, current, changes);
         compareComposition(location, previous, current, changes);
 
-        if ("object".equals(previous.path("type").asText())
+        if ("object".equals(previous.path("type").asString())
                 || previous.has("properties")
                 || current.has("properties")) {
             compareObjectProperties(location, previous, current, changes);
         }
-        if ("array".equals(previous.path("type").asText())
+        if ("array".equals(previous.path("type").asString())
                 || previous.has("items")
                 || current.has("items")) {
             compareSchema(
@@ -490,8 +490,8 @@ public final class OpenApiBreakingChangeDetector {
             JsonNode previous,
             JsonNode current,
             List<OpenApiChange> changes) {
-        String before = previous.path(property).asText();
-        String after = current.path(property).asText();
+        String before = previous.path(property).asString();
+        String after = current.path(property).asString();
         if (!before.equals(after)) {
             add(
                     changes,
@@ -650,7 +650,9 @@ public final class OpenApiBreakingChangeDetector {
         parameters.forEach(
                 parameter -> {
                     String key =
-                            parameter.path("in").asText() + ":" + parameter.path("name").asText();
+                            parameter.path("in").asString()
+                                    + ":"
+                                    + parameter.path("name").asString();
                     target.put(key, parameter);
                 });
     }
@@ -666,7 +668,7 @@ public final class OpenApiBreakingChangeDetector {
     private static Set<String> textSet(JsonNode node) {
         Set<String> values = new LinkedHashSet<>();
         if (node != null && node.isArray()) {
-            node.forEach(value -> values.add(value.asText()));
+            node.forEach(value -> values.add(value.asString()));
         }
         return values;
     }

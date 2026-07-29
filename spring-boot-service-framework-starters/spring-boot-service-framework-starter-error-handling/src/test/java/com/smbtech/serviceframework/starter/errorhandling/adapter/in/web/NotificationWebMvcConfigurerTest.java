@@ -1,28 +1,22 @@
 package com.smbtech.serviceframework.starter.errorhandling.adapter.in.web;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.smbtech.serviceframework.commons.notification.Notification;
-import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonSerializer;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverters;
+import tools.jackson.databind.ObjectMapper;
 
 class NotificationWebMvcConfigurerTest {
 
     @Test
     void registersNotificationConverterWithoutChangingApplicationMapper() throws Exception {
         ObjectMapper applicationMapper = new ObjectMapper();
-        JsonSerializer<?> originalSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
+        var originalModules = applicationMapper.registeredModules();
         NotificationWebMvcConfigurer configurer =
                 new NotificationWebMvcConfigurer(applicationMapper);
         HttpMessageConverters.ServerBuilder builder =
@@ -39,12 +33,7 @@ class NotificationWebMvcConfigurerTest {
                         .filter(NotificationHttpMessageConverter.class::isInstance)
                         .findFirst()
                         .orElseThrow());
-        JsonSerializer<?> unchangedSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
-        assertSame(originalSerializer, unchangedSerializer);
-        assertFalse(unchangedSerializer instanceof NotificationJsonSerializer);
+        assertEquals(originalModules, applicationMapper.registeredModules());
     }
 
     @Test

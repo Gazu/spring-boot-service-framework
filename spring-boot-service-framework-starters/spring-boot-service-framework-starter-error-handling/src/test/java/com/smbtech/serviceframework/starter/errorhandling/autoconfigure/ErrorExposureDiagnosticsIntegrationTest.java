@@ -2,13 +2,11 @@ package com.smbtech.serviceframework.starter.errorhandling.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.commons.notification.NotificationSeverity;
 import com.smbtech.serviceframework.error.ErrorCategory;
 import com.smbtech.serviceframework.error.ErrorDefinition;
 import com.smbtech.serviceframework.error.ErrorExposure;
-import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
 import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.ServiceException;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
@@ -24,6 +22,7 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
+import tools.jackson.databind.ObjectMapper;
 
 class ErrorExposureDiagnosticsIntegrationTest {
 
@@ -60,12 +59,7 @@ class ErrorExposureDiagnosticsIntegrationTest {
                             ReportedFailure captured = reported.get();
 
                             assertThat(response).isNotNull();
-                            assertThat(response.code())
-                                    .isEqualTo(
-                                            exposure == ErrorExposure.PUBLIC
-                                                    ? ERROR_CODE
-                                                    : FallbackThrowableErrorResolver
-                                                            .DEFAULT_ERROR_CODE);
+                            assertThat(response.code()).isEqualTo(ERROR_CODE);
                             assertThat(captured).isNotNull();
                             assertThat(captured.cause()).isSameAs(failure);
                             assertThat(captured.cause().getCause()).isSameAs(rootCause);
@@ -119,12 +113,7 @@ class ErrorExposureDiagnosticsIntegrationTest {
                                     .isEqualTo(ErrorCategory.AUTHENTICATION);
                             assertThat(captured.resolvedError().exposure()).isEqualTo(exposure);
                             assertThat(response.getContentAsString())
-                                    .contains(
-                                            exposure == ErrorExposure.PUBLIC
-                                                    ? SecurityErrorCatalog.AUTHENTICATION_REQUIRED
-                                                            .code()
-                                                    : FallbackThrowableErrorResolver
-                                                            .DEFAULT_ERROR_CODE);
+                                    .contains(SecurityErrorCatalog.AUTHENTICATION_REQUIRED.code());
                         });
     }
 

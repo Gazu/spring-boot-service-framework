@@ -2,7 +2,6 @@ package com.smbtech.serviceframework.starter.mock.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
@@ -23,6 +22,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
+import tools.jackson.core.type.TypeReference;
 
 class MockAutoConfigurationTest {
 

@@ -1,11 +1,11 @@
 package com.smbtech.serviceframework.openapi.contract;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import tools.jackson.databind.JsonNode;
 
 /** Provides open api contract behavior. */
 public final class OpenApiContract {
@@ -91,7 +91,7 @@ public final class OpenApiContract {
         if (schema == null || !schema.hasNonNull("$ref")) {
             return schema;
         }
-        String reference = schema.path("$ref").asText();
+        String reference = schema.path("$ref").asString();
         if (!reference.startsWith("#/")) {
             throw new IllegalArgumentException(
                     "external schema references are not supported: " + reference);

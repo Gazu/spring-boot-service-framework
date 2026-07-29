@@ -7,8 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ErrorExposure;
 import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
@@ -43,6 +41,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class ErrorHandlingWebApplicationIntegrationTest {
 
@@ -53,7 +53,7 @@ class ErrorHandlingWebApplicationIntegrationTest {
 
     @Test
     void autoConfiguredMockMvcReturnsSnakeCaseValidationResponse() {
-        contextRunner.run(
+        internalContextRunner.run(
                 context -> {
                     assertThat(context).hasNotFailed();
 
@@ -88,7 +88,7 @@ class ErrorHandlingWebApplicationIntegrationTest {
 
     @Test
     void autoConfiguredMockMvcConvertsHttpClientFailureToSafeNotification() {
-        contextRunner.run(
+        internalContextRunner.run(
                 context -> {
                     assertThat(context).hasNotFailed();
 
@@ -164,12 +164,11 @@ class ErrorHandlingWebApplicationIntegrationTest {
                         assertThat(forbiddenJson.has("fieldName")).isFalse();
                         assertThat(unauthorizedJson.at("/metadata/category").asText())
                                 .isEqualTo("AUTHENTICATION");
-                        assertThat(unauthorizedJson.at("/metadata/security/reason").asText())
-                                .isEqualTo("authentication_required");
+                        assertThat(unauthorizedJson.at("/metadata/security").isMissingNode())
+                                .isTrue();
                         assertThat(forbiddenJson.at("/metadata/category").asText())
                                 .isEqualTo("AUTHORIZATION");
-                        assertThat(forbiddenJson.at("/metadata/security/reason").asText())
-                                .isEqualTo("access_denied");
+                        assertThat(forbiddenJson.at("/metadata/security").isMissingNode()).isTrue();
                         assertThat(unauthorized.getContentAsString())
                                 .doesNotContain("authentication-secret");
                         assertThat(forbidden.getContentAsString())
@@ -189,7 +188,7 @@ class ErrorHandlingWebApplicationIntegrationTest {
         NotificationSerializer serializer =
                 (notification, generator, serializers) -> {
                     generator.writeStartObject();
-                    generator.writeStringField("replacement_code", notification.code());
+                    generator.writeStringProperty("replacement_code", notification.code());
                     generator.writeEndObject();
                 };
 
@@ -223,20 +222,19 @@ class ErrorHandlingWebApplicationIntegrationTest {
     }
 
     @Test
-    void internalExposureMasksMvcValidationDownstreamServiceAndUnexpectedFailures() {
+    void internalExposureReturnsDetailedSanitizedMvcAndDownstreamFailures() {
         internalContextRunner.run(
                 context -> {
                     assertThat(context).hasNotFailed();
                     try {
                         MockMvc mockMvc = mockMvc(context);
-                        String fallbackCode = FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE;
-
                         mockMvc.perform(
                                         post("/customers")
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content("{"))
                                 .andExpect(status().isBadRequest())
-                                .andExpect(jsonPath("$.code").value(fallbackCode))
+                                .andExpect(
+                                        jsonPath("$.code").value("E_SERVICE_FRAMEWORK_JSON_0001"))
                                 .andExpect(jsonPath("$.metadata.category").value("VALIDATION"));
 
                         mockMvc.perform(
@@ -244,22 +242,30 @@ class ErrorHandlingWebApplicationIntegrationTest {
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content("{\"customerId\":\"\"}"))
                                 .andExpect(status().isBadRequest())
-                                .andExpect(jsonPath("$.code").value(fallbackCode))
-                                .andExpect(jsonPath("$.metadata.violations").doesNotExist());
+                                .andExpect(
+                                        jsonPath("$.code")
+                                                .value("E_SERVICE_FRAMEWORK_VALIDATION_0001"))
+                                .andExpect(jsonPath("$.metadata.violations").isArray());
 
                         mockMvc.perform(get("/downstream"))
                                 .andExpect(status().isBadGateway())
-                                .andExpect(jsonPath("$.code").value(fallbackCode))
+                                .andExpect(
+                                        jsonPath("$.code")
+                                                .value("E_SERVICE_FRAMEWORK_HTTP_CLIENT_0503"))
                                 .andExpect(jsonPath("$.metadata.category").value("DOWNSTREAM"))
-                                .andExpect(jsonPath("$.metadata.dependency").doesNotExist());
+                                .andExpect(jsonPath("$.metadata.dependency").isMap());
 
                         mockMvc.perform(get("/service-failure"))
                                 .andExpect(status().isInternalServerError())
-                                .andExpect(jsonPath("$.code").value(fallbackCode));
+                                .andExpect(jsonPath("$.code").value("E_APPLICATION_SERVICE_0001"));
 
                         mockMvc.perform(get("/failure"))
                                 .andExpect(status().isInternalServerError())
-                                .andExpect(jsonPath("$.code").value(fallbackCode));
+                                .andExpect(
+                                        jsonPath("$.code")
+                                                .value(
+                                                        FallbackThrowableErrorResolver
+                                                                .DEFAULT_ERROR_CODE));
                     } catch (Exception exception) {
                         throw new AssertionError(exception);
                     }
@@ -275,7 +281,11 @@ class ErrorHandlingWebApplicationIntegrationTest {
                                 .perform(get("/service-failure"))
                                 .andExpect(status().isInternalServerError())
                                 .andExpect(jsonPath("$.code").value("E_APPLICATION_SERVICE_0001"))
-                                .andExpect(jsonPath("$.message").value("Service operation failed"));
+                                .andExpect(
+                                        jsonPath("$.message")
+                                                .value(
+                                                        FallbackThrowableErrorResolver
+                                                                .DEFAULT_PUBLIC_MESSAGE));
                     } catch (Exception exception) {
                         throw new AssertionError(exception);
                     }

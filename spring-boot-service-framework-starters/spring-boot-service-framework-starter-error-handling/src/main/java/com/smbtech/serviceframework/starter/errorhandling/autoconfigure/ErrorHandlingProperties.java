@@ -78,60 +78,60 @@ public class ErrorHandlingProperties {
         /** Creates a response instance. */
         public Response() {}
 
-        private ErrorExposure exposure = ErrorExposure.INTERNAL;
+        private ErrorExposure exposure = ErrorExposure.PUBLIC;
         private boolean includeFieldViolations = true;
         private Set<String> metadataAllowlist =
                 new LinkedHashSet<>(DefaultNotificationSanitizer.DEFAULT_METADATA_ALLOWLIST);
 
         /**
-         * Returns the configured error exposure.
+         * Returns the configured response audience and detail level.
          *
-         * @return error exposure
+         * @return response audience and detail level
          */
         public ErrorExposure getExposure() {
             return exposure;
         }
 
         /**
-         * Sets the configured error exposure.
+         * Sets the configured response audience and detail level.
          *
-         * @param exposure error exposure
+         * @param exposure response audience and detail level
          */
         public void setExposure(ErrorExposure exposure) {
             this.exposure = exposure;
         }
 
         /**
-         * Reports whether include field violations.
+         * Reports whether detailed internal responses include field violations.
          *
-         * @return is include field violations result
+         * @return whether internal responses include field violations
          */
         public boolean isIncludeFieldViolations() {
             return includeFieldViolations;
         }
 
         /**
-         * Sets the configured include field violations.
+         * Sets whether detailed internal responses include field violations.
          *
-         * @param includeFieldViolations include field violations value
+         * @param includeFieldViolations whether internal responses include field violations
          */
         public void setIncludeFieldViolations(boolean includeFieldViolations) {
             this.includeFieldViolations = includeFieldViolations;
         }
 
         /**
-         * Returns the configured metadata allowlist.
+         * Returns the metadata allowlist applied to detailed internal responses.
          *
-         * @return get metadata allowlist result
+         * @return internal response metadata allowlist
          */
         public Set<String> getMetadataAllowlist() {
             return metadataAllowlist;
         }
 
         /**
-         * Sets the configured metadata allowlist.
+         * Sets the metadata allowlist applied to detailed internal responses.
          *
-         * @param metadataAllowlist metadata allowlist value
+         * @param metadataAllowlist internal response metadata allowlist
          */
         public void setMetadataAllowlist(Set<String> metadataAllowlist) {
             this.metadataAllowlist =

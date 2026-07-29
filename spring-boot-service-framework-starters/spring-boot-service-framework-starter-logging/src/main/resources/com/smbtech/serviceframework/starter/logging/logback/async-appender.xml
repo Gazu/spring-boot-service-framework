@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <appender name="ASYNC"
+              class="com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender">
+        <queueSize>${ASYNC_QUEUE_SIZE}</queueSize>
+        <saturationPolicy>${ASYNC_SATURATION_POLICY}</saturationPolicy>
+        <criticalEventProtectionEnabled>${ASYNC_CRITICAL_EVENT_PROTECTION_ENABLED}</criticalEventProtectionEnabled>
+        <configuredDiscardingThreshold>${ASYNC_DISCARDING_THRESHOLD}</configuredDiscardingThreshold>
+        <legacyNeverBlock>${ASYNC_NEVER_BLOCK}</legacyNeverBlock>
+        <maxFlushTime>${ASYNC_MAX_FLUSH_TIME}</maxFlushTime>
+        <appender-ref ref="${SERVICE_FRAMEWORK_LOGGING_DELEGATE:-STDOUT}"/>
+    </appender>
+</included>

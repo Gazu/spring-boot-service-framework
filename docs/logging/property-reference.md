@@ -6,11 +6,14 @@ Generated from the compiled `LoggingProperties` configuration property class. Al
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `smbtech.logging.async.discarding-threshold` | `int` | `0` | Logback async discarding threshold. |
-| `smbtech.logging.async.enabled` | `boolean` | `true` | Enables Logback async console logging. |
-| `smbtech.logging.async.max-flush-time-ms` | `int` | `1000` | Maximum async appender flush time during shutdown. |
-| `smbtech.logging.async.never-block` | `boolean` | `false` | Whether appenders should avoid blocking when the async queue is full. |
-| `smbtech.logging.async.queue-size` | `int` | `2048` | Async appender queue size. |
+| `smbtech.logging.async.critical-event-protection-enabled` | `boolean` | `true` | Protects WARN, ERROR, AUDIT, and SECURITY events from saturation-based discarding. Under DROP_WHEN_FULL, a full queue uses synchronous delegate fallback. |
+| `smbtech.logging.async.discarding-threshold` | `int` | `0` | Low-priority discard threshold. Under DISCARD_LOW_PRIORITY, zero derives 20 percent of queue-size. A positive value with BLOCK preserves the former threshold behavior. |
+| `smbtech.logging.async.enabled` | `boolean` | `true` | Routes the root logger through the Logback async appender. When false, structured STDOUT logging runs synchronously on the caller thread. |
+| `smbtech.logging.async.max-flush-time-ms` | `int` | `1000` | Maximum time Logback waits to drain accepted queued events after shutdown admission closes. Accepted values are 100 through 30000 milliseconds. |
+| `smbtech.logging.async.never-block` | `boolean` | `false` | Compatibility override for the former Logback setting. True forces DROP_WHEN_FULL; prefer saturation-policy for new configuration. |
+| `smbtech.logging.async.observability.enabled` | `boolean` | `true` | Registers bounded-cardinality asynchronous queue, discard, fallback, and producer-wait metrics when Micrometer is available. |
+| `smbtech.logging.async.queue-size` | `int` | `2048` | Maximum number of waiting events in the bounded Logback async queue. Accepted values are 256 through 65536. |
+| `smbtech.logging.async.saturation-policy` | `SaturationPolicy` | `BLOCK` | Explicit queue saturation behavior: BLOCK, DISCARD_LOW_PRIORITY, or DROP_WHEN_FULL. |
 | `smbtech.logging.level` | `String` | `INFO` | Root logging level used by the starter Logback configuration. |
 | `smbtech.logging.production` | `boolean` | `false` | Enables production filtering behavior. When true, metric events are disabled; audit, security, and tracking events remain enabled. |
 | `smbtech.logging.transaction.accept-incoming` | `boolean` | `true` | Accepts a valid incoming transaction id. If disabled, always generates a new UUID. |

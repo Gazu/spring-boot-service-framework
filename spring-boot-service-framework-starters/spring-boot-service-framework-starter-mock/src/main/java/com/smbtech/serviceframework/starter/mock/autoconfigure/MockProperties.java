@@ -2,7 +2,9 @@ package com.smbtech.serviceframework.starter.mock.autoconfigure;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** Provides mock properties behavior. */
@@ -122,7 +124,10 @@ public class MockProperties {
         private boolean enabled;
         private boolean failFast = true;
         private boolean includeOptionalProperties = true;
+        private boolean allowInProduction;
+        private boolean statusOverrideEnabled;
         private String statusHeader = "X-Mock-Status";
+        private Set<String> productionProfiles = new LinkedHashSet<>(Set.of("prod", "production"));
         private Map<String, Contract> contracts = new LinkedHashMap<>();
 
         /**
@@ -180,6 +185,42 @@ public class MockProperties {
         }
 
         /**
+         * Reports whether OpenAPI mock routes may run under a production profile.
+         *
+         * @return whether production activation is explicitly allowed
+         */
+        public boolean isAllowInProduction() {
+            return allowInProduction;
+        }
+
+        /**
+         * Sets whether OpenAPI mock routes may run under a production profile.
+         *
+         * @param allowInProduction whether production activation is explicitly allowed
+         */
+        public void setAllowInProduction(boolean allowInProduction) {
+            this.allowInProduction = allowInProduction;
+        }
+
+        /**
+         * Reports whether requests may select a declared response status through a header.
+         *
+         * @return whether status override is enabled
+         */
+        public boolean isStatusOverrideEnabled() {
+            return statusOverrideEnabled;
+        }
+
+        /**
+         * Sets whether requests may select a declared response status through a header.
+         *
+         * @param statusOverrideEnabled whether status override is enabled
+         */
+        public void setStatusOverrideEnabled(boolean statusOverrideEnabled) {
+            this.statusOverrideEnabled = statusOverrideEnabled;
+        }
+
+        /**
          * Returns the configured status header.
          *
          * @return get status header result
@@ -195,6 +236,27 @@ public class MockProperties {
          */
         public void setStatusHeader(String statusHeader) {
             this.statusHeader = statusHeader;
+        }
+
+        /**
+         * Returns profiles treated as production environments.
+         *
+         * @return configured production profiles
+         */
+        public Set<String> getProductionProfiles() {
+            return productionProfiles;
+        }
+
+        /**
+         * Sets profiles treated as production environments.
+         *
+         * @param productionProfiles configured production profiles
+         */
+        public void setProductionProfiles(Set<String> productionProfiles) {
+            this.productionProfiles =
+                    productionProfiles == null
+                            ? new LinkedHashSet<>()
+                            : new LinkedHashSet<>(productionProfiles);
         }
 
         /**

@@ -4,7 +4,7 @@ Spring Boot starter for creating configured `RestClient` beans from
 `application.yml`.
 
 This module adapts `spring-boot-service-framework-http-client-core` to Spring
-Boot, Spring `RestClient`, Apache HTTP Client, Spring Security OAuth2 Client,
+Boot, Spring `RestClient`, Apache HTTP Client, optional Spring Security OAuth2 Client,
 SSL stores, audit logs, Micrometer metrics, optional retry, optional circuit
 breaker behavior, and declarative Spring HTTP interfaces.
 
@@ -27,7 +27,19 @@ framework adapters or tests that must remain independent from Spring Boot.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
+}
+```
+
+Add OAuth2 only when the application uses bearer authentication or
+`AccessTokenClient`:
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 }
 ```
 
@@ -89,6 +101,7 @@ Common customization APIs:
 - `RestClientBuilderCustomizer`
 - `ApacheHttpClientBuilderCustomizer`
 - `ClientHttpRequestFactoryCustomizer`
+- `RestClientAuthenticationConfigurer`
 - `JwtBearerClaimsContributor`
 - `ClientAssertionCustomizer`
 - `OAuth2TokenRequestCustomizer`
@@ -101,6 +114,8 @@ The full public extension contract is documented in
 
 - It does not own `spring.security.oauth2.client.*`; Spring Boot OAuth2 Client
   owns provider and registration binding.
+- It does not add Spring Security transitively. OAuth2 applications opt in with
+  `spring-boot-starter-oauth2-client`.
 - It does not store real secrets in source-controlled configuration.
 - It does not put business-specific domain logic in the framework.
 - It does not make `http-client-core` depend on Spring, Apache, Jackson,

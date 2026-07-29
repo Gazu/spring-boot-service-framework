@@ -5,6 +5,8 @@ pluginManagement {
         id 'org.springframework.boot' version providers.gradleProperty('springBootVersion').get()
         id 'io.spring.dependency-management' version providers.gradleProperty('springDependencyManagementVersion').get()
         id 'com.diffplug.spotless' version providers.gradleProperty('spotlessVersion').get()
+        id 'org.cyclonedx.bom' version providers.gradleProperty('cycloneDxVersion').get()
+        id 'org.sonarqube' version providers.gradleProperty('sonarQubePluginVersion').get()
     }
     repositories {
         gradlePluginPortal()
@@ -14,6 +16,8 @@ pluginManagement {
 
 rootProject.name = 'spring-boot-service-framework'
 
+include 'spring-boot-service-framework-platform'
+include 'spring-boot-service-framework-actuator-core'
 include 'spring-boot-service-framework-commons'
 include 'spring-boot-service-framework-logging-core'
 include 'spring-boot-service-framework-http-client-core'
@@ -25,3 +29,5 @@ include 'spring-boot-service-framework-starters:spring-boot-service-framework-st
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock'
 include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling'
+include 'spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator'
+include 'examples:quality-pilot'

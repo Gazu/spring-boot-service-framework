@@ -19,14 +19,15 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Applies a metadata allowlist and recursively redacts sensitive values from public notifications.
+ * Applies a metadata allowlist and recursively redacts sensitive values from response
+ * notifications.
  */
 public final class DefaultNotificationSanitizer implements NotificationSanitizer {
 
     /** Value used in place of sensitive content. */
     public static final String REDACTED_VALUE = "<redacted>";
 
-    /** Default metadata keys that may be included in public responses. */
+    /** Default metadata keys that may be included in responses. */
     public static final Set<String> DEFAULT_METADATA_ALLOWLIST =
             Set.of(
                     StandardErrorMetadataKeys.SCHEMA_VERSION,
@@ -80,7 +81,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
     /** Normalized metadata allowlist used for case-insensitive matching. */
     private final Set<String> normalizedMetadataAllowlist;
 
-    /** Creates a sanitizer with the default public metadata allowlist. */
+    /** Creates a sanitizer with the default response metadata allowlist. */
     public DefaultNotificationSanitizer() {
         this(DEFAULT_METADATA_ALLOWLIST);
     }
@@ -88,7 +89,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
     /**
      * Creates a sanitizer with a custom top-level metadata allowlist.
      *
-     * @param metadataAllowlist metadata keys allowed in public notifications
+     * @param metadataAllowlist metadata keys allowed in response notifications
      */
     public DefaultNotificationSanitizer(Set<String> metadataAllowlist) {
         this.metadataAllowlist = immutableAllowlist(metadataAllowlist);
@@ -105,7 +106,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
                 source.code(),
                 sanitizeText(source.message()),
                 source.severity(),
-                source.fieldName(),
+                sanitizeText(source.fieldName()),
                 sanitizeMetadata(source.metadata()),
                 source.id(),
                 source.timestamp());
@@ -124,12 +125,8 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
                                                 violation.code(),
                                                 sanitizeText(violation.message())))
                         .toList();
-        return new ResolvedError(
-                sanitize(source.notification()),
-                source.category(),
-                source.exposure(),
-                source.diagnosticMessage(),
-                fieldViolations);
+        return source.withNotification(sanitize(source.notification()))
+                .withFieldViolations(fieldViolations);
     }
 
     /**

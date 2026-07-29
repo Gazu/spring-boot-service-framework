@@ -9,12 +9,16 @@ examples, or maintain the repository.
 | Need | Read |
 |---|---|
 | Understand the repository, modules, and quick starts | [Repository README](../README.md) |
+| Import the framework BOM with Gradle or Maven | [Dependency Management](dependency-management.md) |
 | Check supported Java, Spring Boot, and compatibility rules | [Compatibility](compatibility.md) |
+| Build applications with Spring AOT or GraalVM native-image | [Spring Boot AOT And Native Images](native-image.md) |
 | Diagnose build, configuration, token, mock, or logging failures | [Troubleshooting](troubleshooting.md) |
 | Understand documentation ownership and anti-duplication rules | [Documentation Architecture](documentation-architecture.md) |
 | Write or review framework code | [Code Conventions](code-conventions.md) |
 | Decide whether a package or type is supported API | [Public API Boundaries](public-api-boundaries.md), [Public API Inventory](public-api-inventory.md) |
+| Review pre-1.0 nullability and binary compatibility policy | [Pre-1.0 API Policy](pre-1.0-api-policy.md) |
 | Write or review module READMEs | [Module README Convention](module-readme-convention.md) |
+| Run the private quality-platform pilot | [Quality Pipeline](quality-pipeline.md) |
 | Review the public surface of every artifact | [Public API Inventory](public-api-inventory.md) |
 | Upgrade code imports, package names, or REST client properties | [Migrate Public Names And Properties](guides/migrate-public-names-and-properties.md) |
 | Contribute code or documentation | [Contributing](../CONTRIBUTING.md) |
@@ -25,6 +29,8 @@ examples, or maintain the repository.
 
 | Feature area | Main guide | Related docs |
 |---|---|---|
+| Framework BOM, version alignment, and dependency conflict diagnosis | [Dependency Management](dependency-management.md) | [Platform README](../spring-boot-service-framework-platform/README.md), [Compatibility](compatibility.md), [Releasing](releasing.md) |
+| Framework diagnostics and Spring Boot Actuator integration | [Actuator Architecture Contract](actuator.md) | [Actuator compatibility](actuator/compatibility.md), [Actuator property reference](actuator/property-reference.md), [Actuator core README](../spring-boot-service-framework-actuator-core/README.md), [Actuator starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md), [Actuator consumer example](../examples/actuator-consumer/README.md) |
 | Reusable exception handling, safe notifications, validation, and Spring Security responses | [Error Handling Guide](error-handling.md) | [Exception selection](error-handling/exception-selection.md), [Security errors](error-handling/security.md), [JSON contract](error-handling/json-contract.md), [Property reference](error-handling/property-reference.md), [Extension points](error-handling-extension-points.md), [Migration](guides/migrate-shared-exception.md), [Example](../examples/error-handling-consumer/README.md) |
 | REST clients, OAuth2, SSL, audit, metrics, resilience, and error handling | [REST Client Starter Guide](rest-client.md) | [REST client property reference](rest-client/property-reference.md), [Troubleshooting](troubleshooting.md), [REST Client Extension Points](rest-client-extension-points.md), [REST client consumer example](../examples/rest-client-consumer/README.md) |
 | Public REST client replacement points, customizers, and OAuth2 SPIs | [REST Client Extension Points](rest-client-extension-points.md) | [Compatibility](compatibility.md), [REST Client Starter Guide](rest-client.md) |
@@ -33,10 +39,12 @@ examples, or maintain the repository.
 | Executable OpenAPI contract tests for Spring MVC controllers | [OpenAPI Contract Testing](openapi-contract-testing.md) | [Contract testing recipe](guides/openapi-contract-testing.md), [OpenAPI Code Generation](openapi-codegen.md), [Compatibility](compatibility.md) |
 | OpenAPI generator Gradle build logic | [OpenAPI Generator Build Logic](../build-logic/openapi-generator-plugin/README.md) | [OpenAPI Code Generation](openapi-codegen.md), [OpenAPI Generator Evolution](openapi-evolution.md), [OpenAPI generator README](../spring-boot-service-framework-openapi-generator/README.md) |
 | Java library and Spring Boot starter build conventions | [Gradle Convention Plugins](../build-logic/conventions/README.md) | [Code Conventions](code-conventions.md), [Contributing](../CONTRIBUTING.md) |
+| Pre-1.0 API evolution, JSpecify, and japicmp | [Pre-1.0 API Policy](pre-1.0-api-policy.md) | [Public API Boundaries](public-api-boundaries.md), [Compatibility](compatibility.md), [Releasing](releasing.md) |
+| Spring Boot AOT, GraalVM native-image, runtime hints, and declarative client proxies | [Spring Boot AOT And Native Images](native-image.md) | [REST Client Starter Guide](rest-client.md), [Compatibility](compatibility.md) |
 | OpenAPI generator module maintenance | [OpenAPI generator README](../spring-boot-service-framework-openapi-generator/README.md) | [OpenAPI Code Generation](openapi-codegen.md), [OpenAPI Generator Evolution](openapi-evolution.md), [Compatibility](compatibility.md) |
 | Copy-ready use-case recipes | [Use Case Guides](guides/index.md) | [REST Client Starter Guide](rest-client.md), [Troubleshooting](troubleshooting.md) |
 | Mock responses for controllers and outbound `RestClient` calls | [Mock Core and Starter](mock.md) | [Mock property reference](mock/property-reference.md), [Mock core README](../spring-boot-service-framework-mock-core/README.md), [Mock starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md) |
-| Structured JSON logging and transaction id propagation | [Logging Guide](logging.md) | [Logging property reference](logging/property-reference.md), [Logging starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md), [Logging core README](../spring-boot-service-framework-logging-core/README.md), [Logging consumer example](../examples/logging-consumer/README.md) |
+| Structured JSON logging and transaction id propagation | [Logging Guide](logging.md) | [Logging compatibility](logging/compatibility.md), [Async appender contract](logging/async-appender.md), [Logging property reference](logging/property-reference.md), [Logging starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md), [Logging core README](../spring-boot-service-framework-logging-core/README.md), [Logging consumer example](../examples/logging-consumer/README.md) |
 | Shared notifications and framework-neutral helpers | [Commons README](../spring-boot-service-framework-commons/README.md) | [HTTP client core README](../spring-boot-service-framework-http-client-core/README.md) |
 
 ## Use Case Guides
@@ -57,13 +65,16 @@ examples, or maintain the repository.
 
 | Module | Documentation |
 |---|---|
+| `spring-boot-service-framework-platform` | [Platform README](../spring-boot-service-framework-platform/README.md), [Dependency Management](dependency-management.md) |
+| `spring-boot-service-framework-actuator-core` | [Actuator core README](../spring-boot-service-framework-actuator-core/README.md), [Actuator Architecture Contract](actuator.md), [Actuator compatibility](actuator/compatibility.md), [Actuator property reference](actuator/property-reference.md) |
 | `spring-boot-service-framework-commons` | [Commons README](../spring-boot-service-framework-commons/README.md) |
-| `spring-boot-service-framework-logging-core` | [Logging core README](../spring-boot-service-framework-logging-core/README.md), [Logging Guide](logging.md) |
+| `spring-boot-service-framework-logging-core` | [Logging core README](../spring-boot-service-framework-logging-core/README.md), [Logging Guide](logging.md), [Logging compatibility](logging/compatibility.md) |
 | `spring-boot-service-framework-http-client-core` | [HTTP client core README](../spring-boot-service-framework-http-client-core/README.md) |
 | `spring-boot-service-framework-mock-core` | [Mock core README](../spring-boot-service-framework-mock-core/README.md) |
 | `spring-boot-service-framework-error-core` | [Error core README](../spring-boot-service-framework-error-core/README.md), [Error Handling Guide](error-handling.md) |
 | `spring-boot-service-framework-openapi-generator` | [OpenAPI generator README](../spring-boot-service-framework-openapi-generator/README.md), [OpenAPI Code Generation](openapi-codegen.md), [OpenAPI Generator Evolution](openapi-evolution.md) |
-| `spring-boot-service-framework-starter-logging` | [Logging starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md), [Logging Guide](logging.md) |
+| `spring-boot-service-framework-starter-actuator` | [Actuator starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md), [Actuator Architecture Contract](actuator.md), [Actuator compatibility](actuator/compatibility.md), [Actuator property reference](actuator/property-reference.md) |
+| `spring-boot-service-framework-starter-logging` | [Logging starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md), [Logging Guide](logging.md), [Logging compatibility](logging/compatibility.md), [Async appender contract](logging/async-appender.md) |
 | `spring-boot-service-framework-starter-rest-client` | [REST client starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/README.md), [REST Client Starter Guide](rest-client.md) |
 | `spring-boot-service-framework-starter-mock` | [Mock starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md), [Mock Core and Starter](mock.md) |
 | `spring-boot-service-framework-starter-error-handling` | [Error handling starter README](../spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md), [Error Handling Guide](error-handling.md), [Error handling consumer example](../examples/error-handling-consumer/README.md) |
@@ -72,19 +83,23 @@ examples, or maintain the repository.
 
 | Example | Purpose |
 |---|---|
+| [Actuator consumer](../examples/actuator-consumer/README.md) | Standalone Spring Boot app covering health, info, diagnostics, metrics, application probes, redaction, and endpoint authorization. |
 | [Error handling consumer](../examples/error-handling-consumer/README.md) | Standalone Spring Boot app covering application catalogs, validation, downstream failures, unexpected exceptions, and security responses. |
 | [Logging consumer](../examples/logging-consumer/README.md) | Standalone Spring Boot app that validates the logging starter from published local artifacts. |
 | [REST client consumer](../examples/rest-client-consumer/README.md) | Standalone Spring Boot app that validates configured `RestClient` beans, OAuth2 flows, request context propagation, and downstream calls from published local artifacts. |
+| [Quality pilot](../examples/quality-pilot/README.md) | Executable Spring Boot application used to validate the private Jenkins quality pipeline. |
 
 ## Maintainers
 
 | Task | Read |
 |---|---|
 | Update public behavior or documentation | [Documentation Architecture](documentation-architecture.md) |
+| Implement or review the Actuator starter architecture | [Actuator Architecture Contract](actuator.md) |
+| Add, remove, or upgrade a platform-managed dependency | [Dependency Management](dependency-management.md), [Compatibility](compatibility.md) |
 | Add or review framework code | [Code Conventions](code-conventions.md), [Public API Boundaries](public-api-boundaries.md), [Public API Inventory](public-api-inventory.md) |
 | Update a module README | [Module README Convention](module-readme-convention.md) |
 | Check compatibility expectations | [Compatibility](compatibility.md) |
-| Review or change a public type | [Public API Inventory](public-api-inventory.md), [Compatibility](compatibility.md) |
+| Review or change a public type | [Public API Inventory](public-api-inventory.md), [Pre-1.0 API Policy](pre-1.0-api-policy.md), [Compatibility](compatibility.md) |
 | Add REST client extension points | [REST Client Extension Points](rest-client-extension-points.md) |
 | Define or review OpenAPI generated coordinates | [OpenAPI Code Generation](openapi-codegen.md) |
 | Add or publish generated OpenAPI artifacts | [Generate OpenAPI Contract Artifacts](guides/openapi-generated-artifacts.md), [OpenAPI Code Generation](openapi-codegen.md) |

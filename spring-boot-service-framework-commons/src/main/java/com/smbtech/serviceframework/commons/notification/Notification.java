@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.commons.notification;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -120,7 +119,17 @@ public record Notification(
                             Objects.requireNonNull(
                                     value, "Notification metadata value must not be null"));
                 });
-        return Collections.unmodifiableMap(copy);
+        return ImmutableNotificationMetadata.copy(copy);
+    }
+
+    /**
+     * Returns a notification with replacement metadata while preserving its identity and timestamp.
+     *
+     * @param metadata replacement structured metadata
+     * @return updated immutable notification
+     */
+    public Notification withMetadata(Map<String, Object> metadata) {
+        return new Notification(code, message, severity, fieldName, metadata, id, timestamp);
     }
 
     /** Builder for {@link Notification}. */

@@ -51,6 +51,7 @@ public-api:
 - com.smbtech:spring-boot-service-framework-http-client-core|record|com.smbtech.serviceframework.httpclient.domain.TimeoutPolicy
 - com.smbtech:spring-boot-service-framework-http-client-core|record|com.smbtech.serviceframework.httpclient.domain.TokenRequestDefinition
 - com.smbtech:spring-boot-service-framework-starter-rest-client|annotation|com.smbtech.serviceframework.starter.restclient.api.HttpApiClient
+- com.smbtech:spring-boot-service-framework-starter-rest-client|class|com.smbtech.serviceframework.starter.restclient.api.HttpApiClientRuntimeHints
 - com.smbtech:spring-boot-service-framework-starter-rest-client|class|com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecoder
 - com.smbtech:spring-boot-service-framework-starter-rest-client|class|com.smbtech.serviceframework.starter.restclient.api.HttpErrorBodyDecodingException
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient
@@ -60,6 +61,7 @@ public-api:
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.ApacheHttpClientBuilderCustomizer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.ClientHttpRequestFactoryCustomizer
+- com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientAuthenticationConfigurer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionCustomizer
@@ -91,6 +93,7 @@ extension-points:
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.ApacheHttpClientBuilderCustomizer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.ClientHttpRequestFactoryCustomizer
+- com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientAuthenticationConfigurer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver
 - com.smbtech:spring-boot-service-framework-starter-rest-client|interface|com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionCustomizer
@@ -188,6 +191,8 @@ properties:
 - com.smbtech:spring-boot-service-framework-starter-rest-client|smbtech.rest-clients.validation.validate-key-store-content
 
 auto-configuration-imports:
+- com.smbtech:spring-boot-service-framework-starter-rest-client|com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration
+- com.smbtech:spring-boot-service-framework-starter-rest-client|com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration
 - com.smbtech:spring-boot-service-framework-starter-rest-client|com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration
 
 gradle-plugin-ids:

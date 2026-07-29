@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'org.graalvm.buildtools.native'
+    id 'io.spring.dependency-management'
+}
+
+group = 'com.smbtech.examples'
+version = '0.4.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def frameworkRoot = file('../..')
+
+repositories {
+    maven {
+        name = 'platformBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-platform/build/repository")
+    }
+    maven {
+        name = 'actuatorStarterBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/build/repository")
+    }
+    maven {
+        name = 'actuatorCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-actuator-core/build/repository")
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('com.smbtech:spring-boot-service-framework-platform:0.4.0')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-actuator'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.named('compileTestJava') {
+    options.compilerArgs += ['-Xlint:deprecation']
+}

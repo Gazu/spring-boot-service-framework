@@ -1,4 +1,5 @@
 def javaLibraryModules = [
+        'spring-boot-service-framework-actuator-core',
         'spring-boot-service-framework-commons',
         'spring-boot-service-framework-logging-core',
         'spring-boot-service-framework-http-client-core',
@@ -9,13 +10,18 @@ def javaLibraryModules = [
 ]
 
 def springBootStarterModules = [
+        'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling'
 ]
 
-def conventionModuleBuildFiles = (javaLibraryModules + springBootStarterModules).collect {
+def javaPlatformModules = [
+        'spring-boot-service-framework-platform'
+]
+
+def conventionModuleBuildFiles = (javaLibraryModules + springBootStarterModules + javaPlatformModules).collect {
     file("${it}/build.gradle")
 }
 
@@ -41,10 +47,18 @@ tasks.register('validateConventionPluginUsage') {
             }
         }
 
+        javaPlatformModules.each { modulePath ->
+            def buildFile = file("${modulePath}/build.gradle")
+            if (!buildFile.text.contains("id 'com.smbtech.service-framework.java-platform'")) {
+                failures << "${relativePath(buildFile)}: missing Java platform convention plugin"
+            }
+        }
+
         def duplicatedConfiguration = [
                 'JavaLanguageVersion.of(21)'                       : 'Java 21 toolchain',
                 'withSourcesJar()'                                 : 'sources JAR',
                 'withJavadocJar()'                                 : 'Javadoc JAR',
+                'allowDependencies()'                              : 'platform dependency policy',
                 "compilerArgs += ['-parameters']"                 : '-parameters compiler flag',
                 'useJUnitPlatform()'                               : 'JUnit Platform',
                 'org.junit.jupiter:junit-jupiter'                  : 'JUnit dependency',

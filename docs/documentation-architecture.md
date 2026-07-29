@@ -34,6 +34,10 @@ source, but should not duplicate long explanations.
 |---|---|
 | Repository overview and module map | `README.md` |
 | Documentation navigation | `docs/index.md` |
+| Actuator module architecture and safety boundaries | `docs/actuator.md` |
+| Actuator supported API, runtime names, and change policy | `docs/actuator/compatibility.md` |
+| Actuator property reference | `docs/actuator/property-reference.md` |
+| Framework BOM and dependency version alignment | `docs/dependency-management.md` |
 | Use-case guide index | `docs/guides/index.md` |
 | Java code conventions | `docs/code-conventions.md` |
 | Public API and implementation package boundaries | `docs/public-api-boundaries.md` |
@@ -55,6 +59,8 @@ source, but should not duplicate long explanations.
 | Release process | `docs/releasing.md` |
 | Troubleshooting catalog | `docs/troubleshooting.md` |
 | Structured logging usage and configuration | `docs/logging.md` |
+| Logging supported API, runtime names, resources, and change policy | `docs/logging/compatibility.md` |
+| Async logging topology, saturation, limits, and baseline | `docs/logging/async-appender.md` |
 | Structured logging property reference | `docs/logging/property-reference.md` |
 | REST client usage and configuration | `docs/rest-client.md` |
 | REST client property reference | `docs/rest-client/property-reference.md` |
@@ -176,6 +182,12 @@ When changing public behavior, update documentation in the same pull request:
 - new root lifecycle task: update `gradle/lifecycle.gradle`, `README.md`, and
   `docs/releasing.md` when it affects release or validation workflow;
 - new compatibility promise: update the compatibility document and tests;
+- new platform-managed module, BOM import, or dependency policy: update
+  `docs/dependency-management.md`, the platform compatibility contract, and
+  consumer smoke tests;
+- new Actuator core, starter, contributor, endpoint, metrics, or integration behavior:
+  update `docs/actuator.md`, `docs/actuator/compatibility.md`, and the Actuator
+  architecture and compatibility validations;
 - release preparation: update `CHANGELOG.md`, `docs/releasing.md` when the
   process changes, and all version examples together;
 - new starter feature: update the starter README with a short summary and link

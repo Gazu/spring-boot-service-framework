@@ -1,7 +1,5 @@
 package com.smbtech.serviceframework.starter.mock.adapter.out.resource;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockDefinition;
 import com.smbtech.serviceframework.mock.domain.MockRequest;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
@@ -14,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Provides resource mock response source behavior. */
 public final class ResourceMockResponseSource implements MockResponseSource {
@@ -99,7 +99,7 @@ public final class ResourceMockResponseSource implements MockResponseSource {
             if (value.isArray()) {
                 headers.put(field.getKey(), streamTexts(value));
             } else {
-                headers.put(field.getKey(), List.of(value.asText()));
+                headers.put(field.getKey(), List.of(value.asString()));
             }
         }
         return headers;
@@ -107,7 +107,7 @@ public final class ResourceMockResponseSource implements MockResponseSource {
 
     private List<String> streamTexts(JsonNode value) {
         java.util.ArrayList<String> values = new java.util.ArrayList<>();
-        value.forEach(item -> values.add(item.asText()));
+        value.forEach(item -> values.add(item.asString()));
         return values;
     }
 

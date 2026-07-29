@@ -2,8 +2,6 @@ package com.smbtech.serviceframework.starter.errorhandling;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.commons.notification.NotificationSeverity;
 import com.smbtech.serviceframework.error.ErrorCategory;
@@ -57,6 +55,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
 
 class ErrorHandlingPublicApiCompatibilityTest {
 
@@ -192,7 +192,7 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 ErrorExposure.class);
 
         ErrorHandlingProperties properties = new ErrorHandlingProperties();
-        assertThat(properties.getResponse().getExposure()).isEqualTo(ErrorExposure.INTERNAL);
+        assertThat(properties.getResponse().getExposure()).isEqualTo(ErrorExposure.PUBLIC);
         assertThat(Arrays.stream(ErrorExposure.values()).map(Enum::name))
                 .containsExactly("PUBLIC", "INTERNAL");
 
@@ -302,7 +302,7 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 void.class,
                 Notification.class,
                 JsonGenerator.class,
-                SerializerProvider.class);
+                SerializationContext.class);
         assertPublicConstructor(CompositeErrorReporter.class, List.class);
         assertPublicMethod(CompositeErrorReporter.class, "reporters", List.class);
         assertPublicMethod(

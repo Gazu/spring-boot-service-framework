@@ -9,6 +9,7 @@ Generated from the compiled `MockProperties` configuration property class. All p
 | `smbtech.mocks.endpoints.<key>.delay` | `Duration` | `0ms` | Artificial delay applied before loading the response. |
 | `smbtech.mocks.endpoints.<key>.enabled` | `boolean` | `false` | Enables this mock endpoint. Disabled mocks are ignored. |
 | `smbtech.mocks.endpoints.<key>.file` | `String` | `empty` | Mock response JSON file. Supports classpath: and file: locations. Plain paths are treated as classpath resources. |
+| `smbtech.mocks.openapi.allow-in-production` | `boolean` | `false` | Allows OpenAPI mock routes under a configured production profile. Keep disabled outside explicitly approved environments. |
 | `smbtech.mocks.openapi.contracts.<key>.base-path` | `String` | `empty` | Path prefix prepended to every operation registered from this contract. |
 | `smbtech.mocks.openapi.contracts.<key>.delay` | `Duration` | `0ms` | Artificial delay applied to responses served from this contract. |
 | `smbtech.mocks.openapi.contracts.<key>.enabled` | `boolean` | `true` | Enables this OpenAPI mock contract. |
@@ -16,4 +17,6 @@ Generated from the compiled `MockProperties` configuration property class. All p
 | `smbtech.mocks.openapi.enabled` | `boolean` | `false` | Registers servlet mock routes from configured OpenAPI contracts. |
 | `smbtech.mocks.openapi.fail-fast` | `boolean` | `true` | Fails application startup when an OpenAPI contract cannot be loaded or registered. |
 | `smbtech.mocks.openapi.include-optional-properties` | `boolean` | `true` | Includes optional schema properties in automatically generated response bodies. |
-| `smbtech.mocks.openapi.status-header` | `String` | `X-Mock-Status` | Request header used to select a declared OpenAPI response status. |
+| `smbtech.mocks.openapi.production-profiles` | `Set&lt;String&gt;` | `[prod, production]` | Spring profiles treated as production environments when OpenAPI mock routes are enabled. |
+| `smbtech.mocks.openapi.status-header` | `String` | `X-Mock-Status` | Request header used when status override is enabled. |
+| `smbtech.mocks.openapi.status-override-enabled` | `boolean` | `false` | Allows requests to select a declared OpenAPI response status through a header. |

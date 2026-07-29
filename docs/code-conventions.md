@@ -33,6 +33,12 @@ explicit migration is approved and recorded in the changelog and
 
 - Prefer records for immutable data carriers when their invariants fit a compact
   canonical constructor.
+- Records containing collections must defensively copy them. Structured
+  `Map<String, Object>` values must also freeze nested maps, collections, and
+  arrays, and reject cyclic container graphs.
+- Prefer intention-revealing `with...` methods when an immutable value is
+  transformed repeatedly; do not reconstruct the full record at each pipeline
+  stage.
 - Avoid `Dto` in framework-owned domain names. Use it only when a type explicitly
   represents an external transport contract.
 - Do not add `*Module` marker classes. A module boundary is represented by its

@@ -27,6 +27,7 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
 
     private final HttpClientDefinition definition;
     private final HttpExchangeAuditSink auditSink;
+    private final HttpExchangeAuditSanitizer sanitizer = new HttpExchangeAuditSanitizer();
 
     /**
      * Creates a audit log interceptor instance.
@@ -52,7 +53,9 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
             if (definition.audit().includeRequest()) {
                 auditSink.request(
                         definition,
-                        new HttpExchangeAuditRequest(method, uri, headers(request), requestBody));
+                        sanitizer.sanitize(
+                                new HttpExchangeAuditRequest(
+                                        method, uri, headers(request), requestBody)));
             }
 
             ClientHttpResponse response = execution.execute(request, body);
@@ -60,18 +63,21 @@ public final class AuditLogInterceptor implements ClientHttpRequestInterceptor {
             if (definition.audit().includeResponse()) {
                 auditSink.response(
                         definition,
-                        new HttpExchangeAuditResponse(
-                                method,
-                                uri,
-                                response.getStatusCode().value(),
-                                response.getStatusText(),
-                                headers(response),
-                                body(response),
-                                durationSince(startedAt)));
+                        sanitizer.sanitize(
+                                new HttpExchangeAuditResponse(
+                                        method,
+                                        uri,
+                                        response.getStatusCode().value(),
+                                        response.getStatusText(),
+                                        headers(response),
+                                        body(response),
+                                        durationSince(startedAt))));
             }
             return response;
         } catch (IOException | RuntimeException exception) {
-            auditSink.failure(definition, failure(method, uri, requestBody, startedAt, exception));
+            auditSink.failure(
+                    definition,
+                    sanitizer.sanitize(failure(method, uri, requestBody, startedAt, exception)));
             throw exception;
         }
     }

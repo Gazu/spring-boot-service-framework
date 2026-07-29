@@ -10,14 +10,23 @@ dependencies {
     api 'org.springframework.boot:spring-boot-starter-logging'
 
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'tools.jackson.core:jackson-databind'
 
     compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'io.micrometer:micrometer-core'
     compileOnly 'org.springframework:spring-web'
+    testImplementation 'io.micrometer:micrometer-core'
     testImplementation 'org.springframework:spring-web'
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
+}
+
+tasks.register('loggingAsyncBaseline', JavaExec) {
+    group = 'verification'
+    description = 'Measures the local synchronous and asynchronous Logback baseline without enforcing machine-specific thresholds.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.smbtech.serviceframework.starter.logging.AsyncAppenderBaseline'
+    args layout.buildDirectory.file('reports/logging/async-appender-baseline.md').get().asFile
 }
 
 publishing {

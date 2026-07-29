@@ -6,4 +6,7 @@
  * spring-boot-service-framework-error-core} artifact. Spring MVC, Spring Security, serialization,
  * logging, and metrics integrations belong in the error handling starter.
  */
+@NullMarked
 package com.smbtech.serviceframework.error;
+
+import org.jspecify.annotations.NullMarked;

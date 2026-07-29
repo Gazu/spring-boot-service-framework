@@ -1,0 +1,232 @@
+import groovy.xml.XmlSlurper
+
+plugins {
+    id 'com.smbtech.service-framework.java-platform'
+}
+
+description = 'Dependency platform for Spring Boot Service Framework'
+
+def platformContract = rootProject.ext.serviceFrameworkPlatformContract
+def springBootBom = platformContract.springBootBom
+
+dependencies {
+    api platform("${springBootBom.groupId}:${springBootBom.artifactId}:${springBootBom.version}")
+
+    constraints {
+        platformContract.managedProjectPaths.each { managedProjectPath ->
+            api project(managedProjectPath)
+        }
+    }
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Platform'
+            }
+        }
+    }
+}
+
+def managedCoordinates = {
+    platformContract.managedProjectPaths.collectEntries { managedProjectPath ->
+        def managedProject = rootProject.project(managedProjectPath)
+        [("${managedProject.group}:${managedProject.name}"): managedProject.version.toString()]
+    }
+}
+
+tasks.register('validatePlatformConstraints') {
+    group = 'verification'
+    description = 'Validates that the platform manages every published framework module and the Spring Boot BOM.'
+
+    inputs.property('managedProjectPaths', platformContract.managedProjectPaths)
+    inputs.property('springBootBom', springBootBom)
+
+    doLast {
+        def failures = []
+        def expectedCoordinates = managedCoordinates()
+        def actualConstraints = configurations.api.dependencyConstraints.collectEntries { constraint ->
+            [("${constraint.group}:${constraint.name}"): constraint.version]
+        }
+
+        def missingConstraints = expectedCoordinates.keySet() - actualConstraints.keySet()
+        def unexpectedConstraints = actualConstraints.keySet() - expectedCoordinates.keySet()
+        missingConstraints.sort().each { coordinate ->
+            failures.add("Missing platform constraint: ${coordinate}:${expectedCoordinates[coordinate]}.")
+        }
+        unexpectedConstraints.sort().each { coordinate ->
+            failures.add("Unexpected platform constraint: ${coordinate}:${actualConstraints[coordinate]}.")
+        }
+        expectedCoordinates.each { coordinate, expectedVersion ->
+            def actualVersion = actualConstraints[coordinate]
+            if (actualVersion != null && actualVersion != expectedVersion) {
+                failures.add(
+                        "Platform constraint ${coordinate} uses ${actualVersion}; expected ${expectedVersion}."
+                )
+            }
+        }
+
+        def publishedFrameworkProjects = rootProject.subprojects.findAll { candidate ->
+            if (candidate == project
+                    || candidate.group.toString() != platformContract.coordinates.groupId) {
+                return false
+            }
+            def publishingExtension = candidate.extensions.findByType(PublishingExtension)
+            publishingExtension != null && !publishingExtension.publications.isEmpty()
+        }.collect { it.path }.toSet()
+        def expectedManagedProjects = platformContract.managedProjectPaths.toSet()
+        (publishedFrameworkProjects - expectedManagedProjects).sort().each { projectPath ->
+            failures.add("Published framework project is not managed by the platform: ${projectPath}.")
+        }
+        (expectedManagedProjects - publishedFrameworkProjects).sort().each { projectPath ->
+            failures.add("Platform manages a project without a Maven publication: ${projectPath}.")
+        }
+
+        def matchingBootImports = configurations.api.dependencies.findAll { dependency ->
+            dependency.group == springBootBom.groupId
+                    && dependency.name == springBootBom.artifactId
+                    && dependency.version == springBootBom.version
+        }
+        if (matchingBootImports.size() != 1) {
+            failures.add(
+                    "Expected exactly one Spring Boot BOM import "
+                            + "${springBootBom.groupId}:${springBootBom.artifactId}:${springBootBom.version}."
+            )
+        }
+        configurations.api.dependencies.findAll { dependency ->
+            !matchingBootImports.contains(dependency)
+        }.each { dependency ->
+            failures.add(
+                    "Unexpected platform dependency: "
+                            + "${dependency.group}:${dependency.name}:${dependency.version}."
+            )
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Invalid framework platform constraints:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+def generatedPlatformPom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml')
+
+tasks.register('validatePlatformPublishedPom') {
+    group = 'verification'
+    description = 'Validates the dependency management and packaging of the published platform POM.'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+    inputs.file(generatedPlatformPom)
+    inputs.property('managedProjectPaths', platformContract.managedProjectPaths)
+    inputs.property('excludedCoordinateGroups', platformContract.excludedCoordinateGroups)
+    inputs.property('springBootBom', springBootBom)
+
+    doLast {
+        def failures = []
+        def pom = new XmlSlurper().parse(generatedPlatformPom.get().asFile)
+        def expectedCoordinates = managedCoordinates()
+        def managedDependencies = pom.dependencyManagement.dependencies.dependency.collect { dependency ->
+            [
+                    groupId   : dependency.groupId.text(),
+                    artifactId: dependency.artifactId.text(),
+                    version   : dependency.version.text(),
+                    type      : dependency.type.text(),
+                    scope     : dependency.scope.text()
+            ]
+        }
+
+        if (pom.groupId.text() != platformContract.coordinates.groupId
+                || pom.artifactId.text() != platformContract.coordinates.artifactId
+                || pom.version.text() != platformContract.coordinates.version) {
+            failures.add('Published platform coordinates do not match the framework platform contract.')
+        }
+        if (pom.packaging.text() != 'pom') {
+            failures.add("Published platform packaging must be pom; found ${pom.packaging.text()}.")
+        }
+        if (!pom.dependencies.dependency.isEmpty()) {
+            failures.add('The platform POM must not publish regular dependencies.')
+        }
+
+        expectedCoordinates.each { coordinate, expectedVersion ->
+            def parts = coordinate.split(':', 2)
+            def matches = managedDependencies.findAll { dependency ->
+                dependency.groupId == parts[0] && dependency.artifactId == parts[1]
+            }
+            if (matches.size() != 1) {
+                failures.add("Expected exactly one dependencyManagement entry for ${coordinate}.")
+            } else if (matches.first().version != expectedVersion) {
+                failures.add(
+                        "Published constraint ${coordinate} uses ${matches.first().version}; "
+                                + "expected ${expectedVersion}."
+                )
+            }
+        }
+
+        def expectedManagedEntries = expectedCoordinates.keySet() + [
+                "${springBootBom.groupId}:${springBootBom.artifactId}"
+        ]
+        managedDependencies.findAll { dependency ->
+            !expectedManagedEntries.contains("${dependency.groupId}:${dependency.artifactId}")
+        }.each { dependency ->
+            failures.add(
+                    "Unexpected dependencyManagement entry: "
+                            + "${dependency.groupId}:${dependency.artifactId}:${dependency.version}."
+            )
+        }
+
+        def bootImports = managedDependencies.findAll { dependency ->
+            dependency.groupId == springBootBom.groupId
+                    && dependency.artifactId == springBootBom.artifactId
+        }
+        if (bootImports.size() != 1) {
+            failures.add('Expected exactly one Spring Boot BOM entry in dependencyManagement.')
+        } else {
+            def bootImport = bootImports.first()
+            if (bootImport.version != springBootBom.version
+                    || bootImport.type != 'pom'
+                    || bootImport.scope != 'import') {
+                failures.add('Spring Boot dependency management must be published as a versioned BOM import.')
+            }
+        }
+
+        managedDependencies.findAll { dependency ->
+            platformContract.excludedCoordinateGroups.contains(dependency.groupId)
+        }.each { dependency ->
+            failures.add(
+                    "Excluded coordinate was published by the platform: "
+                            + "${dependency.groupId}:${dependency.artifactId}:${dependency.version}."
+            )
+        }
+
+        def enabledJarTasks = tasks.withType(org.gradle.api.tasks.bundling.Jar).findAll { it.enabled }
+        if (!enabledJarTasks.isEmpty()) {
+            failures.add(
+                    'The platform must not define enabled JAR tasks: '
+                            + enabledJarTasks.collect { it.path }.sort().join(', ')
+            )
+        }
+        def publishedJars = fileTree(layout.buildDirectory.dir('libs')) {
+            include '*.jar'
+        }.files
+        if (!publishedJars.isEmpty()) {
+            failures.add(
+                    'The platform must not produce JAR files: '
+                            + publishedJars.collect { it.name }.sort().join(', ')
+            )
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Invalid published framework platform POM:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn(
+            tasks.named('validatePlatformConstraints'),
+            tasks.named('validatePlatformPublishedPom')
+    )
+}

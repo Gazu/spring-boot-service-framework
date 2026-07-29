@@ -1,11 +1,14 @@
 # Error Handling Consumer Example
 
-Standalone Spring Boot application that consumes
-`com.smbtech:spring-boot-service-framework-starter-error-handling:0.3.0` from
-the framework module-local Maven repositories.
+Standalone Spring Boot application that imports
+`com.smbtech:spring-boot-service-framework-platform:0.4.0` and consumes
+`com.smbtech:spring-boot-service-framework-starter-error-handling` without an
+individual version from the framework module-local Maven repositories.
 
 The example uses published artifacts instead of Gradle `project(...)`
 dependencies and demonstrates the complete public error response flow.
+See [Dependency Management](../../docs/dependency-management.md) for the
+platform contract and publication options.
 
 ## Covered Scenarios
 
@@ -22,10 +25,10 @@ All error endpoints return the same snake-case `Notification` JSON contract.
 Internal diagnostics, stack traces, downstream headers, bodies, cookies, and
 credentials are not included in responses.
 
-The example sets `smbtech.error-handling.response.exposure=PUBLIC` explicitly
+The example sets `smbtech.error-handling.response.exposure=INTERNAL` explicitly
 because it demonstrates application catalog codes, messages, and validation
-violations. The starter default is `INTERNAL`; omitting the property returns the
-generic internal notification for every handled error.
+violations. The starter default is `PUBLIC`; omitting the property preserves the
+error code but returns a generic message and minimal metadata.
 
 ## Application Catalog
 
@@ -52,8 +55,9 @@ throw ServiceException.from(
 );
 ```
 
-The diagnostic remains internal. The HTTP response contains only the public
-catalog values.
+The diagnostic remains internal. Because this example explicitly uses
+`INTERNAL`, the HTTP response contains the catalog values and detailed safe
+metadata after sanitization.
 
 ## Multiple Validation Errors
 
@@ -73,7 +77,7 @@ change the application's global `ObjectMapper`.
 
 `PaymentsGateway` raises an `HttpClientResponseException` containing simulated
 downstream URI parameters, authorization headers, cookies, response body, and
-cause details. The public response is reduced to:
+cause details. The detailed sanitized response is reduced to:
 
 ```json
 {
@@ -81,7 +85,10 @@ cause details. The public response is reduced to:
   "message": "Downstream service request failed",
   "severity": "ERROR",
   "field_name": "",
-  "metadata": {}
+  "metadata": {
+    "schema_version": "1",
+    "category": "DOWNSTREAM"
+  }
 }
 ```
 

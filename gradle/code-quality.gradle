@@ -317,10 +317,12 @@ def publicApiJavadocTasks = [
         ':spring-boot-service-framework-logging-core:javadoc',
         ':spring-boot-service-framework-http-client-core:javadoc',
         ':spring-boot-service-framework-mock-core:javadoc',
+        ':spring-boot-service-framework-actuator-core:javadoc',
         ':spring-boot-service-framework-error-core:javadoc',
         ':spring-boot-service-framework-openapi-generator:javadoc',
         ':spring-boot-service-framework-openapi-contract-testing:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:javadoc',
+        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:javadoc'

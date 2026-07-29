@@ -15,7 +15,10 @@ when implementing framework-neutral error contracts or adapters.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-error-core:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-error-core'
 }
 ```
 
@@ -23,7 +26,9 @@ dependencies {
 
 The public API is available under `com.smbtech.serviceframework.error`.
 Applications can implement `ErrorDefinition`, commonly with an enum, to define
-stable error codes, categories, public messages, and notification severities.
+stable error codes, categories, safe resolved messages, and notification
+severities. The Spring Boot starter's global exposure policy determines whether
+the resolved message or a generic external message is written to the response.
 
 ```java
 public enum CustomerErrors implements ErrorDefinition {
@@ -37,7 +42,7 @@ public enum CustomerErrors implements ErrorDefinition {
 ```
 
 Create a service exception from the catalog while keeping internal diagnostics
-out of the public notification:
+separate from response data:
 
 ```java
 throw ServiceException.from(
@@ -55,14 +60,16 @@ catalog factories preserve the category of the first definition.
 from `spring-boot-service-framework-commons` and exposed through the core API
 dependency. This module does not declare replacement copies.
 
-Resolution components use `ResolvedError` to keep the public `Notification`,
+Resolution components use `ResolvedError` to keep the response candidate,
 `ErrorCategory`, `ErrorExposure`, internal diagnostic message, and immutable
-`FieldViolation` values separate.
+`FieldViolation` values separate. The response adapter applies the final global
+exposure policy.
 
 Implement `ThrowableErrorResolver` for application-specific failures and pass
 the resolvers to `ThrowableErrorResolutionPipeline`. Resolvers run by ascending
 `order()`; registration order breaks ties. `FallbackThrowableErrorResolver`
-produces a safe internal notification when no resolver matches.
+produces a generic framework notification when no resolver matches. A response
+adapter applies its final exposure and sanitization policy afterward.
 
 `ServiceExceptionThrowableErrorResolver` uses a replaceable
 `NotificationAggregationPolicy`. The default policy selects the first ordered

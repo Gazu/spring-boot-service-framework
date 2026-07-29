@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <springProperty name="SMB_LOG_LEVEL"
+                    scope="context"
+                    source="smbtech.logging.level"
+                    defaultValue="INFO"/>
+    <springProperty name="ASYNC_ENABLED"
+                    scope="context"
+                    source="smbtech.logging.async.enabled"
+                    defaultValue="true"/>
+    <springProperty name="ASYNC_QUEUE_SIZE"
+                    scope="context"
+                    source="smbtech.logging.async.queue-size"
+                    defaultValue="2048"/>
+    <springProperty name="ASYNC_SATURATION_POLICY"
+                    scope="context"
+                    source="smbtech.logging.async.saturation-policy"
+                    defaultValue="BLOCK"/>
+    <springProperty name="ASYNC_CRITICAL_EVENT_PROTECTION_ENABLED"
+                    scope="context"
+                    source="smbtech.logging.async.critical-event-protection-enabled"
+                    defaultValue="true"/>
+    <springProperty name="ASYNC_DISCARDING_THRESHOLD"
+                    scope="context"
+                    source="smbtech.logging.async.discarding-threshold"
+                    defaultValue="0"/>
+    <springProperty name="ASYNC_NEVER_BLOCK"
+                    scope="context"
+                    source="smbtech.logging.async.never-block"
+                    defaultValue="false"/>
+    <springProperty name="ASYNC_MAX_FLUSH_TIME"
+                    scope="context"
+                    source="smbtech.logging.async.max-flush-time-ms"
+                    defaultValue="1000"/>
+</included>

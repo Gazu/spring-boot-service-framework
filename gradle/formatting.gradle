@@ -56,3 +56,9 @@ spotless {
         endWithNewline()
     }
 }
+
+allprojects {
+    tasks.withType(Javadoc).configureEach {
+        mustRunAfter rootProject.tasks.named('spotlessJava')
+    }
+}

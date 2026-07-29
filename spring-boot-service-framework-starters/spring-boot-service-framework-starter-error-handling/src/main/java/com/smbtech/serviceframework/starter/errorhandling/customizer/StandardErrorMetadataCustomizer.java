@@ -210,21 +210,7 @@ public final class StandardErrorMetadataCustomizer implements ResolvedErrorCusto
                         metadata.put(key, value);
                     }
                 });
-        Notification notification =
-                new Notification(
-                        source.code(),
-                        source.message(),
-                        source.severity(),
-                        source.fieldName(),
-                        metadata,
-                        source.id(),
-                        source.timestamp());
-        return new ResolvedError(
-                notification,
-                resolvedError.category(),
-                resolvedError.exposure(),
-                resolvedError.diagnosticMessage(),
-                resolvedError.fieldViolations());
+        return resolvedError.withNotification(source.withMetadata(metadata));
     }
 
     private static boolean isFrameworkIdentityKey(String key) {

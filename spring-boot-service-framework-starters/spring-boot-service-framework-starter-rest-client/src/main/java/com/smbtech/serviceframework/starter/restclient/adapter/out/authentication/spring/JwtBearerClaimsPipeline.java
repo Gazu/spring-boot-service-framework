@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import com.smbtech.serviceframework.httpclient.domain.TokenRequestDefinition;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaimsContext;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -12,7 +11,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizationContext;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 /** Provides JWT bearer claims pipeline behavior. */
-public final class JwtBearerClaimsPipeline {
+final class JwtBearerClaimsPipeline {
 
     private final OAuth2ExtensionRegistry extensionRegistry;
     private final Set<String> blockedClaims;
@@ -39,7 +38,7 @@ public final class JwtBearerClaimsPipeline {
                 new JwtBearerClaimsContext(
                         registration.getRegistrationId(),
                         registration.getClientId(),
-                        tokenUri(registration),
+                        OAuth2RegistrationValues.tokenUri(registration),
                         registration.getScopes(),
                         expectedScopes,
                         Map.of(),
@@ -118,13 +117,5 @@ public final class JwtBearerClaimsPipeline {
                                                 contributor.contribute(contributorContext),
                                                 blockedClaims)));
         return JwtBearerCustomClaimsResolver.sanitize(claims, blockedClaims);
-    }
-
-    private URI tokenUri(ClientRegistration registration) {
-        String tokenUri = registration.getProviderDetails().getTokenUri();
-        if (tokenUri == null || tokenUri.isBlank()) {
-            return null;
-        }
-        return URI.create(tokenUri);
     }
 }

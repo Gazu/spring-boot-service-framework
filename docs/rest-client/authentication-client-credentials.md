@@ -124,9 +124,10 @@ registrations by the id configured in
 This is an explicit configuration change and the former key is not accepted as
 an alias. Update every REST client configuration before upgrading.
 
-The starter exposes Spring Boot OAuth2 Client auto-configuration through
-`spring-boot-starter-oauth2-client`. It intentionally does not bind
-`spring.security.oauth2.client.*` directly. It only consumes the
+The application must include `spring-boot-starter-oauth2-client` when it uses
+OAuth2 authentication. The REST client starter keeps this dependency optional
+so non-OAuth2 consumers do not receive Spring Security transitively. It does
+not bind `spring.security.oauth2.client.*` directly. It only consumes the
 `ClientRegistrationRepository` bean produced by Spring Boot OAuth2 Client
 auto-configuration.
 

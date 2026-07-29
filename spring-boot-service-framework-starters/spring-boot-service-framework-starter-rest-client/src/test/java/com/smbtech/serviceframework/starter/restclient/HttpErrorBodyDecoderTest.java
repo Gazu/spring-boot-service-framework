@@ -3,8 +3,6 @@ package com.smbtech.serviceframework.starter.restclient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorCategory;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
@@ -15,11 +13,12 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 class HttpErrorBodyDecoderTest {
 
-    private final HttpErrorBodyDecoder decoder =
-            new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules());
+    private final HttpErrorBodyDecoder decoder = new HttpErrorBodyDecoder(new ObjectMapper());
 
     @Test
     void implementsCoreBodyReaderContract() {

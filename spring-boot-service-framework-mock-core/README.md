@@ -20,7 +20,10 @@ or custom clients that should not depend on Spring, Jackson, Servlet, or
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-mock-core:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-mock-core'
 }
 ```
 

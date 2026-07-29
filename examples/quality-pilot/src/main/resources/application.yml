@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: service-framework-quality-pilot
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info

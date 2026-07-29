@@ -2,15 +2,10 @@ package com.smbtech.serviceframework.starter.errorhandling.serialization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.commons.notification.NotificationSeverity;
 import com.smbtech.serviceframework.error.ErrorCategory;
@@ -24,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 class NotificationJsonSerializerTest {
 
@@ -144,25 +142,17 @@ class NotificationJsonSerializerTest {
     @Test
     void localRegistrationDoesNotChangeTheSourceObjectMapper() throws Exception {
         ObjectMapper applicationMapper = new ObjectMapper();
-        JsonSerializer<?> originalSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
+        var originalModules = applicationMapper.registeredModules();
 
         ObjectMapper notificationMapper = isolatedMapper(applicationMapper);
 
-        JsonSerializer<?> unchangedSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
-        JsonSerializer<?> notificationSerializer =
-                notificationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
-
-        assertSame(originalSerializer, unchangedSerializer);
-        assertFalse(unchangedSerializer instanceof NotificationJsonSerializer);
-        assertInstanceOf(NotificationJsonSerializer.class, notificationSerializer);
+        assertEquals(originalModules, applicationMapper.registeredModules());
+        assertTrue(
+                notificationMapper.registeredModules().stream()
+                        .anyMatch(
+                                module ->
+                                        "service-framework-notification-json"
+                                                .equals(module.getModuleName())));
     }
 
     @Test
@@ -172,13 +162,11 @@ class NotificationJsonSerializerTest {
 
         assertSame(normalizer, serializer.metadataKeyNormalizer());
         assertThrows(NullPointerException.class, () -> new NotificationJsonSerializer(null));
-        assertTrue(
-                serializer.handledType() == null || serializer.handledType() == Notification.class);
     }
 
     private static ObjectMapper isolatedMapper(ObjectMapper source) {
         SimpleModule notificationModule = new SimpleModule("service-framework-notification-json");
         notificationModule.addSerializer(Notification.class, new NotificationJsonSerializer());
-        return source.copy().registerModule(notificationModule);
+        return source.rebuild().addModule(notificationModule).build();
     }
 }

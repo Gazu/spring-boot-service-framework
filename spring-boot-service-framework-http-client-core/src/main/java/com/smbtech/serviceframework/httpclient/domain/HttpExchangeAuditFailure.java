@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Carries immutable http exchange audit failure data.
@@ -31,7 +32,7 @@ public record HttpExchangeAuditFailure(
         Duration duration,
         String exceptionType,
         String exceptionMessage,
-        Throwable throwable) {
+        @Nullable Throwable throwable) {
     public static final int STATUS_CODE_UNAVAILABLE = -1;
 
     /** Creates and validates the record components. */

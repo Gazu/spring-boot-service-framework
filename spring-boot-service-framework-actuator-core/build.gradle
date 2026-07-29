@@ -1,0 +1,15 @@
+plugins {
+    id 'com.smbtech.service-framework.java-library'
+}
+
+description = 'Framework-neutral diagnostics contracts and services'
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Actuator Core'
+            }
+        }
+    }
+}

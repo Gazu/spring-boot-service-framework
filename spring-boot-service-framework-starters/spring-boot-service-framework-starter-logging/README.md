@@ -12,6 +12,7 @@ Use this starter in Spring Boot services that need:
 - `StructuredLogger` and `StructuredLoggerFactory` beans;
 - `X-Transaction-Id` propagation into MDC;
 - Logback async console configuration;
+- reusable Logback fragments for application-owned destinations;
 - Spring Boot configuration metadata for `smbtech.logging`.
 
 Use `spring-boot-service-framework-logging-core` directly only when building a
@@ -21,7 +22,10 @@ logging adapter or test that must remain independent from Spring Boot.
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
 }
 ```
 
@@ -47,6 +51,9 @@ dependencies {
 | Topic | Document |
 |---|---|
 | Logging guide | [Logging Guide](../../docs/logging.md) |
+| Supported API and changes | [Logging Compatibility](../../docs/logging/compatibility.md) |
+| Async appender contract | [Async Appender Contract](../../docs/logging/async-appender.md) |
+| Custom Logback destination | [Extensible Logback Configuration](../../docs/logging/async-appender.md#extensible-logback-configuration) |
 | Logging property reference | [Logging Property Reference](../../docs/logging/property-reference.md) |
 | Logging consumer example | [Logging Consumer Example](../../examples/logging-consumer/README.md) |
 | Names and properties migration | [Migration Guide](../../docs/guides/migrate-public-names-and-properties.md) |
@@ -57,6 +64,8 @@ dependencies {
 
 ```bash
 ./gradlew :spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check
+./gradlew asyncLoggingContractCheck
+./gradlew loggingAsyncBaseline
 ./gradlew loggingCompatibilityCheck
 ./gradlew loggingConsumerSmoke
 ```

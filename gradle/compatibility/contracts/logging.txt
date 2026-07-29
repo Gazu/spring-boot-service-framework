@@ -24,11 +24,14 @@ extension-points:
 - com.smbtech:spring-boot-service-framework-logging-core|interface|com.smbtech.serviceframework.logging.port.out.LogEventSink
 
 properties:
+- com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.critical-event-protection-enabled
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.discarding-threshold
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.enabled
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.max-flush-time-ms
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.never-block
+- com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.observability.enabled
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.queue-size
+- com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.async.saturation-policy
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.level
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.production
 - com.smbtech:spring-boot-service-framework-starter-logging|smbtech.logging.transaction.accept-incoming
@@ -38,5 +41,67 @@ properties:
 
 auto-configuration-imports:
 - com.smbtech:spring-boot-service-framework-starter-logging|com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingAutoConfiguration
+- com.smbtech:spring-boot-service-framework-starter-logging|com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingMetricsAutoConfiguration
 
 gradle-plugin-ids:
+
+runtime-contracts:
+- async-appender-class=com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender
+- async-appender=ASYNC
+- async-delegate-property=SERVICE_FRAMEWORK_LOGGING_DELEGATE
+- async-delegate=STDOUT
+- consumer-smoke-task=loggingConsumerSmoke
+- critical-event-type=AUDIT
+- critical-event-type=SECURITY
+- critical-full-queue-behavior=SYNCHRONOUS_FALLBACK
+- critical-level=ERROR
+- critical-level=WARN
+- default-full-queue-behavior=BLOCK_PRODUCER
+- default-logback-resource=logback-spring.xml
+- default-mode=ASYNC
+- disabled-mode=SYNCHRONOUS
+- discardable-level=DEBUG
+- discardable-level=INFO
+- discardable-level=TRACE
+- event-type-priority=ENFORCED_BY_POLICY_AWARE_ASYNC_APPENDER
+- legacy-never-block-precedence=FORCE_DROP_WHEN_FULL
+- legacy-positive-threshold-precedence=BLOCK_TO_DISCARD_LOW_PRIORITY
+- logback-delegate-cardinality=ONE
+- logback-fragment=com/smbtech/serviceframework/starter/logging/logback/async-appender.xml
+- logback-fragment=com/smbtech/serviceframework/starter/logging/logback/properties.xml
+- logback-fragment=com/smbtech/serviceframework/starter/logging/logback/root.xml
+- logback-fragment=com/smbtech/serviceframework/starter/logging/logback/structured-console-appender.xml
+- lossy-full-queue-behavior=DROP_WHEN_FULL
+- metric=smbtech.logging.async.accepting
+- metric=smbtech.logging.async.critical.fallbacks
+- metric=smbtech.logging.async.events.discarded
+- metric=smbtech.logging.async.events.rejected
+- metric=smbtech.logging.async.producer.block
+- metric=smbtech.logging.async.queue.capacity
+- metric=smbtech.logging.async.queue.depth
+- metric=smbtech.logging.async.queue.remaining
+- metric=smbtech.logging.async.shutdown
+- metric=smbtech.logging.async.shutdown.pending
+- metric=smbtech.logging.async.shutdown.timeouts
+- metrics-cardinality=BOUNDED
+- metrics-dependency=OPTIONAL
+- property-validation=FAIL_FAST
+- property=smbtech.logging.async.critical-event-protection-enabled;default=true
+- property=smbtech.logging.async.discarding-threshold;default=0
+- property=smbtech.logging.async.enabled;default=true
+- property=smbtech.logging.async.max-flush-time-ms;default=1000
+- property=smbtech.logging.async.never-block;default=false
+- property=smbtech.logging.async.observability.enabled;default=true
+- property=smbtech.logging.async.queue-size;default=2048
+- property=smbtech.logging.async.saturation-policy;default=BLOCK
+- saturation-policy=BLOCK
+- saturation-policy=DISCARD_LOW_PRIORITY
+- saturation-policy=DROP_WHEN_FULL
+- shutdown-accepted-events=DRAIN_WITHIN_TIMEOUT
+- shutdown-admission=CLOSE_BEFORE_DRAIN
+- shutdown-owner=SPRING_BOOT_LOGGING_SYSTEM
+- shutdown-repeated-stop=IDEMPOTENT
+- shutdown-timeout=REPORT_PENDING_SNAPSHOT
+- validated-discarding-threshold=0..queue-size-exclusive
+- validated-max-flush-time-ms=100..30000
+- validated-queue-size=256..65536

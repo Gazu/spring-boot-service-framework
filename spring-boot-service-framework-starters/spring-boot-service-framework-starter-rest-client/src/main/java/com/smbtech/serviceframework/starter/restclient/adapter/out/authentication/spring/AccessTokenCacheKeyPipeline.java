@@ -6,13 +6,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
 /** Provides access token cache key pipeline behavior. */
-public final class AccessTokenCacheKeyPipeline {
-
-    private static final AuthorizationGrantType JWT_BEARER_GRANT =
-            new AuthorizationGrantType(GrantType.JWT_BEARER.value());
+final class AccessTokenCacheKeyPipeline {
 
     private final OAuth2ExtensionRegistry extensionRegistry;
 
@@ -40,7 +36,7 @@ public final class AccessTokenCacheKeyPipeline {
             Map<String, Object> authorizationAttributes) {
         return resolve(
                 registration.getRegistrationId(),
-                grantType(registration.getAuthorizationGrantType()),
+                OAuth2RegistrationValues.grantType(registration.getAuthorizationGrantType()),
                 defaultPrincipalName,
                 registration.getScopes(),
                 authorizationAttributes);
@@ -76,12 +72,5 @@ public final class AccessTokenCacheKeyPipeline {
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .orElse(defaultPrincipalName);
-    }
-
-    private GrantType grantType(AuthorizationGrantType grantType) {
-        if (JWT_BEARER_GRANT.equals(grantType)) {
-            return GrantType.JWT_BEARER;
-        }
-        return GrantType.CLIENT_CREDENTIALS;
     }
 }

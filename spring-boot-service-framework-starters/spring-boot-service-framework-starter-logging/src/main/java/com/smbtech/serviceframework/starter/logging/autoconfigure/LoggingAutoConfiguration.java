@@ -14,10 +14,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 
 /** Provides logging auto configuration behavior. */
 @AutoConfiguration
 @EnableConfigurationProperties(LoggingProperties.class)
+@ImportRuntimeHints(LoggingRuntimeHints.class)
 public class LoggingAutoConfiguration {
 
     /**
@@ -26,6 +28,7 @@ public class LoggingAutoConfiguration {
      * @param properties properties value
      */
     public LoggingAutoConfiguration(LoggingProperties properties) {
+        AsyncLoggingPropertiesValidator.validate(properties);
         StructuredLoggers.setProduction(properties.isProduction());
     }
 

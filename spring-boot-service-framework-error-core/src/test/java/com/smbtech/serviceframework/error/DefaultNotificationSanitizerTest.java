@@ -100,6 +100,7 @@ class DefaultNotificationSanitizerTest {
                 Notification.builder()
                         .code("E_AUTH_0001")
                         .message("Authorization: Bearer abc.def.ghi password=plain-text")
+                        .fieldName("token=field-secret")
                         .metadata(
                                 Map.of(
                                         "Authorization",
@@ -132,6 +133,7 @@ class DefaultNotificationSanitizerTest {
         assertEquals(
                 DefaultNotificationSanitizer.REDACTED_VALUE, sanitized.metadata().get("cause"));
         assertFalse(sanitized.message().contains("plain-text"));
+        assertEquals("token=<redacted>", sanitized.fieldName());
 
         Map<?, ?> sanitizedContext = (Map<?, ?>) sanitized.metadata().get("context");
         assertEquals(
@@ -169,21 +171,31 @@ class DefaultNotificationSanitizerTest {
     }
 
     @Test
-    void protectsAgainstCyclesAndUnsupportedMetadataObjects() {
+    void rejectsCyclicMetadataBeforeSanitization() {
         Map<String, Object> cyclic = new LinkedHashMap<>();
         cyclic.put("self", cyclic);
-        cyclic.put("unsupported", new Object());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        Notification.builder()
+                                .code("E_INTERNAL_0001")
+                                .metadata(Map.of("context", cyclic))
+                                .build());
+    }
+
+    @Test
+    void protectsAgainstUnsupportedMetadataObjects() {
         Notification source =
                 Notification.builder()
                         .code("E_INTERNAL_0001")
-                        .metadata(Map.of("context", cyclic))
+                        .metadata(Map.of("context", Map.of("unsupported", new Object())))
                         .build();
 
         Notification sanitized =
                 new DefaultNotificationSanitizer(Set.of("context")).sanitize(source);
 
         Map<?, ?> context = (Map<?, ?>) sanitized.metadata().get("context");
-        assertEquals(DefaultNotificationSanitizer.REDACTED_VALUE, context.get("self"));
         assertEquals(DefaultNotificationSanitizer.REDACTED_VALUE, context.get("unsupported"));
     }
 

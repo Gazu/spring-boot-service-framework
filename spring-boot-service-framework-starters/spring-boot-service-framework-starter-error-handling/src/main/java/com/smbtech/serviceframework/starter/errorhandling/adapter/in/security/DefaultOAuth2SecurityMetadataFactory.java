@@ -23,7 +23,7 @@ public final class DefaultOAuth2SecurityMetadataFactory implements OAuth2Securit
     private final boolean includeErrorUri;
     private final boolean includeRequiredScope;
 
-    /** RFC 6750 Bearer error reference used in public metadata. */
+    /** RFC 6750 Bearer error reference used in response and challenge metadata. */
     public static final String RFC6750_ERROR_URI =
             "https://www.rfc-editor.org/rfc/rfc6750#section-3.1";
 
@@ -43,7 +43,7 @@ public final class DefaultOAuth2SecurityMetadataFactory implements OAuth2Securit
     }
 
     /**
-     * Creates a metadata factory with explicit public OAuth2 exposure settings.
+     * Creates a metadata factory with explicit OAuth2 detail settings.
      *
      * @param oauth2MetadataEnabled whether OAuth2 metadata is exposed
      * @param includeErrorDescription whether the safe description is exposed
@@ -111,7 +111,8 @@ public final class DefaultOAuth2SecurityMetadataFactory implements OAuth2Securit
             case "invalid_token" -> INVALID_TOKEN_DESCRIPTION;
             case "insufficient_scope" -> INSUFFICIENT_SCOPE_DESCRIPTION;
             default ->
-                    throw new IllegalArgumentException("Unsupported public OAuth2 error: " + error);
+                    throw new IllegalArgumentException(
+                            "Unsupported OAuth2 response error: " + error);
         };
     }
 }

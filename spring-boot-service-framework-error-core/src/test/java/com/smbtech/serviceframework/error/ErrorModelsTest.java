@@ -61,6 +61,32 @@ class ErrorModelsTest {
     }
 
     @Test
+    void copyMethodsPreserveUnchangedErrorData() {
+        Notification notification = Notification.error("E_REQUEST_0001", "Invalid request");
+        ResolvedError source =
+                new ResolvedError(
+                        notification,
+                        ErrorCategory.VALIDATION,
+                        ErrorExposure.INTERNAL,
+                        "diagnostic");
+        Notification replacement = notification.withMetadata(java.util.Map.of("field", "name"));
+        FieldViolation violation = new FieldViolation("name", "required", "Name is required");
+
+        ResolvedError updated =
+                source.withNotification(replacement)
+                        .withExposure(ErrorExposure.PUBLIC)
+                        .withFieldViolations(List.of(violation));
+
+        assertEquals(notification, source.notification());
+        assertEquals(ErrorExposure.INTERNAL, source.exposure());
+        assertEquals(replacement, updated.notification());
+        assertEquals(ErrorCategory.VALIDATION, updated.category());
+        assertEquals(ErrorExposure.PUBLIC, updated.exposure());
+        assertEquals("diagnostic", updated.diagnosticMessage());
+        assertEquals(List.of(violation), updated.fieldViolations());
+    }
+
+    @Test
     void appliesSafeDefaults() {
         ResolvedError resolvedError =
                 new ResolvedError(

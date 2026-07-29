@@ -12,6 +12,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -25,6 +27,7 @@ public final class OpenApiMockServerRegistrar
     private final MockProperties.OpenApi properties;
     private final OpenApiMockContractLoader contractLoader;
     private final RequestMappingHandlerMapping handlerMapping;
+    private final OpenApiMockEnvironmentGuard environmentGuard;
     private final List<RequestMappingInfo> registeredMappings = new ArrayList<>();
 
     /**
@@ -38,13 +41,31 @@ public final class OpenApiMockServerRegistrar
             MockProperties.OpenApi properties,
             OpenApiMockContractLoader contractLoader,
             RequestMappingHandlerMapping handlerMapping) {
+        this(properties, contractLoader, handlerMapping, new StandardEnvironment());
+    }
+
+    /**
+     * Creates an OpenAPI mock server registrar with environment protection.
+     *
+     * @param properties properties value
+     * @param contractLoader contract loader value
+     * @param handlerMapping handler mapping value
+     * @param environment current Spring environment
+     */
+    public OpenApiMockServerRegistrar(
+            MockProperties.OpenApi properties,
+            OpenApiMockContractLoader contractLoader,
+            RequestMappingHandlerMapping handlerMapping,
+            Environment environment) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.contractLoader = Objects.requireNonNull(contractLoader, "contractLoader");
         this.handlerMapping = Objects.requireNonNull(handlerMapping, "handlerMapping");
+        this.environmentGuard = new OpenApiMockEnvironmentGuard(environment);
     }
 
     @Override
     public void afterSingletonsInstantiated() {
+        environmentGuard.validate(properties);
         Map<String, MockProperties.Contract> contracts =
                 Objects.requireNonNullElse(properties.getContracts(), Map.of());
         if (contracts.isEmpty()) {
@@ -114,6 +135,9 @@ public final class OpenApiMockServerRegistrar
     }
 
     private String statusHeader() {
+        if (!properties.isStatusOverrideEnabled()) {
+            return "";
+        }
         String value = properties.getStatusHeader();
         return value == null || value.isBlank() ? "X-Mock-Status" : value.trim();
     }

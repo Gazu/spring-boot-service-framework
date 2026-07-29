@@ -15,8 +15,10 @@ import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenReq
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestCustomizer;
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -156,6 +158,30 @@ class OAuth2ExtensionApiTest {
                 .isEqualTo(
                         "payments-token::urn:ietf:params:oauth:grant-type:jwt-bearer::17952397-3");
         assertThatThrownBy(() -> context.authorizationAttributes().put("other", "value"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void oauth2ContextsRecursivelyCopyStructuredValues() {
+        List<Object> audiences = new ArrayList<>(List.of("payments"));
+        Map<String, Object> claims = new LinkedHashMap<>();
+        claims.put("audiences", audiences);
+
+        AccessTokenCacheKeyContext context =
+                new AccessTokenCacheKeyContext(
+                        "payments-token",
+                        GrantType.JWT_BEARER,
+                        "principal",
+                        Set.of(),
+                        Map.of("claims", claims));
+        audiences.add("transfers");
+
+        Map<String, Object> immutableClaims =
+                (Map<String, Object>) context.authorizationAttributes().get("claims");
+        List<Object> immutableAudiences = (List<Object>) immutableClaims.get("audiences");
+        assertThat(immutableAudiences).containsExactly("payments");
+        assertThatThrownBy(() -> immutableAudiences.add("transfers"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 }

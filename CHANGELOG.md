@@ -10,7 +10,137 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
-Use this section for changes that have been merged but not released yet.
+No unreleased changes.
+
+## 0.4.0 - 2026-07-29
+
+### Added
+
+- Define and automatically validate the async logging topology, delivery policy,
+  critical-event limitations, operational ranges, shutdown behavior, behavioral
+  tests, local performance baseline, and fail-fast configuration constraints.
+- Add explicit `BLOCK`, `DISCARD_LOW_PRIORITY`, and `DROP_WHEN_FULL` async
+  saturation policies while preserving the former Logback threshold and
+  never-block settings as compatibility overrides.
+- Protect `WARN`, `ERROR`, `AUDIT`, and `SECURITY` events from async queue
+  saturation, including a synchronous delegate fallback when a
+  `DROP_WHEN_FULL` queue is full.
+- Add bounded async logging metrics, coordinated shutdown, deterministic
+  concurrency tests, and a published-artifact workload example.
+- Add reusable Logback fragments and
+  `SERVICE_FRAMEWORK_LOGGING_DELEGATE` so applications can replace the output
+  destination without copying framework async configuration.
+- Add a logging compatibility guide and protect Logback resources, runtime
+  names, legacy property precedence, documentation, and the published consumer
+  in the focused compatibility lifecycle.
+- Define and automatically validate the architecture, management ownership,
+  passive health, security, and information-exposure contract for the planned
+  Actuator core and starter.
+- Add publishable Actuator core and starter module scaffolds, manage both
+  artifacts through the framework platform, and keep REST client and mock
+  integrations non-transitive.
+- Add framework-neutral Actuator domain values, diagnostic and module
+  information ports, deterministic aggregation, failure isolation, and bounded
+  secret-safe diagnostic details.
+- Add base Actuator auto-configuration with an opt-out property, neutral probe
+  and module provider discovery, application diagnostics backoff, and optional
+  application clock reuse.
+- Add the `serviceFramework` Spring Boot health indicator with exact neutral
+  status mapping, safe component details, failure isolation, standard
+  management enablement, and application bean backoff.
+- Add the `serviceFramework` info contribution and disabled-by-default,
+  read-only diagnostic endpoint.
+- Add passive, secret-safe Actuator integrations for REST client, mock,
+  logging, and error handling starters while keeping those starters
+  non-transitive.
+- Add bounded-cardinality Actuator gauges for aggregate status, component
+  status counts, and detected framework modules.
+- Add guarded Actuator diagnostics with bounded payloads, operation timeouts,
+  single-flight caching, bounded execution, and static secret-safe failures.
+- Add a standalone published-artifact Actuator consumer with real HTTP,
+  authorization, redaction, health, info, diagnostics, metrics, and AOT smoke
+  tests.
+- Add the Actuator compatibility guide, a method-level neutral API test,
+  generated runtime-name contracts, and a focused compatibility lifecycle that
+  includes documentation and the published consumer.
+- Add the Spring Boot Service Framework dependency platform, Gradle and Maven
+  BOM consumption, compatibility validation, standalone consumer coverage, and
+  dependency management documentation.
+- Add strict SHA-256 dependency verification, CycloneDX 1.6 aggregate SBOMs,
+  per-module JaCoCo coverage gates, reproducible archives, complete Maven POM
+  metadata, and signed Maven publications.
+- Add pinned GitHub Actions for secret scanning, dependency review, signed-tag
+  release publication, release bundle provenance attestation, and Dependabot.
+- Add JSpecify nullness defaults to every supported Java package and publish the
+  annotations as compile-time API metadata.
+- Add japicmp binary compatibility checks against `v0.3.0`, reviewed pre-1.0
+  exceptions, and a checked baseline that prevents growth of technically public
+  implementation types.
+- Add a production-profile guard for OpenAPI mock routes through
+  `smbtech.mocks.openapi.allow-in-production` and
+  `smbtech.mocks.openapi.production-profiles`.
+- Add Spring Boot AOT processing to all standalone consumers and the release
+  gate, GraalVM Native Build Tools configuration, starter runtime hints, and
+  `HttpApiClientRuntimeHints` for application-defined declarative clients.
+
+### Changed
+
+- **Breaking source change:** make
+  `AccessTokenClient.jwtBearer(JwtBearerTokenRequest)` the canonical JWT bearer
+  extension contract. Existing string overloads remain as default convenience
+  methods, while custom implementations must implement the complete request so
+  dynamic claims cannot be discarded silently.
+- Reduce six OAuth2 implementation types from public to package-private without
+  changing supported REST client API packages or Spring beans.
+- Make structured metadata and context containers recursively immutable across
+  notifications, logging events, HTTP client JWT claims, mocks, request context,
+  and OAuth2 extension contexts. Cyclic structured values are rejected.
+- Add immutable copy methods to `Notification`, `ResolvedError`, and
+  `SecurityFailureResolution`, and use them throughout the error pipeline.
+- Consolidate MVC and Spring Security response preparation, final sanitization,
+  reporting, and metrics in one internal pipeline with an explicit stage order.
+- Enrich Spring Security metadata before application error customizers and
+  centralize OAuth2 registration value mapping used by token pipelines.
+- Modernize OpenAPI ingestion with Jackson 3 structural parsing, explicit 3.0
+  and 3.1 support across generation, contract testing, and mock loading, and a
+  typed `validateOpenApiSpecs` Gradle task wired without `afterEvaluate`.
+- Replace deprecated Jackson 2-style tree APIs in OpenAPI runtime code with
+  their Jackson 3 equivalents.
+- **Breaking dependency change:** Spring Security OAuth2 Client is no longer a
+  transitive dependency of the REST Client starter. OAuth2 consumers must add
+  `org.springframework.boot:spring-boot-starter-oauth2-client` explicitly.
+- Isolate OAuth2 auto-configuration and REST client authentication behind
+  `RestClientAuthenticationConfigurer`, allowing non-OAuth2 applications to
+  run without Spring Security.
+- **Breaking source change:** migrate runtime and OpenAPI contract-testing
+  Jackson APIs from Jackson 2 (`com.fasterxml.jackson`) to Boot 4's Jackson 3
+  (`tools.jackson`). OpenAPI model annotations remain under
+  `com.fasterxml.jackson.annotation`.
+- Make OpenAPI mock response status selection opt-in through
+  `smbtech.mocks.openapi.status-override-enabled`.
+- Remove the temporary OAuth2 token request `ThreadLocal` while preserving
+  ordered parameter and header customizers.
+- **Breaking behavior change:** error responses now default globally to
+  `PUBLIC`, which preserves the resolved code but returns a generic message and
+  minimal safe metadata. Trusted applications requiring detailed sanitized
+  responses must configure
+  `smbtech.error-handling.response.exposure=INTERNAL` explicitly.
+- Reinterpret `ErrorExposure.PUBLIC` as the minimal external contract and
+  `ErrorExposure.INTERNAL` as the detailed sanitized contract for trusted
+  consumers.
+- Preserve the resolved error code, severity, notification id, and timestamp in
+  both exposure modes.
+
+### Security
+
+- Redact authentication headers, cookies, API keys, token query parameters,
+  body secrets, and exception credentials before audit events reach any sink.
+- Reapply mandatory exposure and secret sanitization after notification
+  response customizers for MVC and Spring Security handlers.
+- Keep diagnostics, exception causes, stack traces, credentials, sensitive
+  headers, and downstream bodies out of both response modes.
+- Limit `PUBLIC` metadata to category and optional correlation ID while keeping
+  RFC 6750 `WWW-Authenticate` challenges independent from body exposure.
 
 ## 0.3.0 - 2026-07-20
 

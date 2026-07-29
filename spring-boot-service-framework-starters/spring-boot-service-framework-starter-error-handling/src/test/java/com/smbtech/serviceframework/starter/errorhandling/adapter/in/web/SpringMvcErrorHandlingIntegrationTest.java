@@ -9,13 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ErrorCategory;
+import com.smbtech.serviceframework.error.ErrorExposure;
 import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.ServiceExceptionThrowableErrorResolver;
 import com.smbtech.serviceframework.error.ThrowableErrorResolutionPipeline;
+import com.smbtech.serviceframework.starter.errorhandling.api.ErrorMetricsRecorder;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
+import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
+import com.smbtech.serviceframework.starter.errorhandling.customizer.StandardErrorMetadataCustomizer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
@@ -38,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.databind.ObjectMapper;
 
 class SpringMvcErrorHandlingIntegrationTest {
 
@@ -56,7 +60,14 @@ class SpringMvcErrorHandlingIntegrationTest {
                                 new SpringMvcExceptionResolver()));
         ServiceFrameworkExceptionHandler exceptionHandler =
                 new ServiceFrameworkExceptionHandler(
-                        pipeline, new DefaultNotificationResponseFactory());
+                        pipeline,
+                        new DefaultNotificationResponseFactory(),
+                        ErrorReporter.noop(),
+                        ErrorMetricsRecorder.noop(),
+                        new ErrorCustomizationPipeline(
+                                List.of(new StandardErrorMetadataCustomizer()),
+                                List.of(),
+                                resolvedError -> ErrorExposure.INTERNAL));
         mockMvc =
                 MockMvcBuilders.standaloneSetup(new TestController())
                         .setControllerAdvice(exceptionHandler)

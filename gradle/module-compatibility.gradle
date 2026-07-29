@@ -1,4 +1,6 @@
 def publicApiModel = rootProject.ext.serviceFrameworkPublicApiModel
+def actuatorContract = rootProject.ext.serviceFrameworkActuatorContract
+def asyncLoggingContract = rootProject.ext.serviceFrameworkAsyncLoggingContract
 
 def moduleCompatibilityContracts = [
         commons           : [
@@ -21,9 +23,54 @@ def moduleCompatibilityContracts = [
                                 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
                 ],
                 pluginIds         : [],
+                runtimeContracts  : [
+                        "async-appender=${asyncLoggingContract.topology.asyncAppenderName}",
+                        "async-appender-class=${asyncLoggingContract.topology.appenderClass}",
+                        "async-delegate=${asyncLoggingContract.topology.delegateAppenderName}",
+                        "async-delegate-property=${asyncLoggingContract.topology.delegateProperty}",
+                        "default-logback-resource=logback-spring.xml",
+                        "logback-delegate-cardinality=${asyncLoggingContract.extensibility.delegateCardinality}",
+                        "legacy-never-block-precedence=FORCE_DROP_WHEN_FULL",
+                        "legacy-positive-threshold-precedence=BLOCK_TO_DISCARD_LOW_PRIORITY",
+                        "consumer-smoke-task=loggingConsumerSmoke",
+                        "default-mode=${asyncLoggingContract.policy.defaultMode}",
+                        "disabled-mode=${asyncLoggingContract.policy.disabledMode}",
+                        "default-full-queue-behavior=${asyncLoggingContract.policy.defaultFullQueueBehavior}",
+                        "lossy-full-queue-behavior=${asyncLoggingContract.policy.lossyFullQueueBehavior}",
+                        "event-type-priority=${asyncLoggingContract.policy.eventTypePriorityEnforcement}",
+                        "critical-full-queue-behavior=SYNCHRONOUS_FALLBACK",
+                        "validated-queue-size=${asyncLoggingContract.limits.queueSizeRecommendedMin}..${asyncLoggingContract.limits.queueSizeRecommendedMax}",
+                        "validated-max-flush-time-ms=${asyncLoggingContract.limits.maxFlushTimeRecommendedMinMs}..${asyncLoggingContract.limits.maxFlushTimeRecommendedMaxMs}",
+                        "validated-discarding-threshold=${asyncLoggingContract.limits.discardingThresholdMin}..queue-size-exclusive",
+                        "property-validation=FAIL_FAST",
+                        "metrics-dependency=OPTIONAL",
+                        "metrics-cardinality=BOUNDED",
+                        "shutdown-owner=${asyncLoggingContract.shutdown.owner}",
+                        "shutdown-admission=${asyncLoggingContract.shutdown.admissionBehavior}",
+                        "shutdown-accepted-events=${asyncLoggingContract.shutdown.acceptedEventBehavior}",
+                        "shutdown-timeout=${asyncLoggingContract.shutdown.timeoutBehavior}",
+                        "shutdown-repeated-stop=${asyncLoggingContract.shutdown.repeatedStopBehavior}"
+                ] + asyncLoggingContract.extensibility.fragments.collect {
+                    "logback-fragment=${asyncLoggingContract.extensibility.fragmentRoot}/${it}"
+                } + asyncLoggingContract.properties.values().collect {
+                    "property=${it.name};default=${it.defaultValue}"
+                } + asyncLoggingContract.observability.metrics.collect {
+                    "metric=${it}"
+                } + asyncLoggingContract.policy.discardableLevels.collect {
+                    "discardable-level=${it}"
+                } + asyncLoggingContract.policy.saturationPolicies.collect {
+                    "saturation-policy=${it}"
+                } + asyncLoggingContract.policy.criticalLevels.collect {
+                    "critical-level=${it}"
+                } + asyncLoggingContract.policy.criticalEventTypes.collect {
+                    "critical-event-type=${it}"
+                },
                 verificationTasks : [
                         ':spring-boot-service-framework-logging-core:check',
-                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check'
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check',
+                        'asyncLoggingContractCheck',
+                        'loggingConsumerSmoke',
+                        'documentationCheck'
                 ]
         ],
         httpClient        : [
@@ -58,6 +105,44 @@ def moduleCompatibilityContracts = [
                 verificationTasks : [
                         ':spring-boot-service-framework-mock-core:check',
                         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:check'
+                ]
+        ],
+        actuator          : [
+                taskName          : 'actuatorCompatibilityCheck',
+                displayName       : 'Actuator',
+                artifacts         : [
+                        'com.smbtech:spring-boot-service-framework-actuator-core',
+                        'com.smbtech:spring-boot-service-framework-starter-actuator'
+                ],
+                autoConfiguration : [
+                        'com.smbtech:spring-boot-service-framework-starter-actuator':
+                                'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+                ],
+                pluginIds         : [],
+                runtimeContracts  : [
+                        "property-prefix=${actuatorContract.runtime.propertyPrefix}",
+                        "health-contributor=${actuatorContract.runtime.healthContributorName}",
+                        "health-indicator-bean=${actuatorContract.runtime.healthIndicatorBeanName}",
+                        "info-key=${actuatorContract.runtime.infoKey}",
+                        "info-contributor-bean=${actuatorContract.runtime.infoContributorBeanName}",
+                        "diagnostics-endpoint-id=${actuatorContract.runtime.diagnosticsEndpointId}",
+                        "diagnostics-endpoint-bean=${actuatorContract.runtime.diagnosticsEndpointBeanName}",
+                        "diagnostics-endpoint-default-access=${actuatorContract.runtime.diagnosticsEndpointAccess}",
+                        "metrics-bean=${actuatorContract.runtime.metricsBeanName}",
+                        "consumer-smoke-task=${actuatorContract.example.smokeTaskName}"
+                ] + actuatorContract.runtime.supportedStatuses.collect {
+                    "status=${it}"
+                } + actuatorContract.runtime.metricNames.collect {
+                    "metric=${it}"
+                } + actuatorContract.runtime.metricStatusTagValues.collect {
+                    "metric-status-tag=${it}"
+                },
+                verificationTasks : [
+                        ':spring-boot-service-framework-actuator-core:check',
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:check',
+                        'actuatorContractCheck',
+                        'actuatorConsumerSmoke',
+                        'documentationCheck'
                 ]
         ],
         openApiGenerator  : [
@@ -151,14 +236,18 @@ def renderModuleCompatibilityContract = { String contractName, Map contract ->
     output << '# Generated by ./gradlew generateModuleCompatibilityContracts. Do not edit manually.\n'
     output << 'schema-version=1\n'
     output << "module=${contract.displayName}\n"
-    [
+    def sections = [
             artifacts                   : contract.artifacts,
             'public-api'                : publicTypes,
             'extension-points'          : extensionPoints,
             properties                  : properties,
             'auto-configuration-imports': autoConfigurationImports,
             'gradle-plugin-ids'         : pluginIds
-    ].each { section, values ->
+    ]
+    if (contract.runtimeContracts) {
+        sections['runtime-contracts'] = contract.runtimeContracts
+    }
+    sections.each { section, values ->
         output << "\n${section}:\n"
         values.toSet().sort().each { value ->
             output << "- ${value}\n"

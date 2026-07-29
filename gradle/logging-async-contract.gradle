@@ -1,0 +1,599 @@
+// Reviewed baseline contract for the starter's Logback async appender.
+
+def asyncLoggingContract = [
+        schemaVersion: 1,
+        module       : [
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging',
+                directory  : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging'
+        ].asImmutable(),
+        topology     : [
+                asyncAppenderName   : 'ASYNC',
+                delegateAppenderName: 'STDOUT',
+                delegateProperty    : 'SERVICE_FRAMEWORK_LOGGING_DELEGATE',
+                appenderClass       : 'com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender'
+        ].asImmutable(),
+        extensibility: [
+                fragmentRoot        : 'com/smbtech/serviceframework/starter/logging/logback',
+                defaultDelegate     : 'STDOUT',
+                delegateCardinality : 'ONE',
+                fragments           : [
+                        'properties.xml',
+                        'structured-console-appender.xml',
+                        'async-appender.xml',
+                        'root.xml'
+                ].asImmutable()
+        ].asImmutable(),
+        properties   : [
+                enabled             : [
+                        name        : 'smbtech.logging.async.enabled',
+                        variable    : 'ASYNC_ENABLED',
+                        defaultValue: 'true'
+                ].asImmutable(),
+                queueSize           : [
+                        name        : 'smbtech.logging.async.queue-size',
+                        variable    : 'ASYNC_QUEUE_SIZE',
+                        defaultValue: '2048'
+                ].asImmutable(),
+                saturationPolicy    : [
+                        name        : 'smbtech.logging.async.saturation-policy',
+                        variable    : 'ASYNC_SATURATION_POLICY',
+                        defaultValue: 'BLOCK'
+                ].asImmutable(),
+                criticalEventProtection: [
+                        name        : 'smbtech.logging.async.critical-event-protection-enabled',
+                        variable    : 'ASYNC_CRITICAL_EVENT_PROTECTION_ENABLED',
+                        defaultValue: 'true'
+                ].asImmutable(),
+                discardingThreshold : [
+                        name        : 'smbtech.logging.async.discarding-threshold',
+                        variable    : 'ASYNC_DISCARDING_THRESHOLD',
+                        defaultValue: '0'
+                ].asImmutable(),
+                neverBlock          : [
+                        name        : 'smbtech.logging.async.never-block',
+                        variable    : 'ASYNC_NEVER_BLOCK',
+                        defaultValue: 'false'
+                ].asImmutable(),
+                maxFlushTime        : [
+                        name        : 'smbtech.logging.async.max-flush-time-ms',
+                        variable    : 'ASYNC_MAX_FLUSH_TIME',
+                        defaultValue: '1000'
+                ].asImmutable(),
+                observabilityEnabled: [
+                        name        : 'smbtech.logging.async.observability.enabled',
+                        defaultValue: 'true'
+                ].asImmutable()
+        ].asImmutable(),
+        observability: [
+                optionalDependency: 'io.micrometer:micrometer-core',
+                boundedTags       : [
+                        reason: ['low_priority', 'full_queue'].asImmutable()
+                ].asImmutable(),
+                metrics           : [
+                        'smbtech.logging.async.queue.capacity',
+                        'smbtech.logging.async.queue.depth',
+                        'smbtech.logging.async.queue.remaining',
+                        'smbtech.logging.async.events.discarded',
+                        'smbtech.logging.async.critical.fallbacks',
+                        'smbtech.logging.async.producer.block',
+                        'smbtech.logging.async.accepting',
+                        'smbtech.logging.async.events.rejected',
+                        'smbtech.logging.async.shutdown',
+                        'smbtech.logging.async.shutdown.timeouts',
+                        'smbtech.logging.async.shutdown.pending'
+                ].asImmutable()
+        ].asImmutable(),
+        shutdown      : [
+                owner                : 'SPRING_BOOT_LOGGING_SYSTEM',
+                admissionBehavior    : 'CLOSE_BEFORE_DRAIN',
+                acceptedEventBehavior: 'DRAIN_WITHIN_TIMEOUT',
+                timeoutBehavior      : 'REPORT_PENDING_SNAPSHOT',
+                repeatedStopBehavior : 'IDEMPOTENT'
+        ].asImmutable(),
+        concurrency   : [
+                boundedTimeoutSeconds: 15,
+                scenarios            : [
+                        'BLOCK_MULTI_PRODUCER_NO_LOSS_AND_PER_PRODUCER_ORDER',
+                        'DISCARD_LOW_PRIORITY_ACCOUNTING_AND_CRITICAL_DELIVERY',
+                        'DROP_WHEN_FULL_ACCOUNTING_AND_CRITICAL_FALLBACK',
+                        'SHUTDOWN_ADMISSION_RACE'
+                ].asImmutable()
+        ].asImmutable(),
+        example       : [
+                project           : 'examples/logging-consumer',
+                workloadEndpoint  : '/api/logging/async',
+                metricsEndpoint   : '/actuator/metrics/smbtech.logging.async.queue.depth',
+                maxEventsPerRequest: 10000
+        ].asImmutable(),
+        policy       : [
+                defaultMode                : 'ASYNC',
+                disabledMode               : 'SYNCHRONOUS',
+                defaultFullQueueBehavior   : 'BLOCK_PRODUCER',
+                lossyFullQueueBehavior     : 'DROP_WHEN_FULL',
+                saturationPolicies         : [
+                        'BLOCK',
+                        'DISCARD_LOW_PRIORITY',
+                        'DROP_WHEN_FULL'
+                ].asImmutable(),
+                discardableLevels          : ['TRACE', 'DEBUG', 'INFO'].asImmutable(),
+                criticalLevels             : ['WARN', 'ERROR'].asImmutable(),
+                criticalEventTypes         : ['AUDIT', 'SECURITY'].asImmutable(),
+                eventTypePriorityEnforcement: 'ENFORCED_BY_POLICY_AWARE_ASYNC_APPENDER'
+        ].asImmutable(),
+        limits       : [
+                enforced                : true,
+                queueSizeRecommendedMin : 256,
+                queueSizeRecommendedMax : 65536,
+                maxFlushTimeRecommendedMinMs: 100,
+                maxFlushTimeRecommendedMaxMs: 30000,
+                discardingThresholdMin  : 0,
+                discardingThresholdRule : 'LESS_THAN_QUEUE_SIZE'
+        ].asImmutable(),
+        files        : [
+                configuration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/logback-spring.xml',
+                propertiesConfiguration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/com/smbtech/serviceframework/starter/logging/logback/properties.xml',
+                structuredConsoleConfiguration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/com/smbtech/serviceframework/starter/logging/logback/structured-console-appender.xml',
+                asyncConfiguration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/com/smbtech/serviceframework/starter/logging/logback/async-appender.xml',
+                rootConfiguration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/resources/com/smbtech/serviceframework/starter/logging/logback/root.xml',
+                properties   : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java/com/smbtech/serviceframework/starter/logging/autoconfigure/LoggingProperties.java',
+                behaviorTest : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/AsyncAppenderContractTest.java',
+                packagedCompatibilityTest: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/StarterSmokeTest.java',
+                defaultsTest : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/autoconfigure/LoggingAutoConfigurationTest.java',
+                validator    : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java/com/smbtech/serviceframework/starter/logging/autoconfigure/AsyncLoggingPropertiesValidator.java',
+                validatorTest: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/autoconfigure/AsyncLoggingPropertiesValidatorTest.java',
+                policyAppender: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java/com/smbtech/serviceframework/starter/logging/adapter/out/logback/PolicyAwareAsyncAppender.java',
+                policyTest   : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/adapter/out/logback/PolicyAwareAsyncAppenderTest.java',
+                metricsBinder: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java/com/smbtech/serviceframework/starter/logging/adapter/in/metrics/AsyncLoggingMetrics.java',
+                metricsTest  : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/adapter/in/metrics/AsyncLoggingMetricsTest.java',
+                concurrencyTest: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/adapter/out/logback/AsyncAppenderConcurrencyTest.java',
+                extensionConfiguration: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/resources/logback-extension-test.xml',
+                extensionTest: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/ExtensibleLogbackConfigurationTest.java',
+                runtimeHints: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/main/java/com/smbtech/serviceframework/starter/logging/autoconfigure/LoggingRuntimeHints.java',
+                runtimeHintsTest: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/autoconfigure/LoggingRuntimeHintsTest.java',
+                exampleConfiguration: 'examples/logging-consumer/src/main/resources/application.yaml',
+                exampleService: 'examples/logging-consumer/src/main/java/com/smbtech/examples/logging/application/AsyncLoggingScenarioService.java',
+                exampleController: 'examples/logging-consumer/src/main/java/com/smbtech/examples/logging/adapter/in/http/AsyncLoggingController.java',
+                exampleTest: 'examples/logging-consumer/src/test/java/com/smbtech/examples/logging/AsyncLoggingExampleTest.java',
+                exampleDocumentation: 'examples/logging-consumer/README.md',
+                baselineMain : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/src/test/java/com/smbtech/serviceframework/starter/logging/AsyncAppenderBaseline.java',
+                documentation: 'docs/logging/async-appender.md',
+                compatibilityDocumentation: 'docs/logging/compatibility.md'
+        ].asImmutable()
+].asImmutable()
+
+rootProject.ext.serviceFrameworkAsyncLoggingContract = asyncLoggingContract
+
+tasks.register('validateAsyncLoggingContract') {
+    group = 'verification'
+    description = 'Validates the reviewed async logging topology, defaults, policy, tests, and documentation.'
+
+    inputs.property('asyncLoggingContract', asyncLoggingContract)
+    inputs.files(asyncLoggingContract.files.values().collect { file(it) })
+
+    doLast {
+        def failures = []
+        def configurationFile = file(asyncLoggingContract.files.configuration)
+        def propertiesConfigurationFile =
+                file(asyncLoggingContract.files.propertiesConfiguration)
+        def structuredConsoleConfigurationFile =
+                file(asyncLoggingContract.files.structuredConsoleConfiguration)
+        def asyncConfigurationFile = file(asyncLoggingContract.files.asyncConfiguration)
+        def rootConfigurationFile = file(asyncLoggingContract.files.rootConfiguration)
+        def propertiesFile = file(asyncLoggingContract.files.properties)
+        def documentationFile = file(asyncLoggingContract.files.documentation)
+        def compatibilityDocumentationFile =
+                file(asyncLoggingContract.files.compatibilityDocumentation)
+
+        asyncLoggingContract.files.each { role, path ->
+            if (!file(path).isFile()) {
+                failures.add("Async logging ${role} file is missing: ${path}.")
+            }
+        }
+
+        if (asyncLoggingContract.schemaVersion != 1) {
+            failures.add('Async logging contract schema version must be 1.')
+        }
+        if (asyncLoggingContract.policy.defaultFullQueueBehavior != 'BLOCK_PRODUCER') {
+            failures.add('The default async logging mode must preserve events by blocking producers.')
+        }
+        if (asyncLoggingContract.policy.eventTypePriorityEnforcement
+                != 'ENFORCED_BY_POLICY_AWARE_ASYNC_APPENDER') {
+            failures.add('Critical structured event protection must remain enforced.')
+        }
+        if (!asyncLoggingContract.limits.enforced) {
+            failures.add('Async logging safety limits must be enforced during application startup.')
+        }
+        if (asyncLoggingContract.shutdown.admissionBehavior != 'CLOSE_BEFORE_DRAIN'
+                || asyncLoggingContract.shutdown.acceptedEventBehavior
+                != 'DRAIN_WITHIN_TIMEOUT') {
+            failures.add('Async logging shutdown must close admission before draining accepted events.')
+        }
+
+        if (configurationFile.isFile()) {
+            def configuration = configurationFile.getText('UTF-8')
+            asyncLoggingContract.extensibility.fragments.each { fragment ->
+                def resource = "${asyncLoggingContract.extensibility.fragmentRoot}/${fragment}"
+                if (!configuration.contains("<include resource=\"${resource}\"/>")) {
+                    failures.add("Default Logback configuration does not include ${resource}.")
+                }
+            }
+        }
+
+        if (propertiesConfigurationFile.isFile()) {
+            def configuration = propertiesConfigurationFile.getText('UTF-8')
+            asyncLoggingContract.properties.values().findAll { it.variable }.each { property ->
+                if (!configuration.contains("source=\"${property.name}\"")) {
+                    failures.add("Logback properties fragment does not bind ${property.name}.")
+                }
+                def propertyPattern = java.util.regex.Pattern.compile(
+                        '(?s)<springProperty\\s+name="'
+                                + java.util.regex.Pattern.quote(property.variable)
+                                + '".*?defaultValue="'
+                                + java.util.regex.Pattern.quote(property.defaultValue)
+                                + '"\\s*/>'
+                )
+                if (!propertyPattern.matcher(configuration).find()) {
+                    failures.add(
+                            "Logback properties fragment default for ${property.name} "
+                                    + "must be ${property.defaultValue}."
+                    )
+                }
+            }
+        }
+
+        if (asyncConfigurationFile.isFile()) {
+            def configuration = asyncConfigurationFile.getText('UTF-8')
+            def appenderPattern = java.util.regex.Pattern.compile(
+                    '(?s)<appender\\s+name="'
+                            + java.util.regex.Pattern.quote(
+                                    asyncLoggingContract.topology.asyncAppenderName
+                            )
+                            + '"\\s+class="'
+                            + java.util.regex.Pattern.quote(
+                                    asyncLoggingContract.topology.appenderClass
+                            )
+                            + '">'
+            )
+            if (!appenderPattern.matcher(configuration).find()) {
+                failures.add('The reviewed Logback async appender topology changed.')
+            }
+            def delegateReference = ('${'
+                    + asyncLoggingContract.topology.delegateProperty
+                    + ':-'
+                    + asyncLoggingContract.topology.delegateAppenderName
+                    + '}')
+            if (!configuration.contains("<appender-ref ref=\"${delegateReference}\"/>")) {
+                failures.add(
+                        'The async appender must support the configurable delegate '
+                                + asyncLoggingContract.topology.delegateProperty
+                                + '.'
+                )
+            }
+        }
+
+        if (structuredConsoleConfigurationFile.isFile()) {
+            def configuration = structuredConsoleConfigurationFile.getText('UTF-8')
+            [
+                    'name="STDOUT"',
+                    'class="ch.qos.logback.core.ConsoleAppender"',
+                    'org.springframework.boot.logging.logback.StructuredLogEncoder',
+                    'ServiceFrameworkStructuredLogFormatter'
+            ].each { token ->
+                if (!configuration.contains(token)) {
+                    failures.add("Structured console fragment is missing ${token}.")
+                }
+            }
+        }
+
+        if (rootConfigurationFile.isFile()) {
+            def configuration = rootConfigurationFile.getText('UTF-8')
+            [
+                    '<appender-ref ref="ASYNC"/>',
+                    '${SERVICE_FRAMEWORK_LOGGING_DELEGATE:-STDOUT}'
+            ].each { token ->
+                if (!configuration.contains(token)) {
+                    failures.add("Root logger fragment is missing ${token}.")
+                }
+            }
+        }
+
+        if (propertiesFile.isFile()) {
+            def properties = propertiesFile.getText('UTF-8')
+            [
+                    'private boolean enabled = true;',
+                    'private int queueSize = 2048;',
+                    'private SaturationPolicy saturationPolicy = SaturationPolicy.BLOCK;',
+                    'private boolean criticalEventProtectionEnabled = true;',
+                    'private int discardingThreshold;',
+                    'private boolean neverBlock;',
+                    'private int maxFlushTimeMs = 1000;',
+                    'private final Observability observability = new Observability();'
+            ].each { declaration ->
+                if (!properties.contains(declaration)) {
+                    failures.add("LoggingProperties default changed: ${declaration}")
+                }
+            }
+        }
+
+        def validatorFile = file(asyncLoggingContract.files.validator)
+        if (validatorFile.isFile()) {
+            def validator = validatorFile.getText('UTF-8')
+            [
+                    "MIN_QUEUE_SIZE = ${asyncLoggingContract.limits.queueSizeRecommendedMin}",
+                    "MAX_QUEUE_SIZE = ${asyncLoggingContract.limits.queueSizeRecommendedMax}",
+                    "MIN_MAX_FLUSH_TIME_MS = ${asyncLoggingContract.limits.maxFlushTimeRecommendedMinMs}",
+                    "MAX_MAX_FLUSH_TIME_MS = ${asyncLoggingContract.limits.maxFlushTimeRecommendedMaxMs}",
+                    'discardingThreshold < 0 || discardingThreshold >= async.getQueueSize()'
+            ].each { token ->
+                if (!validator.contains(token)) {
+                    failures.add("Async logging runtime validation is missing contract token ${token}.")
+                }
+            }
+        }
+
+        def policyAppenderFile = file(asyncLoggingContract.files.policyAppender)
+        if (policyAppenderFile.isFile()) {
+            def policyAppender = policyAppenderFile.getText('UTF-8')
+            asyncLoggingContract.policy.saturationPolicies.each { policy ->
+                if (!policyAppender.contains(policy)) {
+                    failures.add(
+                            "Async logging appender does not implement saturation policy ${policy}."
+                    )
+                }
+            }
+            [
+                    'if (legacyNeverBlock)',
+                    'configuredPolicy == SaturationPolicy.BLOCK',
+                    'Math.max(1, queueSize / 5)',
+                    'protected boolean isDiscardable(ILoggingEvent event)',
+                    'getRemainingCapacity() == 0',
+                    'delegateAppender.doAppend(event)',
+                    'EventType.AUDIT.equals(eventType)',
+                    'EventType.SECURITY.equals(eventType)',
+                    'acceptingEvents.set(false)',
+                    'shutdownLock.lock()',
+                    'super.stop()',
+                    'getLastShutdownPendingEventCount()',
+                    'getShutdownTimeoutCount()'
+            ].each { token ->
+                if (!policyAppender.contains(token)) {
+                    failures.add(
+                            "Async logging policy compatibility is missing contract token ${token}."
+                    )
+                }
+            }
+        }
+
+        def metricsBinderFile = file(asyncLoggingContract.files.metricsBinder)
+        if (metricsBinderFile.isFile()) {
+            def metricsBinder = metricsBinderFile.getText('UTF-8')
+            asyncLoggingContract.observability.metrics.each { metric ->
+                if (!metricsBinder.contains(metric)) {
+                    failures.add("Async logging metrics binder is missing ${metric}.")
+                }
+            }
+            asyncLoggingContract.observability.boundedTags.reason.each { reason ->
+                if (!metricsBinder.contains(reason)) {
+                    failures.add(
+                            "Async logging discarded-event reason is missing ${reason}."
+                    )
+                }
+            }
+        }
+
+        def concurrencyTestFile = file(asyncLoggingContract.files.concurrencyTest)
+        if (concurrencyTestFile.isFile()) {
+            def concurrencyTest = concurrencyTestFile.getText('UTF-8')
+            [
+                    '@Timeout(15)',
+                    'Executors.newFixedThreadPool',
+                    'CountDownLatch',
+                    'preservesEveryEventAndPerProducerOrderUnderBlockContention',
+                    'accountsForConcurrentLowPriorityDiscardingWithoutLosingCriticalEvents',
+                    'accountsForConcurrentFullQueueDropsAndProtectsCriticalEvents',
+                    'getDiscardedLowPriorityEventCount()',
+                    'getDiscardedFullQueueEventCount()',
+                    'getCriticalFallbackEventCount()'
+            ].each { token ->
+                if (!concurrencyTest.contains(token)) {
+                    failures.add(
+                            "Async logging concurrency verification is missing ${token}."
+                    )
+                }
+            }
+        }
+
+        def extensionConfigurationFile =
+                file(asyncLoggingContract.files.extensionConfiguration)
+        if (extensionConfigurationFile.isFile()) {
+            def extensionConfiguration = extensionConfigurationFile.getText('UTF-8')
+            [
+                    'name="CUSTOM"',
+                    'name="SERVICE_FRAMEWORK_LOGGING_DELEGATE" value="CUSTOM"',
+                    'logback/properties.xml',
+                    'logback/async-appender.xml',
+                    'logback/root.xml'
+            ].each { token ->
+                if (!extensionConfiguration.contains(token)) {
+                    failures.add("Extensible Logback test configuration is missing ${token}.")
+                }
+            }
+        }
+
+        def extensionTestFile = file(asyncLoggingContract.files.extensionTest)
+        if (extensionTestFile.isFile()) {
+            def extensionTest = extensionTestFile.getText('UTF-8')
+            [
+                    'replacesTheDefaultDelegateUsingPackagedFragments',
+                    'classpath:logback-extension-test.xml',
+                    'async.getAppender("CUSTOM")',
+                    'root.getAppender("STDOUT")'
+            ].each { token ->
+                if (!extensionTest.contains(token)) {
+                    failures.add("Extensible Logback verification is missing ${token}.")
+                }
+            }
+        }
+
+        def packagedCompatibilityTestFile =
+                file(asyncLoggingContract.files.packagedCompatibilityTest)
+        if (packagedCompatibilityTestFile.isFile()) {
+            def packagedCompatibilityTest =
+                    packagedCompatibilityTestFile.getText('UTF-8')
+            [
+                    'preservesLegacyNeverBlockThroughThePackagedLogbackConfiguration',
+                    '"smbtech.logging.async.never-block"',
+                    'properties.isNeverBlock()',
+                    'SaturationPolicy.BLOCK'
+            ].each { token ->
+                if (!packagedCompatibilityTest.contains(token)) {
+                    failures.add(
+                            "Packaged Logback compatibility verification is missing ${token}."
+                    )
+                }
+            }
+        }
+
+        def runtimeHintsFile = file(asyncLoggingContract.files.runtimeHints)
+        if (runtimeHintsFile.isFile()
+                && !runtimeHintsFile.getText('UTF-8').contains(
+                        'com/smbtech/serviceframework/starter/logging/logback/*.xml')) {
+            failures.add('Native runtime hints must include the Logback fragments.')
+        }
+
+        def exampleConfigurationFile = file(asyncLoggingContract.files.exampleConfiguration)
+        if (exampleConfigurationFile.isFile()) {
+            def exampleConfiguration = exampleConfigurationFile.getText('UTF-8')
+            [
+                    'enabled: ${EXAMPLE_ASYNC_LOGGING_ENABLED:true}',
+                    'queue-size: ${EXAMPLE_ASYNC_LOGGING_QUEUE_SIZE:2048}',
+                    'saturation-policy: ${EXAMPLE_ASYNC_LOGGING_SATURATION_POLICY:BLOCK}',
+                    'include: health,metrics'
+            ].each { token ->
+                if (!exampleConfiguration.contains(token)) {
+                    failures.add(
+                            "Async logging example configuration is missing ${token}."
+                    )
+                }
+            }
+        }
+
+        def exampleServiceFile = file(asyncLoggingContract.files.exampleService)
+        if (exampleServiceFile.isFile()) {
+            def exampleService = exampleServiceFile.getText('UTF-8')
+            [
+                    'EventType.AUDIT',
+                    'EventType.APPLICATION',
+                    '.with("batchId", batchId)',
+                    'MAX_EVENTS'
+            ].each { token ->
+                def source = token == 'MAX_EVENTS'
+                        ? file(asyncLoggingContract.files.exampleController).getText('UTF-8')
+                        : exampleService
+                if (!source.contains(token)) {
+                    failures.add("Async logging example is missing ${token}.")
+                }
+            }
+        }
+
+        def exampleTestFile = file(asyncLoggingContract.files.exampleTest)
+        if (exampleTestFile.isFile()) {
+            def exampleTest = exampleTestFile.getText('UTF-8')
+            [
+                    'PolicyAwareAsyncAppender.findActive()',
+                    '/api/logging/async',
+                    'smbtech.logging.async.queue.capacity',
+                    'EventType.AUDIT',
+                    'containsKeys("traceId", "spanId")'
+            ].each { token ->
+                if (!exampleTest.contains(token)) {
+                    failures.add("Async logging example verification is missing ${token}.")
+                }
+            }
+        }
+
+        if (documentationFile.isFile()) {
+            def documentation = documentationFile.getText('UTF-8')
+            asyncLoggingContract.properties.values().each { property ->
+                if (!documentation.contains("`${property.name}`")
+                        || !documentation.contains("`${property.defaultValue}`")) {
+                    failures.add(
+                            "Async logging documentation must describe ${property.name} "
+                                    + "and its ${property.defaultValue} default."
+                    )
+                }
+            }
+            [
+                    'BLOCK_PRODUCER',
+                    'DROP_WHEN_FULL',
+                    'AUDIT',
+                    'SECURITY',
+                    'DISCARD_LOW_PRIORITY',
+                    'DROP_WHEN_FULL',
+                    'AsyncAppenderBaseline',
+                    'fail-fast',
+                    'closes admission',
+                    'logging.register-shutdown-hook',
+                    'idempotent',
+                    'smbtech.logging.async.shutdown.pending',
+                    'AsyncAppenderConcurrencyTest',
+                    'per-producer order',
+                    'synchronous fallback is exercised',
+                    '/api/logging/async',
+                    'Runnable Example',
+                    'SERVICE_FRAMEWORK_LOGGING_DELEGATE',
+                    'Extensible Logback Configuration',
+                    'logback/async-appender.xml'
+            ].each { token ->
+                if (!documentation.contains(token)) {
+                    failures.add("Async logging documentation is missing contract token ${token}.")
+                }
+            }
+        }
+
+        if (compatibilityDocumentationFile.isFile()) {
+            def compatibilityDocumentation =
+                    compatibilityDocumentationFile.getText('UTF-8')
+            [
+                    'SERVICE_FRAMEWORK_LOGGING_DELEGATE',
+                    'logback-spring.xml',
+                    'logback/properties.xml',
+                    'logback/structured-console-appender.xml',
+                    'logback/async-appender.xml',
+                    'logback/root.xml',
+                    'Legacy Property Precedence',
+                    'never-block=true',
+                    'discarding-threshold>0',
+                    'loggingConsumerSmoke',
+                    'loggingCompatibilityCheck'
+            ].each { token ->
+                if (!compatibilityDocumentation.contains(token)) {
+                    failures.add(
+                            "Logging compatibility documentation is missing ${token}."
+                    )
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Async logging contract issues found:\n" + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('asyncLoggingContractCheck') {
+    group = 'verification'
+    description = 'Runs the focused async logging baseline and contract validation.'
+    dependsOn(
+            tasks.named('validateAsyncLoggingContract'),
+            asyncLoggingContract.module.projectPath + ':test'
+    )
+}
+
+tasks.register('loggingAsyncBaseline') {
+    group = 'verification'
+    description = 'Measures the local Logback synchronous and asynchronous baseline without enforcing machine-specific thresholds.'
+    dependsOn asyncLoggingContract.module.projectPath + ':loggingAsyncBaseline'
+}

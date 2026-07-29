@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Provides OAuth2 configuration validation result behavior. */
-public final class OAuth2ConfigurationValidationResult {
+final class OAuth2ConfigurationValidationResult {
 
     private static final OAuth2ConfigurationValidationResult EMPTY =
             new OAuth2ConfigurationValidationResult(List.of());

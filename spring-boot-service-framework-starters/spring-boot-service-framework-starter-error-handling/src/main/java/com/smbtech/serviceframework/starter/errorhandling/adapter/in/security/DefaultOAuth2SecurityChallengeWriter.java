@@ -41,7 +41,7 @@ public final class DefaultOAuth2SecurityChallengeWriter implements OAuth2Securit
     /**
      * Creates the writer with a replaceable metadata factory.
      *
-     * @param metadataFactory public OAuth2 metadata factory
+     * @param metadataFactory OAuth2 response and challenge metadata factory
      */
     public DefaultOAuth2SecurityChallengeWriter(OAuth2SecurityMetadataFactory metadataFactory) {
         this(
@@ -53,7 +53,7 @@ public final class DefaultOAuth2SecurityChallengeWriter implements OAuth2Securit
     /**
      * Creates the writer with replaceable metadata and Spring Security delegates.
      *
-     * @param metadataFactory public OAuth2 metadata factory
+     * @param metadataFactory OAuth2 response and challenge metadata factory
      * @param authenticationEntryPoint authentication challenge delegate
      * @param accessDeniedHandler authorization challenge delegate
      */

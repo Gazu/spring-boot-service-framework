@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.mock.autoconfigure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
 import com.smbtech.serviceframework.mock.port.out.MockDefinitionSource;
@@ -24,14 +23,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import tools.jackson.databind.ObjectMapper;
 
 /** Provides mock auto configuration behavior. */
 @AutoConfiguration
 @ConditionalOnClass(ObjectMapper.class)
 @EnableConfigurationProperties(MockProperties.class)
+@ImportRuntimeHints(MockRuntimeHints.class)
 public class MockAutoConfiguration {
     /** Creates a mock auto configuration instance. */
     public MockAutoConfiguration() {}
@@ -108,12 +111,13 @@ public class MockAutoConfiguration {
     OpenApiMockServerRegistrar openApiMockServerRegistrar(
             MockProperties properties,
             OpenApiMockContractLoader contractLoader,
-            RequestMappingHandlerMapping handlerMapping) {
+            RequestMappingHandlerMapping handlerMapping,
+            Environment environment) {
         return new OpenApiMockServerRegistrar(
-                properties.getOpenapi(), contractLoader, handlerMapping);
+                properties.getOpenapi(), contractLoader, handlerMapping, environment);
     }
 
     private ObjectMapper fallbackObjectMapper() {
-        return new ObjectMapper().findAndRegisterModules();
+        return new ObjectMapper();
     }
 }

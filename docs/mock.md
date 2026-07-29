@@ -107,6 +107,29 @@ smbtech:
         delay: 100ms
 ```
 
+OpenAPI mock routes require explicit activation and are blocked when an active
+profile matches `prod` or `production`:
+
+```yaml
+smbtech:
+  mocks:
+    openapi:
+      enabled: true
+      allow-in-production: false
+      production-profiles: [prod, production]
+      status-override-enabled: false
+      contracts:
+        pets:
+          location: classpath:openapi/pets.yaml
+```
+
+`allow-in-production` should only be enabled for an explicitly approved,
+isolated environment. Status selection through `X-Mock-Status` is ignored
+unless `status-override-enabled` is also enabled.
+
+OpenAPI mock contracts accept explicit OpenAPI 3.0 and 3.1 declarations.
+Swagger 2 and unsupported OpenAPI versions fail contract loading.
+
 ## 5. Mock response file format
 
 ```json

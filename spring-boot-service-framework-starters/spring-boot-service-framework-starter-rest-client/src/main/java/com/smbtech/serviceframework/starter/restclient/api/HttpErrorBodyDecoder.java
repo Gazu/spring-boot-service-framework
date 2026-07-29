@@ -1,15 +1,15 @@
 package com.smbtech.serviceframework.starter.restclient.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
 import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.Optional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
 
 /** Decodes downstream HTTP error bodies captured by {@link HttpClientResponseException}. */
 public final class HttpErrorBodyDecoder implements HttpErrorResponseBodyReader {
@@ -74,7 +74,7 @@ public final class HttpErrorBodyDecoder implements HttpErrorResponseBodyReader {
         HttpErrorResponse safeError = requireBody(error);
         try {
             return objectMapper.readValue(safeError.body(), type);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new HttpErrorBodyDecodingException(safeError, type.getName(), exception);
         }
     }
@@ -93,7 +93,7 @@ public final class HttpErrorBodyDecoder implements HttpErrorResponseBodyReader {
         JavaType javaType = objectMapper.getTypeFactory().constructType(type);
         try {
             return objectMapper.readValue(safeError.body(), javaType);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new HttpErrorBodyDecodingException(safeError, type.getTypeName(), exception);
         }
     }
@@ -111,7 +111,7 @@ public final class HttpErrorBodyDecoder implements HttpErrorResponseBodyReader {
         HttpErrorResponse safeError = requireBody(error);
         try {
             return objectMapper.readValue(safeError.body(), type);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new HttpErrorBodyDecodingException(
                     safeError, type.getType().getTypeName(), exception);
         }

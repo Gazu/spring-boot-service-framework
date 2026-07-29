@@ -1,6 +1,6 @@
 package com.smbtech.serviceframework.starter.errorhandling.api.security;
 
-/** Stable public classification selected by the security failure resolvers. */
+/** Stable response classification selected by the security failure resolvers. */
 public enum SecurityFailureReason {
     /** Represents authentication required. */
     AUTHENTICATION_REQUIRED(
@@ -37,7 +37,7 @@ public enum SecurityFailureReason {
     }
 
     /**
-     * Returns the stable value used in public security metadata.
+     * Returns the stable value used in detailed security metadata.
      *
      * @return result
      */

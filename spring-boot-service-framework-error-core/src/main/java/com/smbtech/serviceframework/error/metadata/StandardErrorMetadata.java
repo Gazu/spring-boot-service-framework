@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Framework-neutral standard metadata attached to a public error notification. Only namespaces
@@ -29,18 +30,18 @@ import java.util.Objects;
 public record StandardErrorMetadata(
         String schemaVersion,
         ErrorCategory category,
-        String correlationId,
-        Boolean retryable,
-        RequestErrorMetadata request,
-        ValidationErrorMetadata validation,
+        @Nullable String correlationId,
+        @Nullable Boolean retryable,
+        @Nullable RequestErrorMetadata request,
+        @Nullable ValidationErrorMetadata validation,
         List<FieldViolationMetadata> violations,
-        SecurityErrorMetadata security,
-        OAuth2ErrorMetadata oauth2,
-        ResourceErrorMetadata resource,
-        ConflictErrorMetadata conflict,
-        DependencyErrorMetadata dependency,
-        RateLimitErrorMetadata rateLimit,
-        HttpErrorMetadata http) {
+        @Nullable SecurityErrorMetadata security,
+        @Nullable OAuth2ErrorMetadata oauth2,
+        @Nullable ResourceErrorMetadata resource,
+        @Nullable ConflictErrorMetadata conflict,
+        @Nullable DependencyErrorMetadata dependency,
+        @Nullable RateLimitErrorMetadata rateLimit,
+        @Nullable HttpErrorMetadata http) {
 
     /** Value written to identify the shape of generated metadata. */
     public static final String CURRENT_SCHEMA_VERSION = "1";

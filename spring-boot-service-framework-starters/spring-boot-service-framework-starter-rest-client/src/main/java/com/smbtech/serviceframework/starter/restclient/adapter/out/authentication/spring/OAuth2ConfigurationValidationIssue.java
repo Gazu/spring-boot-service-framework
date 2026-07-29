@@ -9,7 +9,7 @@ import java.util.Objects;
  * @param path path value
  * @param message message value
  */
-public record OAuth2ConfigurationValidationIssue(
+record OAuth2ConfigurationValidationIssue(
         OAuth2ConfigurationValidationSeverity severity, String path, String message) {
 
     /** Creates and validates the record components. */

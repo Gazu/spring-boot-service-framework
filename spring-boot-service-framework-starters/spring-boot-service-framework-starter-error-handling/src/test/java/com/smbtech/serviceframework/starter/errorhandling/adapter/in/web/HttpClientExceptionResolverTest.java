@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ErrorCategory;
 import com.smbtech.serviceframework.error.ErrorExposure;
@@ -22,6 +19,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.module.SimpleModule;
 
 class HttpClientExceptionResolverTest {
 
@@ -175,6 +175,6 @@ class HttpClientExceptionResolverTest {
     private static ObjectMapper notificationMapper() {
         SimpleModule module = new SimpleModule("service-framework-notification-json");
         module.addSerializer(Notification.class, new NotificationJsonSerializer());
-        return new ObjectMapper().registerModule(module);
+        return new ObjectMapper().rebuild().addModule(module).build();
     }
 }

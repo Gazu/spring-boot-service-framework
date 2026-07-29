@@ -152,6 +152,10 @@ tasks.register('validateDocumentationCatalog') {
             'PROVENANCE.md',
             'docs/index.md',
             'docs/documentation-architecture.md',
+            'docs/actuator.md',
+            'docs/actuator/compatibility.md',
+            'docs/actuator/property-reference.md',
+            'docs/dependency-management.md',
             'docs/code-conventions.md',
             'docs/public-api-boundaries.md',
             'docs/module-readme-convention.md',
@@ -164,6 +168,8 @@ tasks.register('validateDocumentationCatalog') {
             'docs/releasing.md',
             'docs/troubleshooting.md',
             'docs/logging.md',
+            'docs/logging/async-appender.md',
+            'docs/logging/compatibility.md',
             'docs/logging/property-reference.md',
             'docs/error-handling.md',
             'docs/error-handling/security.md',
@@ -195,6 +201,10 @@ tasks.register('validateDocumentationCatalog') {
                 'CHANGELOG.md',
                 'docs/index.md',
                 'docs/documentation-architecture.md',
+                'docs/actuator.md',
+                'docs/actuator/compatibility.md',
+                'docs/actuator/property-reference.md',
+                'docs/dependency-management.md',
                 'docs/code-conventions.md',
                 'docs/public-api-boundaries.md',
                 'docs/module-readme-convention.md',
@@ -207,6 +217,8 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/releasing.md',
                 'docs/troubleshooting.md',
                 'docs/logging.md',
+                'docs/logging/async-appender.md',
+                'docs/logging/compatibility.md',
                 'docs/error-handling.md',
                 'docs/error-handling/security.md',
                 'docs/error-handling/json-contract.md',
@@ -226,6 +238,10 @@ tasks.register('validateDocumentationCatalog') {
         [
                 '../README.md',
                 '../CHANGELOG.md',
+                'actuator.md',
+                'actuator/compatibility.md',
+                'actuator/property-reference.md',
+                'dependency-management.md',
                 'compatibility.md',
                 'documentation-architecture.md',
                 'code-conventions.md',
@@ -239,6 +255,8 @@ tasks.register('validateDocumentationCatalog') {
                 'releasing.md',
                 'troubleshooting.md',
                 'logging.md',
+                'logging/async-appender.md',
+                'logging/compatibility.md',
                 'error-handling.md',
                 'error-handling/security.md',
                 'error-handling/json-contract.md',
@@ -258,6 +276,10 @@ tasks.register('validateDocumentationCatalog') {
         def architecture = file('docs/documentation-architecture.md').text
         [
                 'CHANGELOG.md',
+                'docs/actuator.md',
+                'docs/actuator/compatibility.md',
+                'docs/actuator/property-reference.md',
+                'docs/dependency-management.md',
                 'docs/code-conventions.md',
                 'docs/public-api-boundaries.md',
                 'docs/module-readme-convention.md',
@@ -269,6 +291,8 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/releasing.md',
                 'docs/troubleshooting.md',
                 'docs/rest-client/property-reference.md',
+                'docs/logging/async-appender.md',
+                'docs/logging/compatibility.md',
                 'docs/logging/property-reference.md',
                 'docs/error-handling.md',
                 'docs/error-handling/security.md',
@@ -353,7 +377,7 @@ tasks.register('validateDocumentationVersions') {
     doLast {
         def failures = []
         def currentVersion = rootProject.version.toString()
-        def artifactPattern = ~/com\.smbtech:(spring-boot-service-framework-(commons|logging-core|http-client-core|mock-core|error-core|starter-logging|starter-rest-client|starter-mock|starter-error-handling)):([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)/
+        def artifactPattern = ~/com\.smbtech:(spring-boot-service-framework-(actuator-core|commons|logging-core|http-client-core|mock-core|error-core|starter-actuator|starter-logging|starter-rest-client|starter-mock|starter-error-handling)):([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)/
         def versionAssignmentPattern = ~/version\s*=\s*['"]([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)['"]/
         def currentStatusPattern = ~/framework is in `([0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?)`/
 
@@ -398,6 +422,8 @@ tasks.register('validateModuleReadmes') {
     description = 'Validates the required module README convention.'
 
     def moduleReadmePaths = [
+            'spring-boot-service-framework-platform/README.md',
+            'spring-boot-service-framework-actuator-core/README.md',
             'spring-boot-service-framework-commons/README.md',
             'spring-boot-service-framework-logging-core/README.md',
             'spring-boot-service-framework-http-client-core/README.md',
@@ -405,6 +431,7 @@ tasks.register('validateModuleReadmes') {
             'spring-boot-service-framework-error-core/README.md',
             'spring-boot-service-framework-openapi-generator/README.md',
             'spring-boot-service-framework-openapi-contract-testing/README.md',
+            'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md',
             'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md',
             'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/README.md',
             'spring-boot-service-framework-starters/spring-boot-service-framework-starter-mock/README.md',

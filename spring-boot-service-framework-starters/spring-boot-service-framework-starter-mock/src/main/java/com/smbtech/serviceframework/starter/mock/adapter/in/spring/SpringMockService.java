@@ -1,12 +1,12 @@
 package com.smbtech.serviceframework.starter.mock.adapter.in.spring;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.smbtech.serviceframework.mock.domain.MockRequest;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
 import com.smbtech.serviceframework.starter.mock.api.MockService;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.core.type.TypeReference;
 
 /** Provides spring mock service behavior. */
 public final class SpringMockService implements MockService {

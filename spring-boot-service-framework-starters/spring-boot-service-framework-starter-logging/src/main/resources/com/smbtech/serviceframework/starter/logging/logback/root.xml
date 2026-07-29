@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>ASYNC_ENABLED</key>
+        <value>true</value>
+    </condition>
+    <if>
+        <then>
+            <root level="${SMB_LOG_LEVEL}">
+                <appender-ref ref="ASYNC"/>
+            </root>
+        </then>
+        <else>
+            <root level="${SMB_LOG_LEVEL}">
+                <appender-ref ref="${SERVICE_FRAMEWORK_LOGGING_DELEGATE:-STDOUT}"/>
+            </root>
+        </else>
+    </if>
+</included>

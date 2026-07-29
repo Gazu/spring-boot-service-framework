@@ -34,6 +34,19 @@ is owned by a reusable generator module.
 | 6 | Maven publication registration for generated artifacts | `build-logic/openapi-generator-plugin` | `publishOpenApiArtifactsToLocalBuildRepository` and published coordinates remain compatible. |
 | 7 | Remove root script coupling | `build-logic/openapi-generator-plugin` | Completed: applying the plugin exposes the existing public task names and publication workflow. |
 
+Current modernization status:
+
+- `OpenApiSpecReader` uses Jackson 3 structural parsing for YAML and JSON;
+- generator, contract testing, and mock loading accept OpenAPI 3.0 and 3.1 and
+  reject Swagger 2 explicitly;
+- `validateOpenApiSpecs` is implemented by
+  `SmbtechOpenApiValidateSpecsTask` with declared, path-sensitive inputs;
+- extension inputs are wired with providers and no longer require
+  `afterEvaluate`;
+- the remaining source-generation and publication tasks retain their public
+  names while their Groovy implementations are migrated incrementally to typed
+  task classes.
+
 ## Public Task Compatibility
 
 These task names are public compatibility points until a major release documents
@@ -95,6 +108,8 @@ names above must continue to exist and keep meaningful descriptions and groups.
 - Future: nullable fields with explicit nullability metadata.
 - Future: `oneOf`, `anyOf`, and `allOf` with explicit generation rules.
 - Future: external `$ref` files and polymorphic schema annotations.
+- OpenAPI 3.1 documents are structurally accepted; JSON Schema 2020-12 features
+  are supported only when explicitly listed above.
 
 ### Server API Coverage
 

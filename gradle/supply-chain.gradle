@@ -1,0 +1,404 @@
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+import java.time.Instant
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.GenerateMavenPom
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+
+def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+def releaseBuild = providers.gradleProperty('releaseBuild')
+        .map { it.toBoolean() }
+        .getOrElse(false)
+def signingKey = providers.gradleProperty('signingKey')
+        .orElse(providers.environmentVariable('SIGNING_KEY'))
+def signingPassword = providers.gradleProperty('signingPassword')
+        .orElse(providers.environmentVariable('SIGNING_PASSWORD'))
+
+publishing.publications.withType(MavenPublication).configureEach { publication ->
+    pom {
+        url = projectUrl
+        inceptionYear = '2025'
+        licenses {
+            license {
+                name = 'Apache License, Version 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution = 'repo'
+            }
+        }
+        developers {
+            developer {
+                id = 'Gazu'
+                name = 'Gazu'
+                url = 'https://github.com/Gazu'
+            }
+        }
+        scm {
+            connection = 'scm:git:git://github.com/Gazu/spring-boot-service-framework.git'
+            developerConnection = 'scm:git:ssh://git@github.com/Gazu/spring-boot-service-framework.git'
+            url = projectUrl
+            tag = "v${publication.version}"
+        }
+        issueManagement {
+            system = 'GitHub Issues'
+            url = "${projectUrl}/issues"
+        }
+    }
+}
+
+signing {
+    required = releaseBuild
+    if (signingKey.isPresent()) {
+        useInMemoryPgpKeys(signingKey.get(), signingPassword.getOrElse(''))
+    }
+    sign publishing.publications
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    if (repository.name == 'privateRegistry') {
+        dependsOn 'validateReleaseTag'
+    }
+    doFirst {
+        if (repository.name == 'privateRegistry' && !releaseBuild) {
+            throw new GradleException('Remote publication requires -PreleaseBuild=true.')
+        }
+        if (repository.name == 'privateRegistry' && !signingKey.isPresent()) {
+            throw new GradleException('Remote publication requires SIGNING_KEY and SIGNING_PASSWORD.')
+        }
+    }
+}
+
+allprojects {
+    tasks.withType(AbstractArchiveTask).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+
+    tasks.named('cyclonedxDirectBom') {
+        includeConfigs.set(['runtimeClasspath'])
+        includeBomSerialNumber = false
+        includeBuildEnvironment = false
+        includeBuildSystem = false
+        includeLicenseText = false
+    }
+}
+
+tasks.named('cyclonedxBom') {
+    projectType = 'framework'
+    componentGroup = project.group.toString()
+    componentName = project.name
+    componentVersion = project.version.toString()
+    includeBomSerialNumber = false
+    includeBuildSystem = false
+    includeLicenseText = false
+    jsonOutput.set(layout.buildDirectory.file('reports/bom.json'))
+    xmlOutput.set(layout.buildDirectory.file('reports/bom.xml'))
+
+    doLast {
+        def sourceDateEpoch = providers.environmentVariable('SOURCE_DATE_EPOCH').orNull
+        if (!sourceDateEpoch) {
+            sourceDateEpoch = providers.exec {
+                commandLine 'git', 'log', '-1', '--format=%ct'
+                ignoreExitValue = true
+            }.standardOutput.asText.get().trim() ?: '0'
+        }
+        def reproducibleTimestamp = Instant.ofEpochSecond(sourceDateEpoch.toLong()).toString()
+        def jsonFile = jsonOutput.get().asFile
+        def xmlFile = xmlOutput.get().asFile
+        jsonFile.text = jsonFile.getText('UTF-8').replaceFirst(
+                /"timestamp"\s*:\s*"[^"]+"/,
+                "\"timestamp\" : \"${reproducibleTimestamp}\""
+        )
+        xmlFile.text = xmlFile.getText('UTF-8').replaceFirst(
+                /<timestamp>[^<]+<\/timestamp>/,
+                "<timestamp>${reproducibleTimestamp}</timestamp>"
+        )
+    }
+}
+
+project(':spring-boot-service-framework-starters').tasks.named('cyclonedxDirectBom') {
+    enabled = false
+}
+
+def sbomJsonFile = layout.buildDirectory.file(
+        'reports/bom.json'
+)
+def sbomXmlFile = layout.buildDirectory.file(
+        'reports/bom.xml'
+)
+
+tasks.register('validateCycloneDxSbom') {
+    group = 'verification'
+    description = 'Validates the production CycloneDX SBOM before publication to Dependency-Track.'
+    dependsOn tasks.named('cyclonedxBom')
+    inputs.files(sbomJsonFile, sbomXmlFile)
+
+    doLast {
+        def jsonFile = sbomJsonFile.get().asFile
+        def xmlFile = sbomXmlFile.get().asFile
+        if (!jsonFile.isFile() || jsonFile.length() == 0 ||
+                !xmlFile.isFile() || xmlFile.length() == 0) {
+            throw new GradleException('CycloneDX JSON and XML SBOM files must both exist and be non-empty.')
+        }
+
+        def bom = new JsonSlurper().parse(jsonFile)
+        def failures = []
+        if (bom.bomFormat != 'CycloneDX') {
+            failures.add('JSON bomFormat must be CycloneDX')
+        }
+        if (bom.specVersion != '1.6') {
+            failures.add('JSON specVersion must be 1.6')
+        }
+        if (bom.serialNumber) {
+            failures.add('JSON serialNumber must be omitted for reproducible output')
+        }
+        if (!bom.metadata?.timestamp) {
+            failures.add('JSON metadata.timestamp is required')
+        }
+
+        def rootComponent = bom.metadata?.component
+        def expectedRoot = [
+                group  : project.group.toString(),
+                name   : project.name,
+                version: project.version.toString(),
+                type   : 'framework'
+        ]
+        expectedRoot.each { key, value ->
+            if (rootComponent?."${key}" != value) {
+                failures.add("JSON metadata.component.${key} must be ${value}")
+            }
+        }
+
+        def components = bom.components ?: []
+        def dependencies = bom.dependencies ?: []
+        if (components.isEmpty()) {
+            failures.add('JSON components must not be empty')
+        }
+        if (dependencies.isEmpty()) {
+            failures.add('JSON dependencies must not be empty')
+        }
+
+        def duplicateReferences = components
+                .findAll { it.'bom-ref' }
+                .groupBy { it.'bom-ref' }
+                .findAll { ignored, matching -> matching.size() > 1 }
+                .keySet()
+        if (!duplicateReferences.isEmpty()) {
+            failures.add("JSON contains duplicate component references: ${duplicateReferences.sort().join(', ')}")
+        }
+
+        def testDependencyGroups = [
+                'org.assertj',
+                'org.junit',
+                'org.junit.jupiter',
+                'org.junit.platform',
+                'org.mockito'
+        ] as Set
+        def testDependencies = components.findAll {
+            testDependencyGroups.contains(it.group)
+        }.collect {
+            "${it.group}:${it.name}:${it.version}"
+        }
+        if (!testDependencies.isEmpty()) {
+            failures.add('JSON contains test-only dependencies: ' + testDependencies.sort().join(', '))
+        }
+
+        def xml = new XmlSlurper(false, false).parse(xmlFile)
+        if (xml.name() != 'bom') {
+            failures.add('XML root element must be bom')
+        }
+        if (xml.@serialNumber.text()) {
+            failures.add('XML serialNumber must be omitted for reproducible output')
+        }
+        if (!xml.metadata.timestamp.text()) {
+            failures.add('XML metadata timestamp is required')
+        }
+        if (xml.metadata.component.group.text() != project.group.toString() ||
+                xml.metadata.component.name.text() != project.name ||
+                xml.metadata.component.version.text() != project.version.toString() ||
+                xml.metadata.component.@type.text() != 'framework') {
+            failures.add('XML root component identity does not match the Gradle project')
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException('Invalid CycloneDX SBOM:\n' + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('dependencyTrackSbom') {
+    group = 'build'
+    description = 'Generates and validates the CycloneDX SBOM consumed by Dependency-Track.'
+    dependsOn tasks.named('validateCycloneDxSbom')
+}
+
+tasks.register('validateReleaseTag') {
+    group = 'verification'
+    description = 'Validates that a release build is running from its matching signed version tag.'
+
+    onlyIf { releaseBuild }
+
+    doLast {
+        if (!signingKey.isPresent()) {
+            throw new GradleException('Release builds require SIGNING_KEY and SIGNING_PASSWORD.')
+        }
+
+        def expectedTag = "v${project.version}"
+        def actualTag = providers.environmentVariable('GITHUB_REF_NAME').orNull
+        if (!actualTag) {
+            actualTag = providers.exec {
+                commandLine 'git', 'describe', '--tags', '--exact-match', 'HEAD'
+                ignoreExitValue = true
+            }.standardOutput.asText.get().trim()
+        }
+        if (actualTag != expectedTag) {
+            throw new GradleException("Release version ${project.version} must be built from tag ${expectedTag}; found ${actualTag ?: 'no tag'}.")
+        }
+        providers.exec {
+            commandLine 'git', 'verify-tag', expectedTag
+        }.result.get().assertNormalExitValue()
+    }
+}
+
+tasks.register('validateReproducibleArchives') {
+    group = 'verification'
+    description = 'Ensures every Gradle archive task uses reproducible ordering and timestamps.'
+
+    doLast {
+        def failures = []
+        allprojects.each { candidateProject ->
+            candidateProject.tasks.withType(AbstractArchiveTask).each { archiveTask ->
+                if (archiveTask.preserveFileTimestamps) {
+                    failures.add("${archiveTask.path}: preserveFileTimestamps must be false")
+                }
+                if (!archiveTask.reproducibleFileOrder) {
+                    failures.add("${archiveTask.path}: reproducibleFileOrder must be true")
+                }
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException('Non-reproducible archive configuration found:\n' + failures.sort().join('\n'))
+        }
+    }
+}
+
+def generatedPomTasks = providers.provider {
+    allprojects.collectMany { candidateProject ->
+        candidateProject.tasks.withType(GenerateMavenPom).toList()
+    }
+}
+
+tasks.register('validatePublishedPomMetadata') {
+    group = 'verification'
+    description = 'Validates required Maven POM metadata for every publication.'
+    dependsOn generatedPomTasks
+
+    doLast {
+        def failures = []
+        generatedPomTasks.get().each { pomTask ->
+            def pomFile = pomTask.destination
+            def pom = new XmlSlurper().parse(pomFile)
+            def requiredValues = [
+                    name              : pom.name.text(),
+                    description       : pom.description.text(),
+                    url               : pom.url.text(),
+                    licenseName       : pom.licenses.license.name.text(),
+                    licenseUrl        : pom.licenses.license.url.text(),
+                    developerId       : pom.developers.developer.id.text(),
+                    scmConnection     : pom.scm.connection.text(),
+                    scmDeveloper      : pom.scm.developerConnection.text(),
+                    scmUrl            : pom.scm.url.text(),
+                    issueManagementUrl: pom.issueManagement.url.text()
+            ]
+            requiredValues.findAll { !it.value?.trim() }.each { entry ->
+                failures.add("${pomTask.path}: missing ${entry.key}")
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException('Incomplete Maven POM metadata found:\n' + failures.sort().join('\n'))
+        }
+    }
+}
+
+def dependencyVerificationFiles = files(
+        layout.projectDirectory.file('gradle/verification-metadata.xml'),
+        layout.projectDirectory.file('examples/actuator-consumer/gradle/verification-metadata.xml'),
+        layout.projectDirectory.file('examples/error-handling-consumer/gradle/verification-metadata.xml'),
+        layout.projectDirectory.file('examples/logging-consumer/gradle/verification-metadata.xml'),
+        layout.projectDirectory.file('examples/rest-client-consumer/gradle/verification-metadata.xml')
+)
+
+tasks.register('validateDependencyVerificationMetadata') {
+    group = 'verification'
+    description = 'Ensures every standalone Gradle build enforces reviewed SHA-256 dependency metadata.'
+    inputs.files(dependencyVerificationFiles)
+
+    doLast {
+        def failures = []
+        dependencyVerificationFiles.files.sort().each { metadataFile ->
+            if (!metadataFile.isFile()) {
+                failures.add("${relativePath(metadataFile)}: missing dependency verification metadata")
+                return
+            }
+            def metadata = new XmlSlurper().parse(metadataFile)
+            if (metadata.configuration.'verify-metadata'.text() != 'true') {
+                failures.add("${relativePath(metadataFile)}: verify-metadata must be true")
+            }
+            if (metadata.components.component.artifact.sha256.isEmpty()) {
+                failures.add("${relativePath(metadataFile)}: no SHA-256 checksums found")
+            }
+            if (metadataFile != file('gradle/verification-metadata.xml')) {
+                def trustedGroups = metadata.configuration.'trusted-artifacts'.trust.collect {
+                    it.@group.text()
+                }
+                if (trustedGroups != ['com.smbtech']) {
+                    failures.add("${relativePath(metadataFile)}: only locally built com.smbtech artifacts may be trusted")
+                }
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException('Invalid dependency verification configuration:\n' + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('supplyChainCheck') {
+    group = 'verification'
+    description = 'Validates SBOM generation, release identity, reproducible archives, POM metadata, and coverage.'
+    dependsOn(
+            tasks.named('validateCycloneDxSbom'),
+            tasks.named('validateDependencyVerificationMetadata'),
+            tasks.named('validatePublishedPomMetadata'),
+            tasks.named('validateReleaseTag'),
+            tasks.named('validateReproducibleArchives')
+    )
+}
+
+tasks.register('stageReleaseRepository', Sync) {
+    group = 'publishing'
+    description = 'Stages all locally published Maven artifacts in one release repository.'
+    dependsOn tasks.named('publishLocalArtifacts'), tasks.named('cyclonedxBom')
+    into layout.buildDirectory.dir('release/repository')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude '**/maven-metadata.xml*'
+    from layout.buildDirectory.dir('repository/openapi')
+    subprojects.each { candidateProject ->
+        from candidateProject.layout.buildDirectory.dir('repository')
+    }
+}
+
+tasks.register('releaseBundle', Zip) {
+    group = 'publishing'
+    description = 'Creates the reproducible Maven repository and SBOM release bundle.'
+    dependsOn tasks.named('stageReleaseRepository')
+    archiveFileName = "${project.name}-${project.version}.zip"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    from(tasks.named('stageReleaseRepository')) {
+        into 'repository'
+    }
+    from(sbomJsonFile) {
+        into 'sbom'
+    }
+    from(sbomXmlFile) {
+        into 'sbom'
+    }
+}

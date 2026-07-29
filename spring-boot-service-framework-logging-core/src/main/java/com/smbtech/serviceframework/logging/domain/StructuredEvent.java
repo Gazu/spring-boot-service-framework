@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable event passed through the logging ports.
@@ -28,7 +29,7 @@ public record StructuredEvent(
         Map<String, Object> data,
         Set<String> tags,
         Sensitivity sensitivity,
-        Throwable throwable) {
+        @Nullable Throwable throwable) {
 
     /**
      * Creates an immutable event and applies safe defaults to nullable values.
@@ -44,8 +45,8 @@ public record StructuredEvent(
     public StructuredEvent {
         type = type == null ? EventType.APPLICATION : type;
         message = message == null ? "" : message;
-        arguments = arguments == null ? List.of() : List.copyOf(arguments);
-        data = data == null ? Map.of() : Map.copyOf(data);
+        arguments = ImmutableStructuredEventValues.list(arguments);
+        data = ImmutableStructuredEventValues.map(data);
         tags = tags == null ? Set.of() : Set.copyOf(tags);
         sensitivity = sensitivity == null ? Sensitivity.PUBLIC : sensitivity;
     }
@@ -95,7 +96,7 @@ public record StructuredEvent(
         private final Map<String, Object> data = new LinkedHashMap<>();
         private final Set<String> tags = new LinkedHashSet<>();
         private Sensitivity sensitivity = Sensitivity.PUBLIC;
-        private Throwable throwable;
+        private @Nullable Throwable throwable;
 
         /** Creates an empty application event builder. */
         public Builder() {}
@@ -198,7 +199,7 @@ public record StructuredEvent(
          * @param throwable related failure
          * @return this builder
          */
-        public Builder throwable(Throwable throwable) {
+        public Builder throwable(@Nullable Throwable throwable) {
             this.throwable = throwable;
             return this;
         }

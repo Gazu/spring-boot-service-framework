@@ -8,17 +8,20 @@ All framework-managed MVC and Spring Security errors return one flat
 | Field | Type | Required | Meaning |
 |---|---|---:|---|
 | `code` | string | yes | Stable machine-readable notification code. |
-| `message` | string | yes | Public message safe for consumers. |
+| `message` | string | yes | Generic external message in `PUBLIC`, or resolved sanitized message in `INTERNAL`. |
 | `severity` | string | yes | `ERROR`, `WARNING`, or `INFO`. |
 | `field_name` | string | yes | Related field or an empty string. |
-| `metadata` | object | yes | Sanitized allowlisted context. |
+| `metadata` | object | yes | Minimal context in `PUBLIC`, or sanitized allowlisted context in `INTERNAL`. |
 | `id` | UUID string | yes | Unique notification instance id. |
 | `timestamp` | ISO-8601 instant | yes | Notification creation time in UTC. |
 
 The response is directly the `Notification`; there is no `error`, `errors`, or
 `notifications` wrapper.
 
-## Validation Example
+## Detailed Internal Validation Example
+
+With `exposure: INTERNAL`, trusted consumers receive the sanitized resolved
+message, field violations, and allowlisted metadata:
 
 ```json
 {
@@ -44,23 +47,27 @@ Metadata keys are normalized recursively across nested maps, collections, and
 arrays. A collision after normalization, such as `customerId` and
 `customer_id` in the same map, is rejected instead of silently dropping data.
 
-## Internal Error Example
+## Minimal Public Example
 
 ```json
 {
-  "code": "E_SERVICE_FRAMEWORK_INTERNAL_0001",
+  "code": "E_SERVICE_FRAMEWORK_VALIDATION_0001",
   "message": "The request could not be completed",
   "severity": "ERROR",
   "field_name": "",
-  "metadata": {},
+  "metadata": {
+    "category": "VALIDATION"
+  },
   "id": "de305d54-75b4-431b-adb2-eb6b9e546014",
   "timestamp": "2026-07-19T12:00:00Z"
 }
 ```
 
-An error with `ErrorExposure.INTERNAL` is replaced with this generic code and
-message while preserving its generated `id`, `timestamp`, and safe allowlisted
-metadata. Diagnostic messages, causes, and stack traces are never serialized.
+The default `ErrorExposure.PUBLIC` preserves the resolved code, severity,
+generated `id`, and `timestamp`, while replacing the message with a generic
+one, clearing `field_name`, and limiting metadata to category and correlation
+ID. Diagnostic messages, causes, and stack traces are never serialized in
+either mode.
 
 ## Compatibility Rules
 

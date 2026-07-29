@@ -27,7 +27,7 @@ public record MockResponse(
         headers = copyMultiValueMap(headers);
         body = body == null ? new byte[0] : body.clone();
         delay = Objects.requireNonNullElse(delay, Duration.ZERO);
-        metadata = Map.copyOf(new LinkedHashMap<>(Objects.requireNonNullElse(metadata, Map.of())));
+        metadata = ImmutableMockValues.structuredMap(metadata);
     }
 
     /**

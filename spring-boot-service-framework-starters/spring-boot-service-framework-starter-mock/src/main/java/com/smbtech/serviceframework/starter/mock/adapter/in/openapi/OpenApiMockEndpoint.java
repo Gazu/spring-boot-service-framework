@@ -30,7 +30,11 @@ public final class OpenApiMockEndpoint {
      * @return handle result
      */
     public ResponseEntity<byte[]> handle(NativeWebRequest request) {
-        Integer selectedStatus = selectedStatus(request.getHeader(statusHeader));
+        String requestedStatus =
+                statusHeader == null || statusHeader.isBlank()
+                        ? null
+                        : request.getHeader(statusHeader);
+        Integer selectedStatus = selectedStatus(requestedStatus);
         if (selectedStatus == null) {
             return ResponseEntity.badRequest()
                     .contentType(MediaType.APPLICATION_PROBLEM_JSON)

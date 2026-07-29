@@ -1,14 +1,14 @@
 package com.smbtech.serviceframework.starter.mock.adapter.in.spring;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.exception.MockException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
 
 /** Provides mock response entity mapper behavior. */
 public final class MockResponseEntityMapper {

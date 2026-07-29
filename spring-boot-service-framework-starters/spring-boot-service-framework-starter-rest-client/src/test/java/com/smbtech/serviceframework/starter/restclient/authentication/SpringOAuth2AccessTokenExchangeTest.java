@@ -14,6 +14,8 @@ import com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCac
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionCustomizer;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaimsContributor;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.OAuth2TokenRequestCustomizer;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -284,7 +286,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> clientRegistrationRepository(endpoint.tokenUrl()))
@@ -323,7 +329,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -406,7 +416,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -489,7 +503,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -559,7 +577,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -626,7 +648,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -714,7 +740,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                                         .formatted(requestNumber));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -795,7 +825,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                                         .formatted(requestNumber));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.tokenUrl()))
@@ -862,7 +896,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> privateKeyJwtClientRegistrationRepository(endpoint.url()))
@@ -923,7 +961,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> privateKeyJwtClientRegistrationRepository(endpoint.url()))
@@ -990,7 +1032,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1061,7 +1107,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1122,7 +1172,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> privateKeyJwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1201,7 +1255,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                 """);
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1267,7 +1325,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                                         .formatted(requestNumber));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1326,7 +1388,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                                         .formatted(requestNumber));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1386,7 +1452,11 @@ class SpringOAuth2AccessTokenExchangeTest {
                                         .formatted(requestNumber));
 
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository(endpoint.url()))
@@ -1460,7 +1530,11 @@ class SpringOAuth2AccessTokenExchangeTest {
     @Test
     void failsFastWhenSpringRegistrationRepositoryIsMissing() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withPropertyValues(
                         "smbtech.rest-clients.clients.customer.base-url=https://customer.example",
                         "smbtech.rest-clients.clients.customer.authentication-type=CLIENT_CREDENTIALS",
@@ -1481,7 +1555,11 @@ class SpringOAuth2AccessTokenExchangeTest {
     @Test
     void publicTokenClientRejectsGrantMismatch() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository("https://auth.example/token"))
@@ -1502,7 +1580,11 @@ class SpringOAuth2AccessTokenExchangeTest {
     @Test
     void jwtBearerGrantRequiresSmbTechJwtBearerExtensionConfiguration() {
         new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> jwtBearerClientRegistrationRepository("https://auth.example/token"))
@@ -1531,7 +1613,11 @@ class SpringOAuth2AccessTokenExchangeTest {
 
     private ApplicationContextRunner springClientCredentialsContextRunner(String tokenUri) {
         return new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+                .withConfiguration(
+                        AutoConfigurations.of(
+                                RestClientAutoConfiguration.class,
+                                OAuth2RestClientAutoConfiguration.class,
+                                OAuth2RestClientAuthenticationAutoConfiguration.class))
                 .withBean(
                         ClientRegistrationRepository.class,
                         () -> clientRegistrationRepository(tokenUri))

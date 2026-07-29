@@ -1,0 +1,543 @@
+// Architecture contract for the framework-neutral actuator core and Spring Boot adapter.
+
+def actuatorContract = [
+        schemaVersion: 1,
+        modules      : [
+                core   : [
+                        projectPath: ':spring-boot-service-framework-actuator-core',
+                        directory  : 'spring-boot-service-framework-actuator-core',
+                        groupId    : 'com.smbtech',
+                        artifactId : 'spring-boot-service-framework-actuator-core'
+                ].asImmutable(),
+                starter: [
+                        projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator',
+                        directory  : 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator',
+                        groupId    : 'com.smbtech',
+                        artifactId : 'spring-boot-service-framework-starter-actuator'
+                ].asImmutable()
+        ].asImmutable(),
+        runtime      : [
+                propertyPrefix               : 'smbtech.actuator',
+                baseAutoConfigurationEnabled : true,
+                healthContributorName        : 'serviceFramework',
+                healthIndicatorBeanName      : 'serviceFrameworkHealthIndicator',
+                healthIndicatorManagementProperty: 'management.health.service-framework.enabled',
+                infoKey                      : 'serviceFramework',
+                infoContributorBeanName      : 'serviceFrameworkInfoContributor',
+                infoManagementProperty       : 'management.info.service-framework.enabled',
+                diagnosticsEndpointId        : 'serviceframework',
+                diagnosticsEndpointBeanName  : 'serviceFrameworkDiagnosticsEndpoint',
+                diagnosticsEndpointAccess    : 'NONE',
+                diagnosticsEndpointManagementProperty: 'management.endpoint.serviceframework.access',
+                diagnosticsCacheTtlProperty  : 'smbtech.actuator.diagnostics.cache-ttl',
+                diagnosticsTimeoutProperty   : 'smbtech.actuator.diagnostics.operation-timeout',
+                diagnosticsMaxComponentsProperty: 'smbtech.actuator.diagnostics.max-components',
+                diagnosticsMaxModulesProperty: 'smbtech.actuator.diagnostics.max-modules',
+                diagnosticsDefaultCacheTtl   : '5s',
+                diagnosticsDefaultTimeout    : '2s',
+                diagnosticsDefaultMaxComponents: 64,
+                diagnosticsDefaultMaxModules : 64,
+                diagnosticsHardResultLimit   : 256,
+                metricsEnabledProperty       : 'smbtech.actuator.metrics.enabled',
+                metricsCacheTtlProperty      : 'smbtech.actuator.metrics.cache-ttl',
+                metricsBeanName              : 'serviceFrameworkMetrics',
+                metricNames                  : [
+                        'smbtech.service.framework.status',
+                        'smbtech.service.framework.components',
+                        'smbtech.service.framework.modules'
+                ].asImmutable(),
+                metricStatusTagValues        : [
+                        'up',
+                        'down',
+                        'out_of_service',
+                        'unknown'
+                ].asImmutable(),
+                supportedStatuses            : [
+                        'UP',
+                        'DOWN',
+                        'OUT_OF_SERVICE',
+                        'UNKNOWN'
+                ].asImmutable(),
+                activeExternalChecksByDefault: false,
+                automaticallyAddedHealthGroups: [].asImmutable(),
+                optionalIntegrationModules     : [
+                        'rest-client',
+                        'mock',
+                        'logging',
+                        'error-handling'
+                ].asImmutable()
+        ].asImmutable(),
+        healthStatusMappings: [
+                UP            : 'UP',
+                DOWN          : 'DOWN',
+                OUT_OF_SERVICE: 'OUT_OF_SERVICE',
+                UNKNOWN       : 'UNKNOWN'
+        ].asImmutable(),
+        ownership    : [
+                endpointExposure: 'management.*',
+                endpointSecurity: 'application',
+                healthGroups    : 'application'
+        ].asImmutable(),
+        coreForbiddenPackagePrefixes: [
+                'io.micrometer.',
+                'jakarta.servlet.',
+                'org.apache.hc.',
+                'org.slf4j.',
+                'org.springframework.',
+                'tools.jackson.'
+        ].asImmutable(),
+        starterForbiddenSourceTokens: [
+                '@Controller',
+                '@RestController',
+                'SecurityFilterChain',
+                '@WriteOperation',
+                '@DeleteOperation'
+        ].asImmutable(),
+        corePublicTypes: [
+                'com.smbtech.serviceframework.actuator.domain.ComponentHealth',
+                'com.smbtech.serviceframework.actuator.domain.ComponentStatus',
+                'com.smbtech.serviceframework.actuator.domain.FrameworkDiagnosticsSnapshot',
+                'com.smbtech.serviceframework.actuator.domain.FrameworkModuleInfo',
+                'com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics',
+                'com.smbtech.serviceframework.actuator.port.out.DiagnosticProbe',
+                'com.smbtech.serviceframework.actuator.port.out.FrameworkModuleInfoProvider'
+        ].asImmutable(),
+        baseAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorAutoConfiguration',
+                propertiesClassName: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorProperties',
+                guardClassName: 'com.smbtech.serviceframework.starter.actuator.adapter.out.diagnostics.GuardedFrameworkDiagnostics',
+                importsPath: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+        ].asImmutable(),
+        healthAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration',
+                adapterClassName: 'com.smbtech.serviceframework.starter.actuator.adapter.in.health.ServiceFrameworkHealthIndicator'
+        ].asImmutable(),
+        infoAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorInfoAutoConfiguration',
+                adapterClassName: 'com.smbtech.serviceframework.starter.actuator.adapter.in.info.ServiceFrameworkInfoContributor'
+        ].asImmutable(),
+        endpointAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration',
+                adapterClassName: 'com.smbtech.serviceframework.starter.actuator.adapter.in.endpoint.ServiceFrameworkDiagnosticsEndpoint'
+        ].asImmutable(),
+        integrationsAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorIntegrationsAutoConfiguration',
+                adapterClassNames: [
+                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientDiagnosticProbe',
+                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientModuleInfoProvider',
+                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.MockModuleInfoProvider',
+                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.LoggingModuleInfoProvider',
+                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.ErrorHandlingModuleInfoProvider'
+                ].asImmutable()
+        ].asImmutable(),
+        metricsAutoConfiguration: [
+                className: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorMetricsAutoConfiguration',
+                adapterClassName: 'com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics'
+        ].asImmutable(),
+        example: [
+                directory: 'examples/actuator-consumer',
+                smokeTaskName: 'actuatorConsumerSmoke',
+                requiredFiles: [
+                        'README.md',
+                        'build.gradle',
+                        'settings.gradle',
+                        'src/main/java/com/smbtech/examples/actuator/ActuatorConsumerApplication.java',
+                        'src/main/java/com/smbtech/examples/actuator/adapter/in/http/DummyController.java',
+                        'src/main/java/com/smbtech/examples/actuator/infrastructure/SecurityConfiguration.java',
+                        'src/main/resources/application.yml',
+                        'src/test/java/com/smbtech/examples/actuator/PublishedActuatorStarterSmokeTest.java'
+                ].asImmutable()
+        ].asImmutable(),
+        compatibility: [
+                documentPath: 'docs/actuator/compatibility.md',
+                moduleContractPath: 'gradle/compatibility/contracts/actuator.txt',
+                taskName: 'actuatorCompatibilityCheck'
+        ].asImmutable()
+].asImmutable()
+
+rootProject.ext.serviceFrameworkActuatorContract = actuatorContract
+
+def actuatorContractDocument = layout.projectDirectory.file('docs/actuator.md')
+
+tasks.register('validateActuatorContract') {
+    group = 'verification'
+    description = 'Validates the Actuator module, ownership, safety, and framework-neutral core contract.'
+
+    inputs.property('actuatorContract', actuatorContract)
+    inputs.file(actuatorContractDocument)
+    inputs.file(file(actuatorContract.compatibility.documentPath))
+    inputs.file(file(actuatorContract.compatibility.moduleContractPath))
+
+    def coreSourceDirectory = file(
+            "${actuatorContract.modules.core.directory}/src/main/java"
+    )
+    def starterSourceDirectory = file(
+            "${actuatorContract.modules.starter.directory}/src/main/java"
+    )
+    def starterResourceDirectory = file(
+            "${actuatorContract.modules.starter.directory}/src/main/resources"
+    )
+    inputs.files(fileTree(coreSourceDirectory) { include '**/*.java' })
+    inputs.files(fileTree(starterSourceDirectory) { include '**/*.java' })
+    inputs.files(fileTree(starterResourceDirectory) {
+        include '**/*.properties'
+        include '**/*.yaml'
+        include '**/*.yml'
+    })
+    inputs.files(
+            actuatorContract.example.requiredFiles.collect {
+                file("${actuatorContract.example.directory}/${it}")
+            }
+    )
+    inputs.file(file('gradle/lifecycle.gradle'))
+
+    doLast {
+        def failures = []
+
+        if (actuatorContract.schemaVersion != 1) {
+            failures.add('Actuator contract schema version must be 1.')
+        }
+        actuatorContract.modules.each { moduleName, module ->
+            def configuredProject = rootProject.findProject(module.projectPath)
+            if (configuredProject == null) {
+                failures.add(
+                        "Actuator ${moduleName} project is not included: ${module.projectPath}."
+                )
+            } else if (configuredProject.projectDir != rootProject.file(module.directory)) {
+                failures.add(
+                        "Actuator ${moduleName} project directory must be ${module.directory}; found "
+                                + "${rootDir.toPath().relativize(configuredProject.projectDir.toPath())}."
+                )
+            }
+            if (!rootProject.file("${module.directory}/build.gradle").isFile()) {
+                failures.add("Actuator ${moduleName} build.gradle is missing.")
+            }
+            if (module.groupId != rootProject.group.toString()) {
+                failures.add(
+                        "Actuator ${moduleName} group ${module.groupId} must match "
+                                + "root group ${rootProject.group}."
+                )
+            }
+            if (!module.projectPath.startsWith(':spring-boot-service-framework')) {
+                failures.add(
+                        "Actuator ${moduleName} project path is outside the framework: "
+                                + "${module.projectPath}."
+                )
+            }
+            if (!module.artifactId.startsWith('spring-boot-service-framework-')) {
+                failures.add(
+                        "Actuator ${moduleName} artifact id is outside the framework convention: "
+                                + "${module.artifactId}."
+                )
+            }
+        }
+        actuatorContract.example.requiredFiles.each { relativePath ->
+            def exampleFile = rootProject.file(
+                    "${actuatorContract.example.directory}/${relativePath}"
+            )
+            if (!exampleFile.isFile()) {
+                failures.add(
+                        "Actuator consumer example file is missing: "
+                                + "${actuatorContract.example.directory}/${relativePath}."
+                )
+            }
+        }
+        def lifecycle = rootProject.file('gradle/lifecycle.gradle').getText('UTF-8')
+        if (!lifecycle.contains(
+                "tasks.register('${actuatorContract.example.smokeTaskName}', GradleBuild)"
+        )) {
+            failures.add(
+                    "Actuator consumer smoke task is missing: "
+                            + actuatorContract.example.smokeTaskName + '.'
+            )
+        }
+        if (!lifecycle.contains("dir = file('${actuatorContract.example.directory}')")) {
+            failures.add(
+                    'Actuator consumer smoke task must run the reviewed standalone example.'
+            )
+        }
+
+        if (actuatorContract.runtime.propertyPrefix != 'smbtech.actuator') {
+            failures.add('Actuator framework properties must use the smbtech.actuator prefix.')
+        }
+        if (!actuatorContract.runtime.baseAutoConfigurationEnabled) {
+            failures.add('Actuator base auto-configuration must be enabled by default.')
+        }
+        if (!(actuatorContract.runtime.diagnosticsEndpointId ==~ /^[a-z][a-z0-9]*$/)) {
+            failures.add('Actuator diagnostic endpoint id must be lowercase alphanumeric.')
+        }
+        if (actuatorContract.runtime.diagnosticsEndpointAccess != 'NONE') {
+            failures.add('Actuator diagnostic endpoint access must default to NONE.')
+        }
+        if (actuatorContract.runtime.diagnosticsDefaultCacheTtl != '5s'
+                || actuatorContract.runtime.diagnosticsDefaultTimeout != '2s') {
+            failures.add('Actuator diagnostics cache and timeout defaults changed without review.')
+        }
+        if (actuatorContract.runtime.diagnosticsDefaultMaxComponents != 64
+                || actuatorContract.runtime.diagnosticsDefaultMaxModules != 64
+                || actuatorContract.runtime.diagnosticsHardResultLimit != 256) {
+            failures.add('Actuator diagnostic payload limits changed without contract review.')
+        }
+        if (actuatorContract.runtime.metricNames.size() != 3
+                || actuatorContract.runtime.metricNames.toSet().size() != 3) {
+            failures.add('Actuator metric names must remain unique and bounded.')
+        }
+        if (actuatorContract.runtime.metricStatusTagValues
+                != ['up', 'down', 'out_of_service', 'unknown']) {
+            failures.add('Actuator metric status tags changed without contract review.')
+        }
+        if (actuatorContract.runtime.activeExternalChecksByDefault) {
+            failures.add('Actuator must not perform active external checks by default.')
+        }
+        if (!actuatorContract.runtime.automaticallyAddedHealthGroups.isEmpty()) {
+            failures.add('Actuator must not add contributors to health groups automatically.')
+        }
+        if (actuatorContract.runtime.supportedStatuses
+                != ['UP', 'DOWN', 'OUT_OF_SERVICE', 'UNKNOWN']) {
+            failures.add('Actuator core status values changed without contract review.')
+        }
+        if (actuatorContract.healthStatusMappings
+                != [
+                    UP: 'UP',
+                    DOWN: 'DOWN',
+                    OUT_OF_SERVICE: 'OUT_OF_SERVICE',
+                    UNKNOWN: 'UNKNOWN'
+                ]) {
+            failures.add('Actuator health status mappings changed without contract review.')
+        }
+        if (actuatorContract.ownership.endpointExposure != 'management.*'
+                || actuatorContract.ownership.endpointSecurity != 'application'
+                || actuatorContract.ownership.healthGroups != 'application') {
+            failures.add(
+                    'Spring Boot management properties and the consuming application '
+                            + 'must own endpoint exposure, security, and health groups.'
+            )
+        }
+
+        def compatibilityDocument = file(actuatorContract.compatibility.documentPath)
+        if (!compatibilityDocument.isFile()) {
+            failures.add(
+                    'Missing Actuator compatibility document: '
+                            + actuatorContract.compatibility.documentPath + '.'
+            )
+        } else {
+            def compatibilityDocumentation = compatibilityDocument.getText('UTF-8')
+            def requiredCompatibilityValues = [
+                    actuatorContract.modules.core.artifactId,
+                    actuatorContract.modules.starter.artifactId,
+                    actuatorContract.runtime.propertyPrefix,
+                    actuatorContract.runtime.healthContributorName,
+                    actuatorContract.runtime.healthIndicatorBeanName,
+                    actuatorContract.runtime.infoKey,
+                    actuatorContract.runtime.infoContributorBeanName,
+                    actuatorContract.runtime.diagnosticsEndpointId,
+                    actuatorContract.runtime.diagnosticsEndpointBeanName,
+                    actuatorContract.runtime.diagnosticsEndpointAccess,
+                    actuatorContract.runtime.metricsBeanName,
+                    actuatorContract.example.smokeTaskName,
+                    actuatorContract.compatibility.taskName,
+                    actuatorContract.compatibility.moduleContractPath
+            ]
+            requiredCompatibilityValues.addAll(actuatorContract.runtime.metricNames)
+            requiredCompatibilityValues.addAll(actuatorContract.runtime.metricStatusTagValues)
+            requiredCompatibilityValues.addAll(actuatorContract.runtime.supportedStatuses)
+            requiredCompatibilityValues.each { value ->
+                if (!compatibilityDocumentation.contains(value)) {
+                    failures.add(
+                            "${actuatorContract.compatibility.documentPath} must document "
+                                    + "the Actuator compatibility value: ${value}."
+                    )
+                }
+            }
+        }
+        if (!file(actuatorContract.compatibility.moduleContractPath).isFile()) {
+            failures.add(
+                    'Missing generated Actuator compatibility contract: '
+                            + actuatorContract.compatibility.moduleContractPath + '.'
+            )
+        }
+
+        if (!actuatorContractDocument.asFile.isFile()) {
+            failures.add('Missing canonical Actuator contract document: docs/actuator.md.')
+        } else {
+            def documentation = actuatorContractDocument.asFile.getText('UTF-8')
+            def requiredDocumentationValues = [
+                    actuatorContract.modules.core.artifactId,
+                    actuatorContract.modules.starter.artifactId,
+                    actuatorContract.runtime.propertyPrefix,
+                    'smbtech.actuator.enabled',
+                    actuatorContract.runtime.healthContributorName,
+                    actuatorContract.runtime.healthIndicatorManagementProperty,
+                    actuatorContract.runtime.infoKey,
+                    actuatorContract.runtime.infoManagementProperty,
+                    actuatorContract.runtime.diagnosticsEndpointId,
+                    actuatorContract.runtime.diagnosticsEndpointManagementProperty,
+                    actuatorContract.runtime.diagnosticsCacheTtlProperty,
+                    actuatorContract.runtime.diagnosticsTimeoutProperty,
+                    actuatorContract.runtime.diagnosticsMaxComponentsProperty,
+                    actuatorContract.runtime.diagnosticsMaxModulesProperty,
+                    actuatorContract.runtime.metricsEnabledProperty,
+                    actuatorContract.runtime.metricsCacheTtlProperty,
+                    'Access.NONE',
+                    'management.endpoints.web.exposure.include',
+                    'management.*',
+                    actuatorContract.baseAutoConfiguration.className,
+                    actuatorContract.baseAutoConfiguration.guardClassName,
+                    actuatorContract.healthAutoConfiguration.className,
+                    actuatorContract.healthAutoConfiguration.adapterClassName,
+                    actuatorContract.infoAutoConfiguration.className,
+                    actuatorContract.infoAutoConfiguration.adapterClassName,
+                    actuatorContract.endpointAutoConfiguration.className,
+                    actuatorContract.endpointAutoConfiguration.adapterClassName,
+                    actuatorContract.integrationsAutoConfiguration.className,
+                    actuatorContract.metricsAutoConfiguration.className,
+                    actuatorContract.metricsAutoConfiguration.adapterClassName,
+                    actuatorContract.example.directory,
+                    actuatorContract.example.smokeTaskName
+            ]
+            requiredDocumentationValues.addAll(actuatorContract.runtime.metricNames)
+            requiredDocumentationValues.addAll(actuatorContract.runtime.metricStatusTagValues)
+            requiredDocumentationValues.addAll(
+                    actuatorContract.runtime.optionalIntegrationModules
+            )
+            requiredDocumentationValues.addAll(
+                    actuatorContract.integrationsAutoConfiguration.adapterClassNames
+            )
+            requiredDocumentationValues.each { value ->
+                if (!documentation.contains(value)) {
+                    failures.add(
+                            "docs/actuator.md must document the Actuator contract value: ${value}."
+                    )
+                }
+            }
+        }
+
+        if (coreSourceDirectory.isDirectory()) {
+            fileTree(coreSourceDirectory) {
+                include '**/*.java'
+            }.files.sort().each { source ->
+                def sourceText = source.getText('UTF-8')
+                actuatorContract.coreForbiddenPackagePrefixes.each { prefix ->
+                    def importsForbiddenPackage = sourceText.readLines().any { line ->
+                        line ==~ /^\s*import\s+(static\s+)?${java.util.regex.Pattern.quote(prefix)}.*$/
+                    }
+                    if (importsForbiddenPackage) {
+                        failures.add(
+                                "${rootDir.toPath().relativize(source.toPath())}: "
+                                        + "Actuator core must not import ${prefix} APIs."
+                        )
+                    }
+                }
+            }
+            actuatorContract.corePublicTypes.each { qualifiedName ->
+                def relativeSource = qualifiedName.replace('.', '/') + '.java'
+                def source = new File(coreSourceDirectory, relativeSource)
+                if (!source.isFile()) {
+                    failures.add("Missing Actuator core contract type: ${qualifiedName}.")
+                }
+            }
+        }
+
+        if (starterSourceDirectory.isDirectory()) {
+            fileTree(starterSourceDirectory) {
+                include '**/*.java'
+            }.files.sort().each { source ->
+                def sourceText = source.getText('UTF-8')
+                actuatorContract.starterForbiddenSourceTokens.each { token ->
+                    if (sourceText.contains(token)) {
+                        failures.add(
+                                "${rootDir.toPath().relativize(source.toPath())}: "
+                                        + "Actuator starter must not own controllers or security; "
+                                        + "found ${token}."
+                        )
+                    }
+                }
+            }
+            [
+                    actuatorContract.baseAutoConfiguration.className,
+                    actuatorContract.baseAutoConfiguration.propertiesClassName,
+                    actuatorContract.baseAutoConfiguration.guardClassName,
+                    actuatorContract.healthAutoConfiguration.className,
+                    actuatorContract.healthAutoConfiguration.adapterClassName,
+                    actuatorContract.infoAutoConfiguration.className,
+                    actuatorContract.infoAutoConfiguration.adapterClassName,
+                    actuatorContract.endpointAutoConfiguration.className,
+                    actuatorContract.endpointAutoConfiguration.adapterClassName,
+                    actuatorContract.integrationsAutoConfiguration.className,
+                    actuatorContract.metricsAutoConfiguration.className,
+                    actuatorContract.metricsAutoConfiguration.adapterClassName
+            ].each { qualifiedName ->
+                def relativeSource = qualifiedName.replace('.', '/') + '.java'
+                if (!new File(starterSourceDirectory, relativeSource).isFile()) {
+                    failures.add("Missing Actuator starter infrastructure type: ${qualifiedName}.")
+                }
+            }
+            actuatorContract.integrationsAutoConfiguration.adapterClassNames.each { qualifiedName ->
+                def relativeSource = qualifiedName.replace('.', '/') + '.java'
+                if (!new File(starterSourceDirectory, relativeSource).isFile()) {
+                    failures.add(
+                            "Missing Actuator optional integration adapter: ${qualifiedName}."
+                    )
+                }
+            }
+        }
+
+        def autoConfigurationImports = file(actuatorContract.baseAutoConfiguration.importsPath)
+        if (!autoConfigurationImports.isFile()) {
+            failures.add(
+                    "Missing Actuator auto-configuration imports: "
+                            + actuatorContract.baseAutoConfiguration.importsPath
+            )
+        } else {
+            def configuredImports = autoConfigurationImports.readLines('UTF-8')
+                    .collect { it.trim() }
+                    .findAll { !it.isEmpty() && !it.startsWith('#') }
+            def reviewedImports = [
+                    actuatorContract.baseAutoConfiguration.className,
+                    actuatorContract.healthAutoConfiguration.className,
+                    actuatorContract.infoAutoConfiguration.className,
+                    actuatorContract.endpointAutoConfiguration.className,
+                    actuatorContract.integrationsAutoConfiguration.className,
+                    actuatorContract.metricsAutoConfiguration.className
+            ]
+            if (configuredImports != reviewedImports) {
+                failures.add(
+                        'Actuator auto-configuration imports must match the reviewed order.'
+                )
+            }
+        }
+
+        if (starterResourceDirectory.isDirectory()) {
+            fileTree(starterResourceDirectory) {
+                include '**/*.properties'
+                include '**/*.yaml'
+                include '**/*.yml'
+            }.files.findAll { it.isFile() }.sort().each { resource ->
+                def resourceText = resource.getText('UTF-8')
+                [
+                        'management.endpoints.web.exposure',
+                        'management.endpoint.health.group'
+                ].each { forbiddenProperty ->
+                    if (resourceText.contains(forbiddenProperty)) {
+                        failures.add(
+                                "${rootDir.toPath().relativize(resource.toPath())}: "
+                                        + "the consuming application must own ${forbiddenProperty}."
+                        )
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Invalid Actuator architecture contract:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('actuatorContractCheck') {
+    group = 'verification'
+    description = 'Validates the reviewed Actuator architecture and safety boundaries.'
+    dependsOn tasks.named('validateActuatorContract')
+}

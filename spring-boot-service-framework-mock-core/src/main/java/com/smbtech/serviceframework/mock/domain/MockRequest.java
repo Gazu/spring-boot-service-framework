@@ -32,8 +32,7 @@ public record MockRequest(
         headers = copyMultiValueMap(headers);
         queryParams = copyMultiValueMap(queryParams);
         body = body == null ? new byte[0] : body.clone();
-        attributes =
-                Map.copyOf(new LinkedHashMap<>(Objects.requireNonNullElse(attributes, Map.of())));
+        attributes = ImmutableMockValues.structuredMap(attributes);
     }
 
     /**

@@ -59,15 +59,39 @@ class OpenApiSpecReaderTest {
     }
 
     @Test
-    void readsYamlInfoBlockWithCommentsAndTabs() throws Exception {
+    void readsOpenApi31DocumentsAndNestedJsonInfoValues() throws Exception {
+        Path source = tempDir.resolve("customer-profile.json");
+        Files.writeString(
+                source,
+                """
+                {
+                  "openapi": "3.1.1",
+                  "info": {
+                    "title": "Customer {Profile} API",
+                    "version": "2.4.0",
+                    "contact": {"name": "Platform Team"}
+                  },
+                  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+                  "paths": {}
+                }
+                """);
+
+        OpenApiSpecInfo info = reader.read(source);
+
+        assertEquals("Customer {Profile} API", info.title());
+        assertEquals("2.4.0", info.version());
+    }
+
+    @Test
+    void readsYamlInfoBlockWithCommentsAndQuotedScalars() throws Exception {
         Path source = tempDir.resolve("retail-loyalty-rewards.yaml");
         Files.writeString(
                 source,
                 """
                 openapi: 3.0.3
                 info: # contract metadata
-                \ttitle: "Retail Loyalty Rewards" # display name
-                \tversion: "2.0.1"
+                  title: "Retail Loyalty Rewards" # display name
+                  version: "2.0.1"
                 paths: {}
                 """);
 
@@ -91,6 +115,25 @@ class OpenApiSpecReaderTest {
                 """);
 
         assertThrows(IllegalArgumentException.class, () -> reader.read(source));
+    }
+
+    @Test
+    void rejectsSwagger2AndMalformedDocuments() throws Exception {
+        Path swagger = tempDir.resolve("legacy.yaml");
+        Files.writeString(
+                swagger,
+                """
+                swagger: '2.0'
+                info:
+                  title: Legacy API
+                  version: 1.0.0
+                paths: {}
+                """);
+        Path malformed = tempDir.resolve("malformed.json");
+        Files.writeString(malformed, "{\"openapi\":\"3.1.0\",\"info\":");
+
+        assertThrows(IllegalArgumentException.class, () -> reader.read(swagger));
+        assertThrows(RuntimeException.class, () -> reader.read(malformed));
     }
 
     @Test

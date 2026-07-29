@@ -2,8 +2,6 @@ package com.smbtech.serviceframework.starter.errorhandling.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.DefaultNotificationAggregationPolicy;
 import com.smbtech.serviceframework.error.DefaultNotificationSanitizer;
@@ -85,6 +83,8 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class ErrorHandlingAutoConfigurationTest {
 
@@ -135,14 +135,14 @@ class ErrorHandlingAutoConfigurationTest {
     }
 
     @Test
-    void defaultsResponseExposureToInternal() {
+    void defaultsResponseExposureToPublic() {
         contextRunner.run(
                 context -> {
                     assertThat(
                                     context.getBean(ErrorHandlingProperties.class)
                                             .getResponse()
                                             .getExposure())
-                            .isEqualTo(ErrorExposure.INTERNAL);
+                            .isEqualTo(ErrorExposure.PUBLIC);
 
                     ResolvedError source =
                             new ResolvedError(
@@ -157,7 +157,7 @@ class ErrorHandlingAutoConfigurationTest {
                                             source,
                                             new MockHttpServletRequest("GET", "/failure"));
 
-                    assertThat(customized.exposure()).isEqualTo(ErrorExposure.INTERNAL);
+                    assertThat(customized.exposure()).isEqualTo(ErrorExposure.PUBLIC);
 
                     Notification response =
                             context.getBean(ServiceFrameworkExceptionHandler.class)
@@ -169,8 +169,9 @@ class ErrorHandlingAutoConfigurationTest {
                                             new MockHttpServletRequest("GET", "/failure"))
                                     .getBody();
                     assertThat(response).isNotNull();
-                    assertThat(response.code())
-                            .isEqualTo(FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE);
+                    assertThat(response.code()).isEqualTo("E_APPLICATION_PUBLIC");
+                    assertThat(response.message())
+                            .isEqualTo(FallbackThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE);
                 });
     }
 
@@ -401,7 +402,7 @@ class ErrorHandlingAutoConfigurationTest {
     void appliesOAuth2MetadataExposureSettingsToSecurityResponses() {
         contextRunner
                 .withPropertyValues(
-                        "smbtech.error-handling.response.exposure=PUBLIC",
+                        "smbtech.error-handling.response.exposure=INTERNAL",
                         "smbtech.error-handling.security.oauth2-metadata.include-error-description=false",
                         "smbtech.error-handling.security.oauth2-metadata.include-error-uri=false")
                 .run(
@@ -472,7 +473,7 @@ class ErrorHandlingAutoConfigurationTest {
                                     new ResolvedError(
                                             source,
                                             ErrorCategory.INTERNAL,
-                                            ErrorExposure.PUBLIC,
+                                            ErrorExposure.INTERNAL,
                                             "diagnostic-secret");
 
                             Notification body =
@@ -731,7 +732,7 @@ class ErrorHandlingAutoConfigurationTest {
         NotificationSerializer serializer =
                 (notification, generator, serializers) -> {
                     generator.writeStartObject();
-                    generator.writeStringField("custom_code", notification.code());
+                    generator.writeStringProperty("custom_code", notification.code());
                     generator.writeEndObject();
                 };
 

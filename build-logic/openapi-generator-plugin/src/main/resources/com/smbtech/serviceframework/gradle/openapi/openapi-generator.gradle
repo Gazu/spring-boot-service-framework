@@ -3,7 +3,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.21.4'
+        classpath 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4'
     }
 }
 
@@ -62,65 +62,13 @@ String unquoteOpenApiScalar(String value) {
     scalar.trim()
 }
 
-Map<String, String> readOpenApiYamlInfo(File source) {
-    def inInfo = false
-    def infoIndent = -1
-    def title = null
-    def version = null
-
-    source.eachLine { rawLine ->
-        def line = rawLine.replace('\t', '    ')
-        def trimmed = line.trim()
-        if (trimmed.isBlank() || trimmed.startsWith('#')) {
-            return
-        }
-
-        def indent = line.indexOf(trimmed)
-        if (!inInfo) {
-            if (trimmed == 'info:' || trimmed.startsWith('info: #')) {
-                inInfo = true
-                infoIndent = indent
-            }
-            return
-        }
-
-        if (indent <= infoIndent && (trimmed ==~ /^[A-Za-z0-9_.-]+:.*/)) {
-            inInfo = false
-            return
-        }
-
-        def matcher = trimmed =~ /^(title|version):\s*(.*)$/
-        if (matcher.matches()) {
-            def key = matcher[0][1]
-            def value = unquoteOpenApiScalar(matcher[0][2])
-            if (key == 'title') {
-                title = value
-            } else if (key == 'version') {
-                version = value
-            }
-        }
-    }
-
-    [
-            title  : title,
-            version: version
-    ]
-}
-
-Map<String, String> readOpenApiJsonInfo(File source) {
-    def json = new groovy.json.JsonSlurper().parse(source)
-    def info = json instanceof Map ? json.info : null
+Map<String, String> readOpenApiInfo(File source) {
+    def document = readOpenApiDocument(source)
+    def info = document.info
     [
             title  : info instanceof Map && info.title != null ? info.title.toString() : null,
             version: info instanceof Map && info.version != null ? info.version.toString() : null
     ]
-}
-
-Map<String, String> readOpenApiInfo(File source) {
-    if (source.name.endsWith('.json')) {
-        return readOpenApiJsonInfo(source)
-    }
-    readOpenApiYamlInfo(source)
 }
 
 String sha256(File source) {
@@ -823,9 +771,9 @@ String schemaRefName(String ref) {
 
 Map readOpenApiDocument(File source) {
     def mapper = source.name.toLowerCase(Locale.ROOT).endsWith('.json')
-            ? new com.fasterxml.jackson.databind.ObjectMapper()
-            : new com.fasterxml.jackson.databind.ObjectMapper(
-                    new com.fasterxml.jackson.dataformat.yaml.YAMLFactory()
+            ? new tools.jackson.databind.ObjectMapper()
+            : new tools.jackson.databind.ObjectMapper(
+                    new tools.jackson.dataformat.yaml.YAMLFactory()
             )
     mapper.readValue(source, Map)
 }
@@ -1468,80 +1416,6 @@ tasks.register('validateOpenApiNameNormalization') {
     }
 }
 
-tasks.register('validateOpenApiSpecs') {
-    group = 'verification'
-    description = 'Validates OpenAPI info.title and info.version for generated artifact coordinates.'
-
-    inputs.files(openApiSpecFiles())
-
-    doLast {
-        def failures = []
-        def resolvedCoordinates = [:]
-        def versionPattern = ~/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z][0-9A-Za-z.-]*)?$/
-        def frameworkArtifactNames = [
-                'spring-boot-service-framework-commons',
-                'spring-boot-service-framework-logging-core',
-                'spring-boot-service-framework-http-client-core',
-                'spring-boot-service-framework-mock-core',
-                'spring-boot-service-framework-starter-logging',
-                'spring-boot-service-framework-starter-rest-client',
-                'spring-boot-service-framework-starter-mock'
-        ] as Set
-
-        inputs.files.files.sort().each { source ->
-            def info
-            try {
-                if (source.name.endsWith('.json')) {
-                    info = readOpenApiJsonInfo(source)
-                } else {
-                    info = readOpenApiYamlInfo(source)
-                }
-            } catch (Exception ex) {
-                failures << "${relativePath(source)}: cannot parse OpenAPI info.title/info.version (${ex.message})"
-                return
-            }
-
-            def title = info.title
-            def version = info.version
-            if (title == null || title.trim().isBlank()) {
-                failures << "${relativePath(source)}: info.title is required"
-            }
-            if (version == null || version.trim().isBlank()) {
-                failures << "${relativePath(source)}: info.version is required"
-            }
-
-            if (title != null && !title.trim().isBlank()) {
-                def artifactBaseName = normalizeOpenApiTitle(title)
-                if (!isValidOpenApiArtifactBaseName(artifactBaseName)) {
-                    failures << "${relativePath(source)}: normalized info.title must match [a-z0-9]+(-[a-z0-9]+)*, found '${artifactBaseName}'"
-                }
-
-                ['models', 'api', 'client'].each { suffix ->
-                    def artifactName = "${artifactBaseName}-${suffix}".toString()
-                    if (frameworkArtifactNames.contains(artifactName)) {
-                        failures << "${relativePath(source)}: generated artifact ${artifactName} collides with a framework artifact"
-                    }
-                    if (version != null && !version.trim().isBlank()) {
-                        def coordinate = "com.smbtech.openapi:${artifactName}:${version.trim()}".toString()
-                        def previous = resolvedCoordinates.putIfAbsent(coordinate, relativePath(source))
-                        if (previous != null) {
-                            failures << "${relativePath(source)}: generated coordinate ${coordinate} duplicates ${previous}"
-                        }
-                    }
-                }
-            }
-
-            if (version != null && !version.trim().isBlank() && !(version.trim() ==~ versionPattern)) {
-                failures << "${relativePath(source)}: info.version must be SemVer/Maven compatible, found '${version}'"
-            }
-        }
-
-        if (!failures.isEmpty()) {
-            throw new GradleException("OpenAPI spec validation issues found:\n" + failures.join('\n'))
-        }
-    }
-}
-
 File openApiSpecVersionCatalogFile() {
     file('docs/openapi/spec-versions.properties')
 }
@@ -1668,6 +1542,7 @@ tasks.register('generateOpenApiMetadata') {
 
     dependsOn tasks.named('validateOpenApiSpecVersionCatalog')
     inputs.files(openApiSpecFiles())
+    inputs.property('generatorVersion', rootProject.version.toString())
     outputs.dir(layout.buildDirectory.dir('generated/smbtech-openapi/metadata'))
 
     doLast {

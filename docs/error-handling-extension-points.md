@@ -10,7 +10,8 @@ extension point that solves the requirement.
 |---|---|---|
 | `ThrowableErrorResolver` | Convert a supported exception into `ResolvedError`. | Multiple beans, ordered by `order()`; first supporting resolver wins. |
 | `NotificationAggregationPolicy` | Select a primary notification and aggregate field violations. | Single replaceable bean. |
-| `NotificationSanitizer` | Apply allowlist and redaction before public exposure. | Single replaceable bean. |
+| `NotificationSanitizer` | Apply allowlisting and redaction before writing a response. | Single replaceable bean. |
+| `ErrorExposurePolicy` | Select the final `PUBLIC` or `INTERNAL` response audience. | Single replaceable bean; the configured default is applied after resolvers and resolved-error customizers. |
 
 Custom resolver example:
 
@@ -36,6 +37,11 @@ final class InventoryExceptionResolver implements ThrowableErrorResolver {
 }
 ```
 
+The `ErrorExposure` stored by a resolver is not the final response decision.
+The global `ErrorExposurePolicy` overwrites it after all
+`ResolvedErrorCustomizer` beans run. The default policy uses
+`smbtech.error-handling.response.exposure`, whose default is `PUBLIC`.
+
 ## Request-Aware Customizers
 
 | Contract | Runs | Composition |
@@ -45,7 +51,10 @@ final class InventoryExceptionResolver implements ThrowableErrorResolver {
 
 Customizers must return non-null values. Use them for correlation metadata,
 application response headers, or bounded policy changes. Do not add secrets,
-request bodies, credentials, or raw exception details.
+request bodies, credentials, or raw exception details. Response customizers
+are followed by a mandatory final sanitization pass that preserves customized
+HTTP status and headers while reapplying exposure, metadata allowlisting, and
+secret redaction to the `Notification` body.
 
 ## Reporting And Metrics
 
@@ -68,6 +77,12 @@ notification response.
 
 Replacing `NotificationSerializer` changes a public wire contract. Treat that
 as an application API decision and cover it with contract tests.
+
+Replacing `NotificationResponseFactory` or `NotificationSerializer` makes the
+application responsible for preserving the stable code and preventing
+diagnostics, causes, credentials, and request or downstream payloads from
+reaching the response. `NotificationResponseCustomizer` output remains behind
+the framework's final response safety boundary.
 
 ## Security
 

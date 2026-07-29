@@ -37,7 +37,7 @@ Use Spring Security's normal JWT, opaque-token, or
 does not validate tokens; it standardizes failures after Spring Security has
 classified them.
 
-## Public Error Catalog
+## Security Error Catalog
 
 | Catalog entry | Code | HTTP | Category | `metadata.security.reason` | OAuth2 error |
 |---|---|---:|---|---|---|
@@ -50,12 +50,28 @@ classified them.
 | `CSRF_ACCESS_DENIED` | `E_SERVICE_FRAMEWORK_SECURITY_AUTHORIZATION_0003` | 403 | `AUTHORIZATION` | `csrf_rejected` | omitted |
 
 JWT expiration, invalid signatures, invalid issuers, rejected claims, and
-inactive opaque tokens all use the public `BEARER_TOKEN_INVALID` entry. The
+inactive opaque tokens all use the stable `BEARER_TOKEN_INVALID` entry. The
 specific cause remains in internal diagnostics and structured logs.
 
 ## Metadata Contract
 
-All security responses may include:
+The default `PUBLIC` response preserves the catalog code and returns only the
+generic message and minimal metadata:
+
+```json
+{
+  "code": "E_SERVICE_FRAMEWORK_SECURITY_AUTHENTICATION_0003",
+  "message": "The request could not be completed",
+  "severity": "ERROR",
+  "field_name": "",
+  "metadata": {
+    "category": "AUTHENTICATION"
+  }
+}
+```
+
+With `exposure: INTERNAL`, trusted consumers may receive the detailed,
+sanitized security metadata:
 
 ```json
 {
@@ -64,7 +80,7 @@ All security responses may include:
     "retryable": false,
     "security": {
       "reason": "invalid_token",
-      "authentication_type": "bearer"
+      "authentication_scheme": "bearer"
     },
     "request": {
       "method": "GET",
@@ -76,9 +92,10 @@ All security responses may include:
 
 The route is a Spring MVC route template, not the raw URI. Query parameters,
 tokens, claims, principals, headers, request bodies, exception messages, and
-provider responses are never copied into public metadata.
+provider responses are never copied into response metadata.
 
-OAuth2-classified failures add `metadata.oauth2` when enabled:
+OAuth2-classified failures add `metadata.oauth2` to `INTERNAL` responses when
+enabled:
 
 ```json
 {
@@ -91,7 +108,7 @@ OAuth2-classified failures add `metadata.oauth2` when enabled:
     "retryable": false,
     "security": {
       "reason": "invalid_token",
-      "authentication_type": "bearer"
+      "authentication_scheme": "bearer"
     },
     "oauth2": {
       "error": "invalid_token",
@@ -108,13 +125,14 @@ The corresponding header is:
 WWW-Authenticate: Bearer error="invalid_token", error_description="The access token is invalid", error_uri="https://www.rfc-editor.org/rfc/rfc6750#section-3.1"
 ```
 
-Descriptions and URIs are fixed framework values. Provider messages and
-`exception.getMessage()` are not exposed.
+The header is generated independently of body exposure, so it remains the same
+for `PUBLIC` and `INTERNAL`. Descriptions and URIs are fixed framework values.
+Provider messages and `exception.getMessage()` are not exposed.
 
 ## Required Scopes
 
 Spring Security does not expose the scope required by an authorization rule to
-an `AccessDeniedHandler`. Provide a `RequiredScopeResolver` when public
+an `AccessDeniedHandler`. Provide a `RequiredScopeResolver` when
 `insufficient_scope` classification is required:
 
 ```java
@@ -126,7 +144,8 @@ RequiredScopeResolver requiredScopeResolver() {
 }
 ```
 
-For a Bearer-authenticated request, a non-empty result produces:
+For a Bearer-authenticated request, a non-empty result produces the following
+`INTERNAL` response metadata:
 
 ```json
 {
@@ -139,7 +158,7 @@ For a Bearer-authenticated request, a non-empty result produces:
     "retryable": false,
     "security": {
       "reason": "insufficient_scope",
-      "authentication_type": "bearer"
+      "authentication_scheme": "bearer"
     },
     "oauth2": {
       "error": "insufficient_scope",
@@ -151,8 +170,9 @@ For a Bearer-authenticated request, a non-empty result produces:
 }
 ```
 
-Required scopes are included in the response only when
-`include-required-scope` is enabled. The RFC challenge can still include them.
+Required scopes are included in the detailed response only when
+`include-required-scope` is enabled. The RFC challenge can still include them
+when the body uses `PUBLIC` exposure.
 Granted token scopes are never exposed as required scopes.
 When no required scope is resolved, the failure remains the generic
 `ACCESS_DENIED` response.
@@ -162,6 +182,8 @@ When no required scope is resolved, the failure remains the generic
 ```yaml
 smbtech:
   error-handling:
+    response:
+      exposure: PUBLIC
     security:
       enabled: true
       oauth2-metadata:
@@ -184,7 +206,7 @@ Applications can replace these beans independently:
 | `SecurityAuthenticationFailureResolver` | Classify authentication exceptions. |
 | `SecurityAuthorizationFailureResolver` | Classify authorization and CSRF exceptions. |
 | `RequiredScopeResolver` | Return scopes required by the protected operation. |
-| `OAuth2SecurityMetadataFactory` | Build safe public security and OAuth2 metadata. |
+| `OAuth2SecurityMetadataFactory` | Build safe security metadata used by detailed responses and Bearer challenges. |
 | `OAuth2SecurityChallengeWriter` | Write the Bearer challenge header. |
 | `AuthenticationEntryPoint` | Replace the complete authentication response adapter. |
 | `AccessDeniedHandler` | Replace the complete authorization response adapter. |

@@ -12,7 +12,10 @@ the status, content type, and JSON response shape declared by its OpenAPI file.
 
 ```groovy
 dependencies {
-    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing:0.3.0'
+    testImplementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
 }
 ```
 

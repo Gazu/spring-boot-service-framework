@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.errorhandling.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.DefaultNotificationSanitizer;
 import com.smbtech.serviceframework.error.ErrorCategory;
@@ -30,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import tools.jackson.databind.ObjectMapper;
 
 class NotificationDataLeakageSecurityTest {
 
@@ -96,7 +96,7 @@ class NotificationDataLeakageSecurityTest {
                 new ResolvedError(
                         source,
                         ErrorCategory.AUTHENTICATION,
-                        ErrorExposure.PUBLIC,
+                        ErrorExposure.INTERNAL,
                         "diagnostic-secret");
         DefaultNotificationResponseFactory factory =
                 new DefaultNotificationResponseFactory(
@@ -168,13 +168,8 @@ class NotificationDataLeakageSecurityTest {
         String json = serialize(notification);
 
         assertThat(notification.code()).isEqualTo("E_PAYMENTS_0503");
-        assertThat(notification.message()).isEqualTo(HttpClientExceptionResolver.PUBLIC_MESSAGE);
-        assertThat(notification.metadata())
-                .containsEntry("schemaVersion", "1")
-                .containsEntry("category", "DOWNSTREAM")
-                .containsEntry("retryable", true)
-                .containsEntry(
-                        "dependency", Map.of("name", "downstream", "failureType", "server_error"));
+        assertThat(notification.message()).isEqualTo("The request could not be completed");
+        assertThat(notification.metadata()).containsOnly(Map.entry("category", "DOWNSTREAM"));
         assertThat(json)
                 .doesNotContain(
                         "payments-private-client",
@@ -258,8 +253,9 @@ class NotificationDataLeakageSecurityTest {
 
         assertThat(effectiveError.exposure()).isEqualTo(ErrorExposure.PUBLIC);
         assertThat(notification.code()).isEqualTo("E_PUBLIC_SECURITY_0001");
+        assertThat(notification.message()).isEqualTo("The request could not be completed");
+        assertThat(notification.metadata()).containsOnly(Map.entry("category", "INTERNAL"));
         assertThat(json)
-                .contains(REDACTED)
                 .doesNotContain(
                         "message-token-secret",
                         "message-password-secret",

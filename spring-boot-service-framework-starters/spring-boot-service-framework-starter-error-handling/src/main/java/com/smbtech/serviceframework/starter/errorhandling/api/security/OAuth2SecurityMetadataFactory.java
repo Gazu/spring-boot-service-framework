@@ -7,11 +7,11 @@ import com.smbtech.serviceframework.error.metadata.StandardErrorMetadata;
 public interface OAuth2SecurityMetadataFactory {
 
     /**
-     * Creates public metadata from safe context and resolved classification.
+     * Creates safe metadata for the response and Bearer challenge.
      *
      * @param context safe security failure context
-     * @param resolution resolved public security failure
-     * @return standard public error metadata
+     * @param resolution resolved security failure
+     * @return standard safe error metadata
      */
     StandardErrorMetadata create(
             SecurityFailureContext context, SecurityFailureResolution resolution);

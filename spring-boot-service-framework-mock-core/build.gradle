@@ -17,7 +17,8 @@ tasks.register('verifyHexagonalBoundaries') {
                 'org.slf4j.',
                 'ch.qos.logback.',
                 'jakarta.servlet.',
-                'com.fasterxml.jackson.'
+                'com.fasterxml.jackson.',
+                'tools.jackson.'
         ]
         def violations = []
         inputs.files.files.each { source ->

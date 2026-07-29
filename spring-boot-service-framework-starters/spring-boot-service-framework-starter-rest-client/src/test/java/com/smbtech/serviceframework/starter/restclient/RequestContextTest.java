@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.smbtech.serviceframework.starter.restclient.api.RequestContext;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -85,6 +87,25 @@ class RequestContextTest {
         assertThatThrownBy(() -> context.headers().put("X-Channel", "mobile"))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> context.jwtBearerClaims().put("channel", "mobile"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recursivelyCopiesJwtBearerClaims() {
+        List<Object> roles = new ArrayList<>(List.of("reader"));
+        Map<String, Object> authorization = new LinkedHashMap<>();
+        authorization.put("roles", roles);
+
+        RequestContext context =
+                RequestContext.ofJwtBearerClaims(Map.of("authorization", authorization));
+        roles.add("writer");
+
+        Map<String, Object> immutableAuthorization =
+                (Map<String, Object>) context.jwtBearerClaims().get("authorization");
+        List<Object> immutableRoles = (List<Object>) immutableAuthorization.get("roles");
+        assertThat(immutableRoles).containsExactly("reader");
+        assertThatThrownBy(() -> immutableRoles.add("writer"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

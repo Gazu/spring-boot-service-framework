@@ -1,9 +1,14 @@
 package com.smbtech.serviceframework.error;
 
-/** Controls whether resolved error information is safe to expose to consumers. */
+/**
+ * Selects the intended HTTP response audience and its level of detail.
+ *
+ * <p>Both modes require sanitization and never expose internal diagnostics, exception causes, stack
+ * traces, credentials, or raw downstream content.
+ */
 public enum ErrorExposure {
-    /** The notification is safe to include in a public response. */
+    /** Produces a minimal response suitable for untrusted or external consumers. */
     PUBLIC,
-    /** The notification requires replacement or sanitization before exposure. */
+    /** Produces a detailed, sanitized response intended for trusted internal consumers. */
     INTERNAL
 }

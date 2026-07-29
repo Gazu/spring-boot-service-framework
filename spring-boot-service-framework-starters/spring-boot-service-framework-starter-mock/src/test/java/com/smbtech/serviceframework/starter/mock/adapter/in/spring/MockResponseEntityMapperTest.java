@@ -3,19 +3,19 @@ package com.smbtech.serviceframework.starter.mock.adapter.in.spring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.mock.domain.MockResponse;
 import com.smbtech.serviceframework.mock.exception.MockException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 class MockResponseEntityMapperTest {
 
     private final MockResponseEntityMapper mapper =
-            new MockResponseEntityMapper(new ObjectMapper().findAndRegisterModules());
+            new MockResponseEntityMapper(new ObjectMapper());
 
     @Test
     void mapsHeadersStatusAndTypedBody() {

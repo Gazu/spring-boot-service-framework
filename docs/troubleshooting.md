@@ -56,6 +56,15 @@ For a full compatibility pass:
 | `openApiCompatibilityCheck` fails | One part of the generated OpenAPI compatibility contract failed: spec naming, metadata, version catalog, JAR contents, artifact separation, reproducibility, compilation, generator module checks, build-logic checks, or local publication. | Run `./gradlew openApiCompatibilityCheck --stacktrace`, then rerun the specific failing `validateOpenApi*` task named in the Gradle output. |
 | `documentationCheck` fails on example secrets | Example docs or config contain literal secret-like values. | Replace real values with environment placeholders such as `${PAYMENTS_CLIENT_SECRET}`. |
 
+## Logging
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| A custom Logback destination is ignored | `SERVICE_FRAMEWORK_LOGGING_DELEGATE` was set after `async-appender.xml` was included, or its value does not match an appender name. | Define the destination, set the delegate property, then include `async-appender.xml` and `root.xml` in that order. |
+| Logback reports that only one appender may be attached to `ASYNC` | Logback `AsyncAppender` supports one delegate. | Use `SERVICE_FRAMEWORK_LOGGING_DELEGATE` for one destination, or define application-owned async appenders and a custom root for fan-out. |
+| Async metrics are missing with a custom `logback-spring.xml` | The custom configuration omitted the framework `async-appender.xml`, changed the `ASYNC` name, or disabled observability. | Include the framework properties and async fragments, retain the `ASYNC` name, and enable `smbtech.logging.async.observability.enabled`. |
+| The application starts with different saturation behavior after migration | A legacy `never-block` or positive `discarding-threshold` override is still configured. | Remove the legacy override and configure `saturation-policy` explicitly, or retain it intentionally according to the compatibility precedence table. |
+
 ## REST Client Creation
 
 | Symptom | Likely cause | Fix |

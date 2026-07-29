@@ -2,8 +2,10 @@ package com.smbtech.serviceframework.gradle.openapi;
 
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,6 +52,9 @@ class SmbtechOpenApiGeneratorPluginTest {
         assertNotNull(project.getTasks().findByName("generateOpenApiServerApi"));
         assertNotNull(project.getTasks().findByName("generateOpenApiClient"));
         assertNotNull(project.getTasks().findByName("openApiCompatibilityCheck"));
+        assertInstanceOf(
+                SmbtechOpenApiValidateSpecsTask.class,
+                project.getTasks().findByName("validateOpenApiSpecs"));
     }
 
     @Test
@@ -98,10 +103,11 @@ class SmbtechOpenApiGeneratorPluginTest {
         Files.writeString(
                 spec,
                 """
-                openapi: 3.0.3
+                openapi: 3.1.1
                 info:
                   title: orders
                   version: 1.0.0
+                jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
                 paths: {}
                 """);
 
@@ -113,6 +119,42 @@ class SmbtechOpenApiGeneratorPluginTest {
                         .build();
 
         assertEquals(SUCCESS, result.task(":validateOpenApiSpecs").getOutcome());
+    }
+
+    @Test
+    void typedValidationRejectsUnsupportedAndDuplicateContracts() throws IOException {
+        Project project =
+                ProjectBuilder.builder().withProjectDir(testProjectDirectory.toFile()).build();
+        project.getPlugins().apply(SmbtechOpenApiGeneratorPlugin.class);
+        Path first = testProjectDirectory.resolve("src/main/openapi/first.yaml");
+        Path second = testProjectDirectory.resolve("src/main/openapi/second.yaml");
+        Files.createDirectories(first.getParent());
+        Files.writeString(
+                first,
+                """
+                swagger: '2.0'
+                info:
+                  title: Orders
+                  version: 1.0.0
+                paths: {}
+                """);
+        Files.writeString(
+                second,
+                """
+                openapi: 3.1.0
+                info:
+                  title: Orders
+                  version: 1.0.0
+                paths: {}
+                """);
+        SmbtechOpenApiValidateSpecsTask task =
+                (SmbtechOpenApiValidateSpecsTask)
+                        project.getTasks().getByName("validateOpenApiSpecs");
+
+        GradleException exception = assertThrows(GradleException.class, task::validateSpecs);
+
+        assertTrue(exception.getMessage().contains("supported 3.0.x or 3.1.x"));
+        assertTrue(exception.getMessage().contains("duplicates src/main/openapi/first.yaml"));
     }
 
     @Test

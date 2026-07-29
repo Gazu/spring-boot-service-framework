@@ -42,4 +42,14 @@ public record SecurityFailureResolution(
     public boolean hasOAuth2Error() {
         return oauth2Error.isPresent();
     }
+
+    /**
+     * Returns a copy with a replacement resolved error.
+     *
+     * @param resolvedError replacement resolved error
+     * @return updated immutable resolution
+     */
+    public SecurityFailureResolution withResolvedError(ResolvedError resolvedError) {
+        return new SecurityFailureResolution(resolvedError, reason, oauth2Error, bearerChallenge);
+    }
 }

@@ -5,12 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Framework-neutral result produced after resolving an application failure. Public response data
- * and internal diagnostics remain explicitly separated.
+ * Framework-neutral result produced after resolving an application failure. Response data and
+ * internal diagnostics remain explicitly separated; the diagnostic message is never part of the
+ * HTTP notification.
  *
  * @param notification primary notification
  * @param category error category used by response policies
- * @param exposure whether the notification is safe for public exposure
+ * @param exposure target response audience and detail level
  * @param diagnosticMessage internal diagnostic message
  * @param fieldViolations validation failures associated with the error
  */
@@ -35,7 +36,7 @@ public record ResolvedError(
      *
      * @param notification primary notification
      * @param category error category
-     * @param exposure error exposure
+     * @param exposure target response audience and detail level
      * @param diagnosticMessage internal diagnostic message
      */
     public ResolvedError(
@@ -53,5 +54,38 @@ public record ResolvedError(
      */
     public boolean hasFieldViolations() {
         return !fieldViolations.isEmpty();
+    }
+
+    /**
+     * Returns a copy with a replacement notification.
+     *
+     * @param notification replacement notification
+     * @return updated immutable error
+     */
+    public ResolvedError withNotification(Notification notification) {
+        return new ResolvedError(
+                notification, category, exposure, diagnosticMessage, fieldViolations);
+    }
+
+    /**
+     * Returns a copy with a replacement exposure.
+     *
+     * @param exposure replacement exposure
+     * @return updated immutable error
+     */
+    public ResolvedError withExposure(ErrorExposure exposure) {
+        return new ResolvedError(
+                notification, category, exposure, diagnosticMessage, fieldViolations);
+    }
+
+    /**
+     * Returns a copy with replacement field violations.
+     *
+     * @param fieldViolations replacement violations
+     * @return updated immutable error
+     */
+    public ResolvedError withFieldViolations(List<FieldViolation> fieldViolations) {
+        return new ResolvedError(
+                notification, category, exposure, diagnosticMessage, fieldViolations);
     }
 }

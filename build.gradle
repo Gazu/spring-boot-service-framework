@@ -2,6 +2,9 @@ plugins {
     id 'base'
     id 'com.diffplug.spotless'
     id 'com.smbtech.service-framework.openapi-generator'
+    id 'org.cyclonedx.bom'
+    id 'org.sonarqube'
+    id 'signing'
 }
 
 apply from: 'gradle/property-reference.gradle'
@@ -37,9 +40,15 @@ smbtechOpenApi {
     }
 }
 
+apply from: 'gradle/platform-contract.gradle'
+apply from: 'gradle/actuator-contract.gradle'
+apply from: 'gradle/logging-async-contract.gradle'
 apply from: 'gradle/documentation-checks.gradle'
 apply from: 'gradle/convention-checks.gradle'
 apply from: 'gradle/formatting.gradle'
 apply from: 'gradle/code-quality.gradle'
 apply from: 'gradle/module-compatibility.gradle'
+apply from: 'gradle/binary-compatibility.gradle'
+apply from: 'gradle/supply-chain.gradle'
 apply from: 'gradle/lifecycle.gradle'
+apply from: 'gradle/sonarqube.gradle'

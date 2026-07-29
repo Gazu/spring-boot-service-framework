@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.error.ErrorExposure;
 import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultSecurityAuthenticationFailureResolver;
@@ -61,6 +60,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import tools.jackson.databind.ObjectMapper;
 
 class SpringSecurityErrorHandlingIntegrationTest {
 
@@ -101,9 +101,13 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                         jsonPath("$.metadata.category")
                                                                 .value("AUTHENTICATION"))
                                                 .andExpect(
-                                                        jsonPath("$.metadata.security.reason")
+                                                        jsonPath("$.message")
                                                                 .value(
-                                                                        "authentication_required"))));
+                                                                        FallbackThrowableErrorResolver
+                                                                                .DEFAULT_PUBLIC_MESSAGE))
+                                                .andExpect(
+                                                        jsonPath("$.metadata.security")
+                                                                .doesNotExist())));
     }
 
     @Test
@@ -122,8 +126,8 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                 .andExpect(
                                                         jsonPath("$.code").value(INVALID_REQUEST))
                                                 .andExpect(
-                                                        jsonPath("$.metadata.oauth2.error")
-                                                                .value("invalid_request"))
+                                                        jsonPath("$.metadata.oauth2")
+                                                                .doesNotExist())
                                                 .andExpect(
                                                         header().string(
                                                                         HttpHeaders
@@ -148,13 +152,8 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                 .andExpect(status().isUnauthorized())
                                                 .andExpect(jsonPath("$.code").value(INVALID_TOKEN))
                                                 .andExpect(
-                                                        jsonPath("$.metadata.oauth2.error")
-                                                                .value("invalid_token"))
-                                                .andExpect(
-                                                        jsonPath(
-                                                                        "$.metadata.oauth2.error_description")
-                                                                .value(
-                                                                        "The access token is invalid"))
+                                                        jsonPath("$.metadata.oauth2")
+                                                                .doesNotExist())
                                                 .andExpect(
                                                         header().string(
                                                                         HttpHeaders
@@ -189,8 +188,8 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                         jsonPath("$.metadata.category")
                                                                 .value("DOWNSTREAM"))
                                                 .andExpect(
-                                                        jsonPath("$.metadata.security.reason")
-                                                                .value("provider_failure"))
+                                                        jsonPath("$.metadata.security")
+                                                                .doesNotExist())
                                                 .andExpect(
                                                         jsonPath("$.metadata.oauth2")
                                                                 .doesNotExist())
@@ -211,8 +210,7 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                             .andExpect(status().isForbidden())
                                             .andExpect(jsonPath("$.code").value(ACCESS_DENIED))
                                             .andExpect(
-                                                    jsonPath("$.metadata.security.reason")
-                                                            .value("access_denied"))
+                                                    jsonPath("$.metadata.security").doesNotExist())
                                             .andExpect(jsonPath("$.metadata.oauth2").doesNotExist())
                                             .andExpect(
                                                     header().doesNotExist(
@@ -225,12 +223,7 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                                     "Bearer jwt-valid"))
                                             .andExpect(status().isForbidden())
                                             .andExpect(jsonPath("$.code").value(INSUFFICIENT_SCOPE))
-                                            .andExpect(
-                                                    jsonPath("$.metadata.oauth2.error")
-                                                            .value("insufficient_scope"))
-                                            .andExpect(
-                                                    jsonPath("$.metadata.oauth2.scope")
-                                                            .value("payment.write"))
+                                            .andExpect(jsonPath("$.metadata.oauth2").doesNotExist())
                                             .andExpect(
                                                     header().string(
                                                                     HttpHeaders.WWW_AUTHENTICATE,
@@ -255,8 +248,8 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                 .andExpect(status().isForbidden())
                                                 .andExpect(jsonPath("$.code").value(CSRF_REJECTED))
                                                 .andExpect(
-                                                        jsonPath("$.metadata.security.reason")
-                                                                .value("csrf_rejected"))
+                                                        jsonPath("$.metadata.security")
+                                                                .doesNotExist())
                                                 .andExpect(
                                                         jsonPath("$.metadata.oauth2")
                                                                 .doesNotExist())));
@@ -342,8 +335,15 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                                             "Bearer jwt-valid"))
                                                     .andExpect(status().isForbidden())
                                                     .andExpect(
-                                                            jsonPath("$.metadata.oauth2.scope")
-                                                                    .value("orders.approve"));
+                                                            jsonPath("$.metadata.oauth2")
+                                                                    .doesNotExist())
+                                                    .andExpect(
+                                                            header().string(
+                                                                            HttpHeaders
+                                                                                    .WWW_AUTHENTICATE,
+                                                                            org.hamcrest.Matchers
+                                                                                    .containsString(
+                                                                                            "scope=\"orders.approve\"")));
 
                                             assertThat(
                                                             context.getBean(
@@ -364,22 +364,23 @@ class SpringSecurityErrorHandlingIntegrationTest {
     }
 
     @Test
-    void internalExposureMasksAuthenticationAndAuthorizationBodies() {
+    void internalExposureReturnsDetailedSanitizedSecurityBodies() {
         internalContextRunner.run(
                 context ->
                         perform(
                                 context,
                                 mockMvc -> {
-                                    String fallbackCode =
-                                            FallbackThrowableErrorResolver.DEFAULT_ERROR_CODE;
                                     mockMvc.perform(get("/authenticated"))
                                             .andExpect(status().isUnauthorized())
-                                            .andExpect(jsonPath("$.code").value(fallbackCode))
+                                            .andExpect(
+                                                    jsonPath("$.code")
+                                                            .value(AUTHENTICATION_REQUIRED))
                                             .andExpect(
                                                     jsonPath("$.metadata.category")
                                                             .value("AUTHENTICATION"))
                                             .andExpect(
-                                                    jsonPath("$.metadata.security").doesNotExist());
+                                                    jsonPath("$.metadata.security.reason")
+                                                            .value("authentication_required"));
 
                                     mockMvc.perform(
                                                     get("/payments")
@@ -387,11 +388,16 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                                     HttpHeaders.AUTHORIZATION,
                                                                     "Bearer jwt-valid"))
                                             .andExpect(status().isForbidden())
-                                            .andExpect(jsonPath("$.code").value(fallbackCode))
+                                            .andExpect(jsonPath("$.code").value(INSUFFICIENT_SCOPE))
                                             .andExpect(
                                                     jsonPath("$.metadata.category")
                                                             .value("AUTHORIZATION"))
-                                            .andExpect(jsonPath("$.metadata.oauth2").doesNotExist())
+                                            .andExpect(
+                                                    jsonPath("$.metadata.oauth2.error")
+                                                            .value("insufficient_scope"))
+                                            .andExpect(
+                                                    jsonPath("$.metadata.oauth2.scope")
+                                                            .value("payment.write"))
                                             .andExpect(
                                                     header().string(
                                                                     HttpHeaders.WWW_AUTHENTICATE,

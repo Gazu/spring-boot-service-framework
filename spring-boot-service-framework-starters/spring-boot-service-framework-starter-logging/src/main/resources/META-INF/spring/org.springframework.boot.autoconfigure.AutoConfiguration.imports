@@ -1,1 +1,2 @@
 com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingAutoConfiguration
+com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingMetricsAutoConfiguration

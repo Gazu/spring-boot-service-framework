@@ -1,9 +1,5 @@
 package com.smbtech.serviceframework.openapi.contract;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -16,12 +12,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.NullNode;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /** Provides open api contract loader behavior. */
 public final class OpenApiContractLoader {
 
     private static final Set<String> HTTP_METHODS =
             Set.of("get", "post", "put", "patch", "delete", "head", "options", "trace");
+
+    private static final Pattern SUPPORTED_OPENAPI_VERSION = Pattern.compile("3\\.[01]\\.\\d+");
 
     private final ObjectMapper mapper;
 
@@ -87,8 +90,8 @@ public final class OpenApiContractLoader {
         Map<String, OpenApiRequestDefinition> requestDefinitions = new LinkedHashMap<>();
         List<OpenApiOperation> operations = readOperations(root, description, requestDefinitions);
         return new OpenApiContract(
-                root.path("info").path("title").asText(),
-                root.path("info").path("version").asText(),
+                root.path("info").path("title").asString(),
+                root.path("info").path("version").asString(),
                 operations,
                 requestDefinitions,
                 root);
@@ -100,13 +103,15 @@ public final class OpenApiContractLoader {
         if (root == null || !root.isObject()) {
             throw new IllegalArgumentException(source + " must contain an object document");
         }
-        if (root.path("openapi").asText().isBlank()) {
-            throw new IllegalArgumentException(source + " must declare openapi");
+        String openApiVersion = root.path("openapi").asString().trim();
+        if (!SUPPORTED_OPENAPI_VERSION.matcher(openApiVersion).matches()) {
+            throw new IllegalArgumentException(
+                    source + " must declare a supported OpenAPI 3.0.x or 3.1.x version");
         }
-        if (root.path("info").path("title").asText().isBlank()) {
+        if (root.path("info").path("title").asString().isBlank()) {
             throw new IllegalArgumentException(source + " must declare info.title");
         }
-        if (root.path("info").path("version").asText().isBlank()) {
+        if (root.path("info").path("version").asString().isBlank()) {
             throw new IllegalArgumentException(source + " must declare info.version");
         }
         if (!root.path("paths").isObject()) {
@@ -131,7 +136,7 @@ public final class OpenApiContractLoader {
                     continue;
                 }
                 JsonNode operation = methodEntry.getValue();
-                String operationId = operation.path("operationId").asText();
+                String operationId = operation.path("operationId").asString();
                 if (operationId.isBlank()) {
                     throw new IllegalArgumentException(
                             sourceName(description)
@@ -176,8 +181,8 @@ public final class OpenApiContractLoader {
             parameters.forEach(
                     parameter -> {
                         JsonNode resolvedParameter = resolveDocumentReference(root, parameter);
-                        String name = resolvedParameter.path("name").asText();
-                        String location = resolvedParameter.path("in").asText();
+                        String name = resolvedParameter.path("name").asString();
+                        String location = resolvedParameter.path("in").asString();
                         if (!name.isBlank()
                                 && Set.of("path", "query", "header", "cookie").contains(location)) {
                             JsonNode schema = resolvedParameter.path("schema");
@@ -220,7 +225,7 @@ public final class OpenApiContractLoader {
         if (!value.hasNonNull("$ref")) {
             return value;
         }
-        String reference = value.path("$ref").asText();
+        String reference = value.path("$ref").asString();
         if (!reference.startsWith("#/")) {
             throw new IllegalArgumentException(
                     "external OpenAPI references are not supported: " + reference);

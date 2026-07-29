@@ -25,15 +25,28 @@ class PropertyReferenceEntry {
 def loggingDescriptions = [
         'smbtech.logging.production'                       : 'Enables production filtering behavior. When true, metric events are disabled; audit, security, and tracking events remain enabled.',
         'smbtech.logging.level'                            : 'Root logging level used by the starter Logback configuration.',
-        'smbtech.logging.async.enabled'                    : 'Enables Logback async console logging.',
-        'smbtech.logging.async.queue-size'                 : 'Async appender queue size.',
-        'smbtech.logging.async.discarding-threshold'       : 'Logback async discarding threshold.',
-        'smbtech.logging.async.never-block'                : 'Whether appenders should avoid blocking when the async queue is full.',
-        'smbtech.logging.async.max-flush-time-ms'          : 'Maximum async appender flush time during shutdown.',
+        'smbtech.logging.async.enabled'                    : 'Routes the root logger through the Logback async appender. When false, structured STDOUT logging runs synchronously on the caller thread.',
+        'smbtech.logging.async.queue-size'                 : 'Maximum number of waiting events in the bounded Logback async queue. Accepted values are 256 through 65536.',
+        'smbtech.logging.async.saturation-policy'          : 'Explicit queue saturation behavior: BLOCK, DISCARD_LOW_PRIORITY, or DROP_WHEN_FULL.',
+        'smbtech.logging.async.critical-event-protection-enabled': 'Protects WARN, ERROR, AUDIT, and SECURITY events from saturation-based discarding. Under DROP_WHEN_FULL, a full queue uses synchronous delegate fallback.',
+        'smbtech.logging.async.discarding-threshold'       : 'Low-priority discard threshold. Under DISCARD_LOW_PRIORITY, zero derives 20 percent of queue-size. A positive value with BLOCK preserves the former threshold behavior.',
+        'smbtech.logging.async.never-block'                : 'Compatibility override for the former Logback setting. True forces DROP_WHEN_FULL; prefer saturation-policy for new configuration.',
+        'smbtech.logging.async.max-flush-time-ms'          : 'Maximum time Logback waits to drain accepted queued events after shutdown admission closes. Accepted values are 100 through 30000 milliseconds.',
+        'smbtech.logging.async.observability.enabled'      : 'Registers bounded-cardinality asynchronous queue, discard, fallback, and producer-wait metrics when Micrometer is available.',
         'smbtech.logging.transaction.enabled'              : 'Registers the servlet transaction id filter when servlet APIs are present.',
         'smbtech.logging.transaction.header-name'          : 'Request and response header used for transaction id propagation.',
         'smbtech.logging.transaction.accept-incoming'      : 'Accepts a valid incoming transaction id. If disabled, always generates a new UUID.',
         'smbtech.logging.transaction.max-length'           : 'Maximum accepted incoming transaction id length.'
+]
+
+def actuatorDescriptions = [
+        'smbtech.actuator.enabled'                       : 'Enables the base Service Framework Actuator auto-configuration and neutral diagnostics aggregation service.',
+        'smbtech.actuator.diagnostics.cache-ttl'        : 'Duration for which one bounded snapshot or module result is shared across concurrent health, info, endpoint, and metrics readers. Set to zero to disable shared caching.',
+        'smbtech.actuator.diagnostics.operation-timeout': 'Maximum duration allowed for one complete snapshot or module-information operation.',
+        'smbtech.actuator.diagnostics.max-components'   : 'Maximum component results retained in one snapshot. Accepted values are 1 through 256.',
+        'smbtech.actuator.diagnostics.max-modules'      : 'Maximum module results retained. Accepted values are 1 through 256.',
+        'smbtech.actuator.metrics.enabled'               : 'Registers bounded-cardinality Micrometer gauges when a MeterRegistry is available.',
+        'smbtech.actuator.metrics.cache-ttl'             : 'Duration for which one diagnostic metrics sample is reused across gauge reads. Set to zero to refresh every gauge read.'
 ]
 
 def mockDescriptions = [
@@ -43,7 +56,10 @@ def mockDescriptions = [
         'smbtech.mocks.openapi.enabled'                      : 'Registers servlet mock routes from configured OpenAPI contracts.',
         'smbtech.mocks.openapi.fail-fast'                    : 'Fails application startup when an OpenAPI contract cannot be loaded or registered.',
         'smbtech.mocks.openapi.include-optional-properties'  : 'Includes optional schema properties in automatically generated response bodies.',
-        'smbtech.mocks.openapi.status-header'                : 'Request header used to select a declared OpenAPI response status.',
+        'smbtech.mocks.openapi.allow-in-production'          : 'Allows OpenAPI mock routes under a configured production profile. Keep disabled outside explicitly approved environments.',
+        'smbtech.mocks.openapi.production-profiles'          : 'Spring profiles treated as production environments when OpenAPI mock routes are enabled.',
+        'smbtech.mocks.openapi.status-override-enabled'      : 'Allows requests to select a declared OpenAPI response status through a header.',
+        'smbtech.mocks.openapi.status-header'                : 'Request header used when status override is enabled.',
         'smbtech.mocks.openapi.contracts.<key>.enabled'      : 'Enables this OpenAPI mock contract.',
         'smbtech.mocks.openapi.contracts.<key>.location'     : 'OpenAPI YAML or JSON resource location. Plain paths are treated as classpath resources.',
         'smbtech.mocks.openapi.contracts.<key>.base-path'    : 'Path prefix prepended to every operation registered from this contract.',
@@ -52,17 +68,17 @@ def mockDescriptions = [
 
 def errorHandlingDescriptions = [
         'smbtech.error-handling.enabled'                           : 'Enables servlet error handling auto-configuration. Disable it to remove all framework error handling beans.',
-        'smbtech.error-handling.response.exposure'                : 'Global response exposure applied to every handled error after resolvers and customizers. Accepted values are INTERNAL and PUBLIC. INTERNAL returns the generic safe notification; PUBLIC returns the resolved notification after mandatory sanitization.',
-        'smbtech.error-handling.response.include-field-violations': 'Includes aggregated Bean Validation and binding violations under metadata.violations.',
-        'smbtech.error-handling.response.metadata-allowlist'      : 'Top-level notification metadata keys allowed in public responses. Allowed values are still recursively sanitized.',
+        'smbtech.error-handling.response.exposure'                : 'Global response audience applied to every handled error after resolvers and customizers. Accepted values are PUBLIC and INTERNAL. PUBLIC returns a minimal external notification; INTERNAL returns detailed sanitized notification data for trusted consumers.',
+        'smbtech.error-handling.response.include-field-violations': 'Includes aggregated Bean Validation and binding violations under metadata.violations in detailed INTERNAL responses. PUBLIC responses always omit violations.',
+        'smbtech.error-handling.response.metadata-allowlist'      : 'Top-level notification metadata keys allowed in detailed INTERNAL responses. Allowed values are still recursively sanitized.',
         'smbtech.error-handling.logging.enabled'                  : 'Enables structured error reporting when StructuredLoggerFactory and CorrelationContext beans are available.',
-        'smbtech.error-handling.logging.include-diagnostics'      : 'Includes the internal diagnostic message in structured error events. It never changes the public Notification.',
+        'smbtech.error-handling.logging.include-diagnostics'      : 'Includes the internal diagnostic message in structured error events. It never changes the HTTP Notification response.',
         'smbtech.error-handling.metrics.enabled'                  : 'Enables the bounded-cardinality error counter when a MeterRegistry bean is available.',
         'smbtech.error-handling.metrics.metric-name'              : 'Micrometer counter name used for error code, category, and HTTP status tags.',
         'smbtech.error-handling.security.enabled'                 : 'Registers Notification-based authentication entry point and access denied handler defaults when Spring Security is present.',
-        'smbtech.error-handling.security.oauth2-metadata.enabled' : 'Includes OAuth2 details in public Notification metadata. The RFC 6750 WWW-Authenticate challenge remains enabled.',
+        'smbtech.error-handling.security.oauth2-metadata.enabled' : 'Includes OAuth2 details in detailed INTERNAL Notification metadata. The RFC 6750 WWW-Authenticate challenge remains enabled.',
         'smbtech.error-handling.security.oauth2-metadata.include-error-description': 'Includes a static framework-controlled OAuth2 error description. Provider and exception messages are never exposed.',
-        'smbtech.error-handling.security.oauth2-metadata.include-error-uri': 'Includes the fixed RFC 6750 reference URI in public Notification metadata.',
+        'smbtech.error-handling.security.oauth2-metadata.include-error-uri': 'Includes the fixed RFC 6750 reference URI in detailed INTERNAL Notification metadata.',
         'smbtech.error-handling.security.oauth2-metadata.include-required-scope': 'Includes scopes required by the protected operation. Granted token scopes are never exposed.'
 ]
 
@@ -159,6 +175,15 @@ def restClientDescriptions = [
 
 def propertyReferenceSpecs = [
         new PropertyReferenceSpec(
+                projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator',
+                configurationPropertiesClass: 'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorProperties',
+                prefix: 'smbtech.actuator',
+                outputPath: 'docs/actuator/property-reference.md',
+                title: 'Actuator Property Reference',
+                intro: 'Generated from the compiled `ActuatorProperties` configuration property class. Spring Boot `management.*` properties continue to own endpoint access, exposure, security, health groups, the `management.health.service-framework.enabled` health toggle, the `management.info.service-framework.enabled` info toggle, and `management.endpoint.serviceframework.access`.',
+                descriptions: actuatorDescriptions
+        ),
+        new PropertyReferenceSpec(
                 projectPath: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client',
                 configurationPropertiesClass: 'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties',
                 prefix: 'smbtech.rest-clients',
@@ -218,6 +243,7 @@ String shortType(Type type) {
             .replace('java.time.', '')
             .replace('java.util.', '')
             .replace('com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties$', '')
+            .replace('com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties$Async$', '')
             .replace('com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties$', '')
             .replace('com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties$', '')
             .replace('com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties$', '')
@@ -245,8 +271,21 @@ String formatDefaultValue(Object value) {
         }
         return "${value.toMillis()}ms"
     }
-    if (value instanceof Collection || value instanceof Map) {
+    if (value instanceof Set) {
+        return value.isEmpty()
+                ? 'empty'
+                : '[' + value.collect { String.valueOf(it) }.sort().join(', ') + ']'
+    }
+    if (value instanceof Collection) {
         return value.isEmpty() ? 'empty' : value.toString()
+    }
+    if (value instanceof Map) {
+        return value.isEmpty()
+                ? 'empty'
+                : '{' + value.entrySet()
+                        .collect { "${it.key}=${it.value}" }
+                        .sort()
+                        .join(', ') + '}'
     }
     if (value instanceof Enum) {
         return value.name()
@@ -366,7 +405,8 @@ String generatePropertyReference(PropertyReferenceSpec spec) {
     URL[] urls = rootProject.subprojects
             .findAll { it.extensions.findByName('sourceSets') != null }
             .collectMany { subproject ->
-                subproject.extensions.getByName('sourceSets').main.output.classesDirs.files
+                def mainSourceSet = subproject.extensions.getByName('sourceSets').findByName('main')
+                mainSourceSet == null ? [] : mainSourceSet.output.classesDirs.files
             }
             .collect { it.toURI().toURL() } as URL[]
     URLClassLoader classLoader = new URLClassLoader(urls, this.class.classLoader)

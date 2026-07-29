@@ -3,11 +3,14 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.ClientAssertionContext;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.client.endpoint.AbstractOAuth2AuthorizationGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.AbstractRestClientOAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.DefaultOAuth2TokenRequestHeadersConverter;
+import org.springframework.security.oauth2.client.endpoint.DefaultOAuth2TokenRequestParametersConverter;
 import org.springframework.security.oauth2.client.endpoint.JwtBearerGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.NimbusJwtClientAuthenticationParametersConverter;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
@@ -26,8 +29,6 @@ public final class SpringOAuth2TokenResponseClientFactory {
     private final OAuth2ExtensionRegistry extensionRegistry;
     private final ClientAssertionPipeline clientAssertionPipeline;
     private final OAuth2TokenRequestPipeline tokenRequestPipeline;
-    private final ThreadLocal<AbstractOAuth2AuthorizationGrantRequest> tokenRequestHolder =
-            new ThreadLocal<>();
 
     /**
      * Creates a spring OAuth2 token response client factory instance.
@@ -86,8 +87,7 @@ public final class SpringOAuth2TokenResponseClientFactory {
             createClientCredentials() {
         RestClientClientCredentialsTokenResponseClient tokenResponseClient =
                 new RestClientClientCredentialsTokenResponseClient();
-        tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
-        customizeTokenRequest(tokenResponseClient);
+        customizeTokenRequest(tokenResponseClient, clientAuthenticationParametersConverter());
         return new DiagnosticOAuth2AccessTokenResponseClient<>(
                 tokenResponseClient, diagnosticsLogger);
     }
@@ -100,8 +100,7 @@ public final class SpringOAuth2TokenResponseClientFactory {
     public OAuth2AccessTokenResponseClient<JwtBearerGrantRequest> createJwtBearer() {
         RestClientJwtBearerTokenResponseClient tokenResponseClient =
                 new RestClientJwtBearerTokenResponseClient();
-        tokenResponseClient.addParametersConverter(clientAuthenticationParametersConverter());
-        customizeTokenRequest(tokenResponseClient);
+        customizeTokenRequest(tokenResponseClient, clientAuthenticationParametersConverter());
         return new DiagnosticOAuth2AccessTokenResponseClient<>(
                 tokenResponseClient, diagnosticsLogger);
     }
@@ -151,29 +150,32 @@ public final class SpringOAuth2TokenResponseClientFactory {
     }
 
     private <T extends AbstractOAuth2AuthorizationGrantRequest> void customizeTokenRequest(
-            AbstractRestClientOAuth2AccessTokenResponseClient<T> tokenResponseClient) {
+            AbstractRestClientOAuth2AccessTokenResponseClient<T> tokenResponseClient,
+            Converter<T, MultiValueMap<String, String>> clientAuthenticationConverter) {
         if (extensionRegistry.tokenRequestCustomizers().isEmpty()) {
+            tokenResponseClient.addParametersConverter(clientAuthenticationConverter);
             return;
         }
-        tokenResponseClient.addParametersConverter(
+        DefaultOAuth2TokenRequestParametersConverter<T> defaultParametersConverter =
+                new DefaultOAuth2TokenRequestParametersConverter<>();
+        tokenResponseClient.setParametersConverter(
                 grantRequest -> {
-                    tokenRequestHolder.set(grantRequest);
-                    return new LinkedMultiValueMap<>();
-                });
-        tokenResponseClient.setParametersCustomizer(
-                parameters -> {
-                    AbstractOAuth2AuthorizationGrantRequest grantRequest = tokenRequestHolder.get();
-                    if (grantRequest == null) {
-                        return;
+                    MultiValueMap<String, String> parameters =
+                            defaultParametersConverter.convert(grantRequest);
+                    if (parameters == null) {
+                        parameters = new LinkedMultiValueMap<>();
                     }
-                    try {
-                        MultiValueMap<String, String> resolved =
-                                tokenRequestPipeline.resolveParameters(grantRequest, parameters);
-                        parameters.clear();
-                        parameters.addAll(resolved);
-                    } finally {
-                        tokenRequestHolder.remove();
+                    MultiValueMap<String, String> clientAuthenticationParameters =
+                            clientAuthenticationConverter.convert(grantRequest);
+                    if (clientAuthenticationParameters != null) {
+                        parameters.addAll(clientAuthenticationParameters);
                     }
+                    MultiValueMap<String, String> resolved =
+                            tokenRequestPipeline.resolveParameters(grantRequest, parameters);
+                    parameters.keySet().stream()
+                            .filter(name -> !resolved.containsKey(name))
+                            .forEach(name -> resolved.put(name, List.of()));
+                    return resolved;
                 });
         DefaultOAuth2TokenRequestHeadersConverter<T> headersConverter =
                 new DefaultOAuth2TokenRequestHeadersConverter<>();

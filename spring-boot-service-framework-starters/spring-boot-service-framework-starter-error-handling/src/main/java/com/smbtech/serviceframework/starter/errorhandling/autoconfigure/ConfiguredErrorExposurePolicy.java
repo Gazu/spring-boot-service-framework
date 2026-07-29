@@ -5,7 +5,7 @@ import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorExposurePolicy;
 import java.util.Objects;
 
-/** Applies the single error exposure configured for every resolved error. */
+/** Applies the configured response audience and detail level to every resolved error. */
 public final class ConfiguredErrorExposurePolicy implements ErrorExposurePolicy {
 
     private final ErrorExposure exposure;
@@ -24,10 +24,11 @@ public final class ConfiguredErrorExposurePolicy implements ErrorExposurePolicy 
     }
 
     /**
-     * Returns the configured exposure regardless of the resolver decision.
+     * Returns the configured response audience and detail level regardless of the resolver
+     * decision.
      *
      * @param resolvedError resolved error
-     * @return configured exposure
+     * @return configured response audience and detail level
      */
     @Override
     public ErrorExposure resolve(ResolvedError resolvedError) {

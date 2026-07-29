@@ -19,7 +19,10 @@ Most services should depend on the starter:
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-starter-logging:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
 }
 ```
 
@@ -27,7 +30,10 @@ Framework-level code can depend on the core:
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-logging-core:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-logging-core'
 }
 ```
 
@@ -77,6 +83,8 @@ implementation classes.
 ## Structured Events
 
 `StructuredEvent` is the immutable payload passed through the logging ports.
+Nested maps, collections, and arrays in arguments or structured data are copied
+recursively when the event is built.
 
 ```java
 StructuredEvent event = StructuredEvent.builder(EventType.AUDIT)
@@ -135,7 +143,13 @@ Example event:
 
 No `logback-spring.xml` is required in a consuming service. The starter ships a
 default configuration. A service can still replace it by adding its own Logback
-configuration.
+configuration. Reusable fragments allow the service to replace only the output
+destination while retaining framework properties, saturation policies,
+critical-event protection, metrics, and shutdown behavior. See
+[Extensible Logback Configuration](logging/async-appender.md#extensible-logback-configuration).
+Supported properties, runtime names, fragment paths, legacy precedence, and
+change rules are defined in
+[Logging Compatibility](logging/compatibility.md).
 
 ## Transaction Id And MDC
 
@@ -212,6 +226,8 @@ smbtech:
     async:
       enabled: true
       queue-size: 2048
+      saturation-policy: BLOCK
+      critical-event-protection-enabled: true
       discarding-threshold: 0
       never-block: false
       max-flush-time-ms: 1000
@@ -221,6 +237,10 @@ smbtech:
       accept-incoming: true
       max-length: 128
 ```
+
+The defaults, queue saturation behavior, critical-event limitations, sizing
+guidance, shutdown behavior, and local performance measurement are defined in
+the [Async Appender Contract](logging/async-appender.md).
 
 ## Property Reference
 
@@ -257,6 +277,18 @@ curl -i -H 'X-Transaction-Id: tx-demo-001' http://localhost:8080/api/dummy
 The example verifies that the response includes `transactionId`, `traceId`, and
 `spanId`, and that emitted JSON logs include the same identifiers in `mdc` and
 `data`.
+
+It also includes a bounded workload endpoint that exercises the real async
+appender with normal and protected audit events:
+
+```bash
+curl -sS -X POST \
+  -H 'X-Transaction-Id: tx-async-001' \
+  'http://localhost:8080/api/logging/async?events=1000&critical-every=100'
+```
+
+Use `/actuator/metrics/smbtech.logging.async.queue.depth` and the other metrics
+listed in the async appender contract to inspect its runtime behavior.
 
 ## Boundary Rules
 

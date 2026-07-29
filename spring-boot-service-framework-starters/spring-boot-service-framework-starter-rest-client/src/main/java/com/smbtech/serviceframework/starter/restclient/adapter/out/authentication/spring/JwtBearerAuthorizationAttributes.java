@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** Provides JWT bearer authorization attributes behavior. */
-public final class JwtBearerAuthorizationAttributes {
+final class JwtBearerAuthorizationAttributes {
 
     private JwtBearerAuthorizationAttributes() {}
 

@@ -1,8 +1,5 @@
 package com.smbtech.serviceframework.starter.mock.adapter.in.openapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -15,15 +12,21 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.web.bind.annotation.RequestMethod;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /** Provides open api mock contract loader behavior. */
 public final class OpenApiMockContractLoader {
 
     private static final Set<String> HTTP_METHODS =
             Set.of("get", "post", "put", "patch", "delete", "head", "options", "trace");
+
+    private static final Pattern SUPPORTED_OPENAPI_VERSION = Pattern.compile("3\\.[01]\\.\\d+");
 
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
@@ -38,7 +41,7 @@ public final class OpenApiMockContractLoader {
     public OpenApiMockContractLoader(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
         this.resourceLoader = Objects.requireNonNull(resourceLoader, "resourceLoader");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-        this.yamlMapper = new ObjectMapper(new YAMLFactory()).findAndRegisterModules();
+        this.yamlMapper = new ObjectMapper(new YAMLFactory());
     }
 
     OpenApiMockContract load(String location, boolean includeOptionalProperties, Duration delay)
@@ -57,8 +60,8 @@ public final class OpenApiMockContractLoader {
                 new OpenApiExampleGenerator(root, includeOptionalProperties);
         List<OpenApiMockOperation> operations = readOperations(root, exampleGenerator, delay);
         return new OpenApiMockContract(
-                root.path("info").path("title").asText(),
-                root.path("info").path("version").asText(),
+                root.path("info").path("title").asString(),
+                root.path("info").path("version").asString(),
                 operations);
     }
 
@@ -98,7 +101,7 @@ public final class OpenApiMockContractLoader {
                                                         .orElseThrow());
                 operations.add(
                         new OpenApiMockOperation(
-                                operation.path("operationId").asText(method + pathEntry.getKey()),
+                                operation.path("operationId").asString(method + pathEntry.getKey()),
                                 RequestMethod.valueOf(method.toUpperCase(Locale.ROOT)),
                                 pathEntry.getKey(),
                                 defaultStatus,
@@ -148,8 +151,8 @@ public final class OpenApiMockContractLoader {
         if (body == null) {
             return new Content(contentType, new byte[0]);
         }
-        if (!isJson(contentType) && body.isTextual()) {
-            return new Content(contentType, body.asText().getBytes(StandardCharsets.UTF_8));
+        if (!isJson(contentType) && body.isString()) {
+            return new Content(contentType, body.asString().getBytes(StandardCharsets.UTF_8));
         }
         return new Content(contentType, objectMapper.writeValueAsBytes(body));
     }
@@ -158,7 +161,7 @@ public final class OpenApiMockContractLoader {
         if (contentDefinition.has("example")) {
             return contentDefinition.get("example");
         }
-        Iterator<JsonNode> examples = contentDefinition.path("examples").elements();
+        Iterator<JsonNode> examples = contentDefinition.path("examples").iterator();
         while (examples.hasNext()) {
             JsonNode example = examples.next();
             if (example.has("value")) {
@@ -202,7 +205,7 @@ public final class OpenApiMockContractLoader {
                                         entry.getKey(),
                                         List.of(
                                                 value.isValueNode()
-                                                        ? value.asText()
+                                                        ? value.asString()
                                                         : value.toString()));
                             }
                         });
@@ -218,7 +221,7 @@ public final class OpenApiMockContractLoader {
         if (!value.hasNonNull("$ref")) {
             return value;
         }
-        String reference = value.path("$ref").asText();
+        String reference = value.path("$ref").asString();
         if (!reference.startsWith("#/")) {
             throw new IllegalArgumentException(
                     "external OpenAPI references are not supported: " + reference);
@@ -234,13 +237,15 @@ public final class OpenApiMockContractLoader {
         if (root == null || !root.isObject()) {
             throw new IllegalArgumentException(location + " must contain an OpenAPI object");
         }
-        if (root.path("openapi").asText().isBlank()) {
-            throw new IllegalArgumentException(location + " must declare openapi");
+        String openApiVersion = root.path("openapi").asString().trim();
+        if (!SUPPORTED_OPENAPI_VERSION.matcher(openApiVersion).matches()) {
+            throw new IllegalArgumentException(
+                    location + " must declare a supported OpenAPI 3.0.x or 3.1.x version");
         }
-        if (root.path("info").path("title").asText().isBlank()) {
+        if (root.path("info").path("title").asString().isBlank()) {
             throw new IllegalArgumentException(location + " must declare info.title");
         }
-        if (root.path("info").path("version").asText().isBlank()) {
+        if (root.path("info").path("version").asString().isBlank()) {
             throw new IllegalArgumentException(location + " must declare info.version");
         }
         if (!root.path("paths").isObject()) {

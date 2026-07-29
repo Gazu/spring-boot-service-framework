@@ -138,12 +138,7 @@ public final class ErrorCustomizationPipeline {
         if (exposure == resolvedError.exposure()) {
             return resolvedError;
         }
-        return new ResolvedError(
-                resolvedError.notification(),
-                resolvedError.category(),
-                exposure,
-                resolvedError.diagnosticMessage(),
-                resolvedError.fieldViolations());
+        return resolvedError.withExposure(exposure);
     }
 
     private static <T> List<T> orderedCopy(List<? extends T> values, ToIntFunction<T> order) {

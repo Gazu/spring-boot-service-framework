@@ -6,16 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.commons.notification.Notification;
+import com.smbtech.serviceframework.error.ErrorExposure;
+import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
 import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseWriter;
+import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
 import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonResponseWriter;
-import com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationJsonSerializer;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,16 +26,15 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 class SecurityNotificationHandlersTest {
 
     @Test
     void authenticationEntryPointWritesSnakeCaseNotificationWithoutDiagnostics() throws Exception {
         ObjectMapper applicationMapper = new ObjectMapper();
-        JsonSerializer<?> originalSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
+        var originalModules = applicationMapper.registeredModules();
         SecurityAuthenticationEntryPoint entryPoint =
                 new SecurityAuthenticationEntryPoint(
                         new DefaultNotificationResponseFactory(),
@@ -50,19 +50,16 @@ class SecurityNotificationHandlersTest {
         assertTrue(response.getContentType().startsWith("application/json"));
         JsonNode json = applicationMapper.readTree(response.getContentAsByteArray());
         assertEquals(SecurityAuthenticationEntryPoint.ERROR_CODE, json.get("code").asText());
-        assertEquals(SecurityAuthenticationEntryPoint.PUBLIC_MESSAGE, json.get("message").asText());
+        assertEquals(
+                FallbackThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE,
+                json.get("message").asText());
         assertEquals("", json.get("field_name").asText());
-        assertTrue(json.get("metadata").isObject());
+        assertEquals(Map.of("category", "AUTHENTICATION"), mapperValue(json.get("metadata")));
         assertFalse(json.has("fieldName"));
         assertFalse(response.getContentAsString().contains("security-token"));
         assertFalse(response.getContentAsString().contains("security-secret"));
 
-        JsonSerializer<?> unchangedSerializer =
-                applicationMapper
-                        .getSerializerProviderInstance()
-                        .findValueSerializer(Notification.class);
-        assertSame(originalSerializer, unchangedSerializer);
-        assertFalse(unchangedSerializer instanceof NotificationJsonSerializer);
+        assertEquals(originalModules, applicationMapper.registeredModules());
     }
 
     @Test
@@ -82,7 +79,10 @@ class SecurityNotificationHandlersTest {
         assertEquals(403, response.getStatus());
         JsonNode json = mapper.readTree(response.getContentAsByteArray());
         assertEquals(SecurityAccessDeniedHandler.ERROR_CODE, json.get("code").asText());
-        assertEquals(SecurityAccessDeniedHandler.PUBLIC_MESSAGE, json.get("message").asText());
+        assertEquals(
+                FallbackThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE,
+                json.get("message").asText());
+        assertEquals(Map.of("category", "AUTHORIZATION"), mapperValue(json.get("metadata")));
         assertEquals(
                 Set.of("code", "message", "severity", "field_name", "metadata", "id", "timestamp"),
                 json.properties().stream()
@@ -90,6 +90,11 @@ class SecurityNotificationHandlersTest {
                         .collect(java.util.stream.Collectors.toSet()));
         assertFalse(response.getContentAsString().contains("payment.write"));
         assertFalse(response.getContentAsString().contains("secret"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> mapperValue(JsonNode value) {
+        return new ObjectMapper().convertValue(value, Map.class);
     }
 
     @Test
@@ -141,6 +146,41 @@ class SecurityNotificationHandlersTest {
 
         assertSame(replacementResponse, writtenResponse.get());
         assertEquals(499, servletResponse.getStatus());
+    }
+
+    @Test
+    void sanitizesSecurityResponseAfterApplicationCustomizers() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ErrorCustomizationPipeline customizationPipeline =
+                new ErrorCustomizationPipeline(
+                        List.of(),
+                        List.of(
+                                (response, resolvedError, request) ->
+                                        ResponseEntity.status(response.getStatusCode())
+                                                .body(
+                                                        Notification.error(
+                                                                "E_CUSTOM_SECURITY",
+                                                                "Bearer customizer-token was rejected"))),
+                        resolvedError -> ErrorExposure.INTERNAL);
+        SecurityAuthenticationEntryPoint entryPoint =
+                new SecurityAuthenticationEntryPoint(
+                        new DefaultNotificationResponseFactory(),
+                        new NotificationJsonResponseWriter(mapper),
+                        ErrorReporter.noop(),
+                        (resolvedError, statusCode) -> {},
+                        customizationPipeline);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        entryPoint.commence(
+                new MockHttpServletRequest(),
+                response,
+                new BadCredentialsException("Bearer original-token was rejected"));
+
+        JsonNode json = mapper.readTree(response.getContentAsByteArray());
+        assertEquals("E_CUSTOM_SECURITY", json.get("code").asText());
+        assertEquals("Bearer <redacted> was rejected", json.get("message").asText());
+        assertFalse(response.getContentAsString().contains("customizer-token"));
+        assertFalse(response.getContentAsString().contains("original-token"));
     }
 
     @Test

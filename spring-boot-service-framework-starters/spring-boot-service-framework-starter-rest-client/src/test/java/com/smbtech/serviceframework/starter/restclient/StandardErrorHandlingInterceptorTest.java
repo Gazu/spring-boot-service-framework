@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.restclient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smbtech.serviceframework.httpclient.domain.ApacheHttpClientPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuditPolicy;
 import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
@@ -29,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.mock.http.client.MockClientHttpResponse;
+import tools.jackson.databind.ObjectMapper;
 
 class StandardErrorHandlingInterceptorTest {
 
@@ -108,7 +108,7 @@ class StandardErrorHandlingInterceptorTest {
                         new HttpErrorResponseMapper(),
                         new com.smbtech.serviceframework.httpclient.domain
                                 .HttpErrorNotificationMapper(),
-                        new HttpErrorBodyDecoder(new ObjectMapper().findAndRegisterModules()));
+                        new HttpErrorBodyDecoder(new ObjectMapper()));
 
         assertThatThrownBy(
                         () ->

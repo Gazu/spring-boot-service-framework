@@ -21,7 +21,10 @@ directly. Runtime REST client behavior still belongs in
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech:spring-boot-service-framework-openapi-generator:0.3.0'
+    implementation platform(
+            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+    )
+    implementation 'com.smbtech:spring-boot-service-framework-openapi-generator'
 }
 ```
 
@@ -41,6 +44,11 @@ dependencies {
 The current generator services expose structure and small reusable behavior.
 Full source generation will move from the root build into these types in later
 phases.
+
+`OpenApiSpecReader` uses Jackson 3 structural parsing and accepts OpenAPI 3.0
+and 3.1 YAML/JSON documents. Swagger 2 and malformed or unsupported version
+declarations are rejected. Acceptance of a 3.1 document does not imply support
+for every JSON Schema 2020-12 generation keyword.
 
 The package responsibility is documented by `package-info.java`; the artifact
 does not expose an empty Java marker type.

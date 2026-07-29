@@ -29,8 +29,8 @@ class ConfiguredErrorExposurePolicyTest {
         ConfiguredErrorExposurePolicy policy =
                 new ConfiguredErrorExposurePolicy(new ErrorHandlingProperties());
 
-        assertThat(policy.resolve(resolvedError(ErrorExposure.PUBLIC)))
-                .isEqualTo(ErrorExposure.INTERNAL);
+        assertThat(policy.resolve(resolvedError(ErrorExposure.INTERNAL)))
+                .isEqualTo(ErrorExposure.PUBLIC);
     }
 
     @Test

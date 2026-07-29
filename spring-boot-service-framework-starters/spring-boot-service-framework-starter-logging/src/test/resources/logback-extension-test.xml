@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="com/smbtech/serviceframework/starter/logging/logback/properties.xml"/>
+
+    <appender name="CUSTOM" class="ch.qos.logback.core.read.ListAppender"/>
+    <property name="SERVICE_FRAMEWORK_LOGGING_DELEGATE" value="CUSTOM"/>
+
+    <include resource="com/smbtech/serviceframework/starter/logging/logback/async-appender.xml"/>
+    <include resource="com/smbtech/serviceframework/starter/logging/logback/root.xml"/>
+</configuration>
