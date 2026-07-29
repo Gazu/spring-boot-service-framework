@@ -6,8 +6,8 @@ description = 'Shared, framework-agnostic utilities for SMB Tech services'
 
 dependencies {
     api project(':spring-boot-service-framework-logging-core')
-    api 'org.slf4j:slf4j-api:2.0.17'
-    api 'org.slf4j:slf4j-ext:2.0.17'
+    api 'org.slf4j:slf4j-api:2.0.18'
+    api 'org.slf4j:slf4j-ext:2.0.18'
 
     testImplementation 'ch.qos.logback:logback-classic:1.5.21'
 }
