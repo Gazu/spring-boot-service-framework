@@ -68,12 +68,19 @@ jobs:
         run: .ci/security/scan.sh "${SECURITY_SCAN_MODE}"
 
       - name: Upload redacted security evidence
-        if: always()
+        if: >-
+          ${{
+            always() &&
+            hashFiles(
+              'build/reports/security/*.sarif',
+              'build/reports/security/security-scan-*-summary.json'
+            ) != ''
+          }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: security-monitor-${{ github.run_id }}
           path: |
             build/reports/security/*.sarif
             build/reports/security/security-scan-*-summary.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: ${{ github.event_name == 'schedule' && 30 || 14 }}
