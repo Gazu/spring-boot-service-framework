@@ -1,0 +1,12 @@
+title = "Spring Boot Service Framework Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow the historical local actuator example credentials"
+condition = "AND"
+targetRules = ["curl-auth-user"]
+regexTarget = "line"
+regexes = ['''curl -u actuator-user:change-me''']
+paths = ['''^examples/actuator-consumer/README\.md$''']
