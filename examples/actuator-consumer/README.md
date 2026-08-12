@@ -79,7 +79,9 @@ cd examples/actuator-consumer
 Call the protected diagnostic endpoint:
 
 ```bash
-curl -u actuator-user:change-me \
+ACTUATOR_USERNAME=actuator-user
+ACTUATOR_PASSWORD=change-me
+curl --user "${ACTUATOR_USERNAME}:${ACTUATOR_PASSWORD}" \
   http://localhost:8080/actuator/serviceframework
 ```
 
