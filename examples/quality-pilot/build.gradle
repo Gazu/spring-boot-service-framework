@@ -7,6 +7,11 @@ plugins {
 
 description = 'Internal Spring Boot pilot used to validate the framework quality pipeline.'
 
+ext['httpclient5.version'] = providers.gradleProperty('httpClient5Version').get()
+ext['httpcore5.version'] = providers.gradleProperty('httpCore5Version').get()
+ext['jackson-bom.version'] = providers.gradleProperty('jackson3Version').get()
+ext['log4j2.version'] = providers.gradleProperty('log4j2Version').get()
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)

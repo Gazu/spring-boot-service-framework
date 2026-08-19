@@ -98,7 +98,7 @@ tasks.register('loggingConsumerSmoke', GradleBuild) {
     description = 'Builds and AOT-processes the standalone logging example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/logging-consumer')
-    tasks = ['clean', 'test', 'processAot']
+    tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
 tasks.register('restClientConsumerSmoke', GradleBuild) {
@@ -106,7 +106,7 @@ tasks.register('restClientConsumerSmoke', GradleBuild) {
     description = 'Builds and AOT-processes the standalone REST client example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/rest-client-consumer')
-    tasks = ['clean', 'test', 'processAot']
+    tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
 tasks.register('errorHandlingConsumerSmoke', GradleBuild) {
@@ -114,7 +114,7 @@ tasks.register('errorHandlingConsumerSmoke', GradleBuild) {
     description = 'Builds and AOT-processes the standalone error handling example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/error-handling-consumer')
-    tasks = ['clean', 'test', 'processAot']
+    tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
 tasks.register('actuatorConsumerSmoke', GradleBuild) {
@@ -122,7 +122,7 @@ tasks.register('actuatorConsumerSmoke', GradleBuild) {
     description = 'Builds and AOT-processes the standalone Actuator example against the published Maven artifacts.'
     dependsOn rootProject.tasks.named('publishLocalArtifacts')
     dir = file('examples/actuator-consumer')
-    tasks = ['clean', 'test', 'processAot']
+    tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
 tasks.register('consumerSmoke') {

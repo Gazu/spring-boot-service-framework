@@ -3,7 +3,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4'
+        classpath 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.5'
     }
 }
 

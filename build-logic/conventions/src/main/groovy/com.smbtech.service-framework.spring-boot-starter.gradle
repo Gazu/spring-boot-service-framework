@@ -3,9 +3,19 @@ plugins {
     id 'io.spring.dependency-management'
 }
 
+def httpClient5Version = providers.gradleProperty('httpClient5Version').get()
+def httpCore5Version = providers.gradleProperty('httpCore5Version').get()
+def jackson3Version = providers.gradleProperty('jackson3Version').get()
+def log4j2Version = providers.gradleProperty('log4j2Version').get()
+
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+        mavenBom("org.springframework.boot:spring-boot-dependencies:${springBootVersion}") {
+            bomProperty 'httpclient5.version', httpClient5Version
+            bomProperty 'httpcore5.version', httpCore5Version
+            bomProperty 'jackson-bom.version', jackson3Version
+            bomProperty 'log4j2.version', log4j2Version
+        }
     }
 }
 

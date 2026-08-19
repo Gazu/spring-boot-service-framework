@@ -26,8 +26,8 @@ gradlePlugin {
 
 dependencies {
     compileOnly "org.jspecify:jspecify:${frameworkProperties.getProperty('jspecifyVersion')}"
-    implementation 'tools.jackson.core:jackson-databind:3.1.4'
-    implementation 'tools.jackson.dataformat:jackson-dataformat-yaml:3.1.4'
+    implementation "tools.jackson.core:jackson-databind:${frameworkProperties.getProperty('jackson3Version')}"
+    implementation "tools.jackson.dataformat:jackson-dataformat-yaml:${frameworkProperties.getProperty('jackson3Version')}"
 
     testImplementation gradleTestKit()
     testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'

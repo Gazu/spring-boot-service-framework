@@ -123,6 +123,36 @@ Applications must still add optional capabilities such as
 `spring-boot-starter-oauth2-client` when their selected framework feature
 requires them.
 
+### Security Patch Overrides
+
+The platform applies reviewed patch-level overrides when a supported Spring
+Boot BOM still manages a dependency with a published vulnerability. These
+constraints remain aligned with the dependency families selected by Spring
+Boot and can be removed after the supported BOM includes the fixes.
+
+| Dependency | Managed version |
+|---|---|
+| Apache HttpClient 5 | `5.6.3` |
+| Apache HttpCore 5 | `5.4.3` |
+| Jackson 3 | `3.1.5` |
+| Log4j 2 API | `2.25.5` |
+
+The platform publishes these versions as strict Gradle constraints. Applications
+that apply `io.spring.dependency-management` must also override the matching
+Spring Boot BOM properties because that plugin's resolution rules take
+precedence over Gradle constraints:
+
+```groovy
+ext['httpclient5.version'] = '5.6.3'
+ext['httpcore5.version'] = '5.4.3'
+ext['jackson-bom.version'] = '3.1.5'
+ext['log4j2.version'] = '2.25.5'
+```
+
+Keep these values aligned with the framework release. The standalone
+applications under `examples/` load them from the repository's
+`gradle.properties`.
+
 ## Local Publication
 
 Publish all framework artifacts to module-local Maven repositories:
@@ -190,6 +220,7 @@ Common failures:
 | A framework dependency has no version | The platform is missing from that Gradle configuration | Add `platform(...)` to the matching configuration |
 | The platform cannot be found | Its repository was not configured or it was not published | Publish locally or add the private Maven registry |
 | A different framework version is selected | An explicit version, another platform, or a resolution rule overrides the constraint | Remove individual framework versions and inspect `dependencyInsight` |
+| A security patch override is downgraded to the Spring Boot BOM version | `io.spring.dependency-management` selected the BOM version through a resolution rule | Configure the security patch BOM properties listed above |
 | Spring dependencies are unexpectedly forced | The consumer imported the BOM with `enforcedPlatform(...)` | Use `platform(...)` unless strict enforcement is required |
 | A generated OpenAPI artifact has no version | Generated contract artifacts are intentionally outside this BOM | Declare the generated artifact version explicitly |
 

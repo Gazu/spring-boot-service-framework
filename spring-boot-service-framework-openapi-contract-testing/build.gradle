@@ -5,9 +5,13 @@ plugins {
 
 description = 'Executable OpenAPI contract testing for Spring MVC applications'
 
+def jackson3Version = providers.gradleProperty('jackson3Version').get()
+
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+        mavenBom("org.springframework.boot:spring-boot-dependencies:${springBootVersion}") {
+            bomProperty 'jackson-bom.version', jackson3Version
+        }
     }
 }
 

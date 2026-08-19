@@ -16,6 +16,13 @@ dependencies {
         platformContract.managedProjectPaths.each { managedProjectPath ->
             api project(managedProjectPath)
         }
+        platformContract.managedDependencyOverrides.each { coordinate, overrideVersion ->
+            api(coordinate) {
+                version {
+                    strictly overrideVersion
+                }
+            }
+        }
     }
 }
 
@@ -30,10 +37,11 @@ publishing {
 }
 
 def managedCoordinates = {
-    platformContract.managedProjectPaths.collectEntries { managedProjectPath ->
+    def projectCoordinates = platformContract.managedProjectPaths.collectEntries { managedProjectPath ->
         def managedProject = rootProject.project(managedProjectPath)
         [("${managedProject.group}:${managedProject.name}"): managedProject.version.toString()]
     }
+    projectCoordinates + platformContract.managedDependencyOverrides
 }
 
 tasks.register('validatePlatformConstraints') {
@@ -41,6 +49,7 @@ tasks.register('validatePlatformConstraints') {
     description = 'Validates that the platform manages every published framework module and the Spring Boot BOM.'
 
     inputs.property('managedProjectPaths', platformContract.managedProjectPaths)
+    inputs.property('managedDependencyOverrides', platformContract.managedDependencyOverrides)
     inputs.property('springBootBom', springBootBom)
 
     doLast {
@@ -119,6 +128,7 @@ tasks.register('validatePlatformPublishedPom') {
     dependsOn tasks.named('generatePomFileForMavenJavaPublication')
     inputs.file(generatedPlatformPom)
     inputs.property('managedProjectPaths', platformContract.managedProjectPaths)
+    inputs.property('managedDependencyOverrides', platformContract.managedDependencyOverrides)
     inputs.property('excludedCoordinateGroups', platformContract.excludedCoordinateGroups)
     inputs.property('springBootBom', springBootBom)
 
@@ -163,11 +173,12 @@ tasks.register('validatePlatformPublishedPom') {
             }
         }
 
-        def expectedManagedEntries = expectedCoordinates.keySet() + [
-                "${springBootBom.groupId}:${springBootBom.artifactId}"
-        ]
+        def expectedManagedEntries = (expectedCoordinates.keySet().collect { it.toString() } + [
+                "${springBootBom.groupId}:${springBootBom.artifactId}".toString()
+        ]).toSet()
         managedDependencies.findAll { dependency ->
-            !expectedManagedEntries.contains("${dependency.groupId}:${dependency.artifactId}")
+            def coordinate = "${dependency.groupId}:${dependency.artifactId}".toString()
+            !expectedManagedEntries.contains(coordinate)
         }.each { dependency ->
             failures.add(
                     "Unexpected dependencyManagement entry: "

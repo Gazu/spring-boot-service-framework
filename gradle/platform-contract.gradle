@@ -1,7 +1,7 @@
 // Framework platform contract shared by platform creation and compatibility checks.
 
 def platformContract = [
-        schemaVersion            : 1,
+        schemaVersion            : 2,
         coordinates              : [
                 groupId   : 'com.smbtech',
                 artifactId: 'spring-boot-service-framework-platform',
@@ -15,6 +15,20 @@ def platformContract = [
         ].asImmutable(),
         springBootVersionProperty: 'springBootVersion',
         consumerImportMode       : 'platform',
+        managedDependencyOverrides: [
+                'org.apache.httpcomponents.client5:httpclient5':
+                        providers.gradleProperty('httpClient5Version').get(),
+                'org.apache.httpcomponents.core5:httpcore5':
+                        providers.gradleProperty('httpCore5Version').get(),
+                'org.apache.httpcomponents.core5:httpcore5-h2':
+                        providers.gradleProperty('httpCore5Version').get(),
+                'org.apache.logging.log4j:log4j-api':
+                        providers.gradleProperty('log4j2Version').get(),
+                'tools.jackson.core:jackson-databind':
+                        providers.gradleProperty('jackson3Version').get(),
+                'tools.jackson.dataformat:jackson-dataformat-yaml':
+                        providers.gradleProperty('jackson3Version').get()
+        ].asImmutable(),
         managedProjectPaths      : [
                 ':spring-boot-service-framework-actuator-core',
                 ':spring-boot-service-framework-commons',
@@ -55,6 +69,12 @@ def renderPlatformCompatibilityContract = {
     platformContract.managedProjectPaths.collect { managedProjectPath ->
         def managedProject = rootProject.project(managedProjectPath)
         "${managedProject.group}:${managedProject.name}:${managedProject.version}"
+    }.sort().each { coordinate ->
+        output << "- ${coordinate}\n"
+    }
+    output << '\nmanaged-dependency-overrides:\n'
+    platformContract.managedDependencyOverrides.collect { coordinate, version ->
+        "${coordinate}:${version}"
     }.sort().each { coordinate ->
         output << "- ${coordinate}\n"
     }
@@ -117,6 +137,7 @@ tasks.register('validateFrameworkPlatformContract') {
     inputs.property('springBootBom', platformContract.springBootBom)
     inputs.property('springBootVersionProperty', platformContract.springBootVersionProperty)
     inputs.property('consumerImportMode', platformContract.consumerImportMode)
+    inputs.property('managedDependencyOverrides', platformContract.managedDependencyOverrides)
     inputs.property('managedProjectPaths', platformContract.managedProjectPaths)
     inputs.property('excludedCoordinateGroups', platformContract.excludedCoordinateGroups)
 
@@ -139,6 +160,15 @@ tasks.register('validateFrameworkPlatformContract') {
         if (platformContract.managedProjectPaths.size()
                 != platformContract.managedProjectPaths.toSet().size()) {
             failures.add('Managed framework project paths must be unique.')
+        }
+
+        platformContract.managedDependencyOverrides.each { coordinate, version ->
+            if (!(coordinate ==~ /^[^:]+:[^:]+$/)) {
+                failures.add("Managed dependency override has invalid coordinates: ${coordinate}.")
+            }
+            if (version.isBlank()) {
+                failures.add("Managed dependency override ${coordinate} must declare a version.")
+            }
         }
 
         platformContract.managedProjectPaths.each { projectPath ->

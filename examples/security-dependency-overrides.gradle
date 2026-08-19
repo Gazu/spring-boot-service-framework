@@ -1,0 +1,63 @@
+def frameworkProperties = new Properties()
+rootProject.file('../../gradle.properties').withInputStream { frameworkProperties.load(it) }
+
+def securityDependencyOverrides = [
+        'org.apache.httpcomponents.client5:httpclient5': [
+                bomProperty: 'httpclient5.version',
+                versionProperty: 'httpClient5Version'
+        ],
+        'org.apache.httpcomponents.core5:httpcore5': [
+                bomProperty: 'httpcore5.version',
+                versionProperty: 'httpCore5Version'
+        ],
+        'org.apache.httpcomponents.core5:httpcore5-h2': [
+                bomProperty: 'httpcore5.version',
+                versionProperty: 'httpCore5Version'
+        ],
+        'org.apache.logging.log4j:log4j-api': [
+                bomProperty: 'log4j2.version',
+                versionProperty: 'log4j2Version'
+        ],
+        'tools.jackson.core:jackson-databind': [
+                bomProperty: 'jackson-bom.version',
+                versionProperty: 'jackson3Version'
+        ],
+        'tools.jackson.dataformat:jackson-dataformat-yaml': [
+                bomProperty: 'jackson-bom.version',
+                versionProperty: 'jackson3Version'
+        ]
+].collectEntries { coordinate, override ->
+    def version = frameworkProperties.getProperty(override.versionProperty)
+    ext[override.bomProperty] = version
+    [(coordinate): version]
+}.asImmutable()
+
+tasks.register('validateSecurityDependencyOverrides') {
+    group = 'verification'
+    description = 'Validates security patch versions selected by Spring dependency management.'
+    inputs.property('securityDependencyOverrides', securityDependencyOverrides)
+
+    doLast {
+        def selectedVersions = configurations.runtimeClasspath.incoming.resolutionResult
+                .allComponents
+                .findAll { component ->
+                    component.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                }
+                .collectEntries { component ->
+                    def id = component.id
+                    [("${id.group}:${id.module}".toString()): id.version]
+                }
+        def failures = securityDependencyOverrides.findAll { coordinate, expectedVersion ->
+            selectedVersions.containsKey(coordinate)
+                    && selectedVersions[coordinate] != expectedVersion
+        }.collect { coordinate, expectedVersion ->
+            "${coordinate} resolved to ${selectedVersions[coordinate]}; expected ${expectedVersion}."
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Unsafe dependency versions selected:\n' + failures.join('\n')
+            )
+        }
+    }
+}
