@@ -1,17 +1,13 @@
 package com.smbtech.serviceframework.starter.actuator.autoconfigure;
 
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
-import com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
-import java.time.Clock;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 
 /** Provides bounded-cardinality Service Framework metrics. */
 @AutoConfiguration(
@@ -32,20 +28,9 @@ import org.springframework.context.annotation.Bean;
         name = "enabled",
         havingValue = "true",
         matchIfMissing = true)
+@Import(ActuatorConfigurationImportSelector.class)
 public class ActuatorMetricsAutoConfiguration {
 
     /** Creates an Actuator metrics auto-configuration instance. */
     public ActuatorMetricsAutoConfiguration() {}
-
-    @Bean(name = "serviceFrameworkMetrics")
-    @ConditionalOnMissingBean(name = "serviceFrameworkMetrics")
-    MeterBinder serviceFrameworkMetrics(
-            FrameworkDiagnostics diagnostics,
-            ActuatorProperties properties,
-            ObjectProvider<Clock> clocks) {
-        return new ServiceFrameworkMetrics(
-                diagnostics,
-                clocks.getIfUnique(Clock::systemUTC),
-                properties.getMetrics().getCacheTtl());
-    }
 }

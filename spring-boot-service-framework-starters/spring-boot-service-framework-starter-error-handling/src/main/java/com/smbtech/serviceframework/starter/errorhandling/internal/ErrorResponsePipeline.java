@@ -2,17 +2,15 @@ package com.smbtech.serviceframework.starter.errorhandling.internal;
 
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ResolvedError;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.FinalNotificationResponseSanitizer;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorMetricsRecorder;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
-import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import org.springframework.http.ResponseEntity;
 
 /** Coordinates the common response stages shared by MVC and Spring Security adapters. */
-public final class ErrorResponsePipeline {
+final class ErrorResponsePipeline {
 
     private final NotificationResponseFactory responseFactory;
     private final ErrorReporter errorReporter;
@@ -27,14 +25,14 @@ public final class ErrorResponsePipeline {
      * @param errorReporter resolved error reporter
      * @param metricsRecorder error metrics recorder
      * @param customizationPipeline error and response customization pipeline
-     * @param finalResponseSanitizer final response sanitizer
+     * @param finalResponseFactory mandatory final response safety factory
      */
-    public ErrorResponsePipeline(
+    ErrorResponsePipeline(
             NotificationResponseFactory responseFactory,
             ErrorReporter errorReporter,
             ErrorMetricsRecorder metricsRecorder,
             ErrorCustomizationPipeline customizationPipeline,
-            FinalNotificationResponseSanitizer finalResponseSanitizer) {
+            NotificationResponseFactory finalResponseFactory) {
         this.responseFactory =
                 Objects.requireNonNull(responseFactory, "responseFactory must not be null");
         this.errorReporter =
@@ -44,9 +42,7 @@ public final class ErrorResponsePipeline {
         this.customizationPipeline =
                 Objects.requireNonNull(
                         customizationPipeline, "customizationPipeline must not be null");
-        this.finalResponseSanitizer =
-                Objects.requireNonNull(
-                        finalResponseSanitizer, "finalResponseSanitizer must not be null");
+        this.finalResponseSanitizer = new FinalNotificationResponseSanitizer(finalResponseFactory);
     }
 
     /**
@@ -57,7 +53,7 @@ public final class ErrorResponsePipeline {
      * @param request current request
      * @return prepared response and its final resolved error
      */
-    public PreparedErrorResponse prepare(
+    PreparedErrorResponse prepare(
             Throwable cause, ResolvedError resolvedError, HttpServletRequest request) {
         Throwable safeCause = Objects.requireNonNull(cause, "cause must not be null");
         HttpServletRequest safeRequest =
@@ -80,7 +76,7 @@ public final class ErrorResponsePipeline {
      *
      * @param preparedResponse prepared response
      */
-    public void report(PreparedErrorResponse preparedResponse) {
+    void report(PreparedErrorResponse preparedResponse) {
         PreparedErrorResponse prepared = requirePrepared(preparedResponse);
         try {
             errorReporter.report(
@@ -98,7 +94,7 @@ public final class ErrorResponsePipeline {
      *
      * @param preparedResponse prepared response
      */
-    public void record(PreparedErrorResponse preparedResponse) {
+    void record(PreparedErrorResponse preparedResponse) {
         PreparedErrorResponse prepared = requirePrepared(preparedResponse);
         try {
             metricsRecorder.record(prepared.resolvedError(), prepared.statusCode());

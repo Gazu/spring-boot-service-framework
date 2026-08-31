@@ -4,7 +4,7 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import org.apache.hc.core5.http.io.SocketConfig;
 
 /** Provides socket config configurator behavior. */
-public final class SocketConfigConfigurator {
+final class SocketConfigConfigurator {
     /** Creates a socket config configurator instance. */
     public SocketConfigConfigurator() {}
 

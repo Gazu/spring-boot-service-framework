@@ -29,7 +29,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 /** Provides spring security JWT bearer assertion resolver behavior. */
-public final class SpringSecurityJwtBearerAssertionResolver {
+final class SpringSecurityJwtBearerAssertionResolver {
 
     private final RestClientProperties properties;
     private final SigningJwkResolver signingJwkResolver;

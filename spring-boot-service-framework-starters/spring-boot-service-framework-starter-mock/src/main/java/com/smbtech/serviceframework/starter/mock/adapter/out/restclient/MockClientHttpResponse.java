@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
 
 /** Provides mock client http response behavior. */
-public final class MockClientHttpResponse implements ClientHttpResponse {
+final class MockClientHttpResponse implements ClientHttpResponse {
 
     private final MockResponse response;
     private final HttpHeaders headers;
@@ -20,7 +20,7 @@ public final class MockClientHttpResponse implements ClientHttpResponse {
      *
      * @param response response value
      */
-    public MockClientHttpResponse(MockResponse response) {
+    MockClientHttpResponse(MockResponse response) {
         this.response = Objects.requireNonNull(response, "response must not be null");
         this.headers = toHttpHeaders(response);
     }

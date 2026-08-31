@@ -8,6 +8,15 @@ import java.util.List;
 public interface NotificationAggregationPolicy {
 
     /**
+     * Creates the framework default aggregation policy.
+     *
+     * @return default aggregation policy
+     */
+    static NotificationAggregationPolicy defaultPolicy() {
+        return new DefaultNotificationAggregationPolicy();
+    }
+
+    /**
      * Aggregates ordered notifications into one resolved error.
      *
      * @param notifications notifications ordered by application priority

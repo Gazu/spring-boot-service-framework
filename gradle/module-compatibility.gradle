@@ -85,9 +85,22 @@ def moduleCompatibilityContracts = [
                                 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
                 ],
                 pluginIds         : [],
+                runtimeContracts  : [
+                        'dynamic-rest-client-aot=SUPPORTED',
+                        'dynamic-rest-client-bean-name=<client-name>RestClient',
+                        'dynamic-rest-client-custom-bean-name=SUPPORTED',
+                        'dynamic-rest-client-disabled-registration=OMITTED',
+                        'dynamic-rest-client-initialization=LAZY',
+                        'dynamic-rest-client-registry-replacement=SUPPORTED',
+                        'dynamic-rest-client-user-bean-precedence=APPLICATION'
+                ],
                 verificationTasks : [
                         ':spring-boot-service-framework-http-client-core:check',
-                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check'
+                        ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check',
+                        'restClientConsumerAot',
+                        'validateAutoConfigurationEncapsulation',
+                        'validateNoPublicImplementationTypes',
+                        'validateSupportedApiDependencyBoundaries'
                 ]
         ],
         mock              : [
@@ -145,17 +158,6 @@ def moduleCompatibilityContracts = [
                         'documentationCheck'
                 ]
         ],
-        openApiGenerator  : [
-                taskName          : 'openApiGeneratorCompatibilityCheck',
-                displayName       : 'OpenAPI Generator',
-                artifacts         : ['com.smbtech:spring-boot-service-framework-openapi-generator'],
-                autoConfiguration : [:],
-                pluginIds         : [],
-                verificationTasks : [
-                        ':spring-boot-service-framework-openapi-generator:check',
-                        'validateOpenApiGeneratorModuleCompatibility'
-                ]
-        ],
         contractTesting   : [
                 taskName          : 'contractTestingCompatibilityCheck',
                 displayName       : 'Contract Testing',
@@ -164,15 +166,50 @@ def moduleCompatibilityContracts = [
                 pluginIds         : [],
                 verificationTasks : [':spring-boot-service-framework-openapi-contract-testing:check']
         ],
+        projectGenerator  : [
+                taskName          : 'projectGeneratorCompatibilityCheck',
+                displayName       : 'Project Generator',
+                artifacts         : ['com.smbtech:spring-boot-service-framework-project-generator'],
+                autoConfiguration : [:],
+                pluginIds         : [],
+                runtimeContracts  : [
+                        'input=openapi-document',
+                        'input=server-api-jar',
+                        'build-system=gradle',
+                        'architecture=hexagonal',
+                        'architecture-test=archunit',
+                        'generation-mode=one-time'
+                ],
+                verificationTasks : [
+                        ':spring-boot-service-framework-project-generator:check',
+                        ':spring-boot-service-framework-project-generator:scaffoldingCompatibilityCheck'
+                ]
+        ],
         openApiGradlePlugin: [
                 taskName          : 'openApiGradlePluginCompatibilityCheck',
                 displayName       : 'OpenAPI Gradle Plugin',
                 artifacts         : ['Gradle plugin com.smbtech.service-framework.openapi-generator'],
                 autoConfiguration : [:],
                 pluginIds         : ['com.smbtech.service-framework.openapi-generator'],
+                runtimeContracts  : [
+                        'task=smbtechOpenApiValidateSpecs',
+                        'task=smbtechOpenApiBuildLogicCheck',
+                        'task=smbtechOpenApiGenerateModels',
+                        'task=smbtechOpenApiGenerateServerApi',
+                        'task=smbtechOpenApiGenerateClient',
+                        'task=smbtechOpenApiAssemble',
+                        'task=smbtechOpenApiPublishToLocalRepository',
+                        'task=smbtechOpenApiPublish',
+                        'task=smbtechOpenApiBreakingChangeCheck',
+                        'task=smbtechOpenApiReproducibilityCheck',
+                        'task=smbtechOpenApiMigrationReport',
+                        'task=smbtechOpenApiConsumerTest',
+                        'task=smbtechOpenApiMockContractCheck',
+                        'task=smbtechOpenApiCompatibilityCheck'
+                ],
                 verificationTasks : [
                         'smbtechOpenApiBuildLogicCheck',
-                        'validateOpenApiTaskCompatibility'
+                        'smbtechOpenApiCompatibilityCheck'
                 ]
         ]
 ]
@@ -322,7 +359,7 @@ moduleCompatibilityContracts.each { contractName, contract ->
         dependsOn(validationTask)
         dependsOn(contract.verificationTasks)
         if (contractName == 'openApiGradlePlugin') {
-            dependsOn gradle.includedBuild('build-logic').task(':openapi-generator-plugin:check')
+            dependsOn gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-gradle-plugin:check')
         }
     }
 }

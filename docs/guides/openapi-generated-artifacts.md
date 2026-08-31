@@ -1,197 +1,85 @@
 # Generate OpenAPI Contract Artifacts
 
-Use this guide when a service team has an OpenAPI document and needs generated
-models, server API contracts, and REST client interfaces as versioned Maven
-artifacts.
+Use this procedure when an OpenAPI document must become versioned models,
+server API, and REST client Maven artifacts. For a complete first adoption that
+also implements and consumes those artifacts, use
+[OpenAPI Getting Started](../openapi/getting-started.md).
 
 ## 1. Add The Spec
 
-Place the OpenAPI file under one of the scanned locations:
+Place the document in a conventional OpenAPI directory or register its path in
+the plugin DSL. It must declare a valid `info.title`, `info.version`, and at
+least one operation with a unique `operationId`.
 
-```text
-docs/openapi/
-src/main/openapi/
-openapi/
-swagger/
-```
+Use [OpenAPI Validation](../openapi/validation.md) for supported discovery
+locations and document rules. Use the
+[Gradle Plugin Reference](../openapi/plugin-reference.md) when explicit
+registration or coordinate overrides are required.
 
-The spec must define `info.title` and `info.version`:
+## 2. Register The Baseline
 
-```yaml
-openapi: 3.0.3
-info:
-  title: retail-loyalty-rewards
-  version: '1.0.0'
-```
+Commit the immutable snapshot required by your compatibility policy. Baseline
+layout, initial-version behavior, selection, and SemVer enforcement are owned
+by [OpenAPI Contract Versioning](../openapi/versioning.md).
 
-`info.title` becomes the artifact base name and `info.version` becomes the
-artifact version.
-
-## 2. Register The Version
-
-After adding or intentionally changing a spec version, update the committed
-catalog:
-
-```bash
-./gradlew generateOpenApiSpecVersionCatalog
-```
-
-This updates:
-
-```text
-docs/openapi/spec-versions.properties
-```
-
-If the spec content changes without a new `info.version`, validation fails.
+Do not modify a same-version contract after publication.
 
 ## 3. Generate Artifacts
 
-Generate all OpenAPI JARs:
+Generate, compile, and package every enabled artifact kind:
 
 ```bash
-./gradlew openApiModelsJar openApiServerApiJar openApiClientJar
+./gradlew smbtechOpenApiAssemble
 ```
 
-For `retail-loyalty-rewards:1.0.0`, the generated coordinates are:
+Binary and source JARs are written below `build/libs/smbtech-openapi`. Their
+complete contents, package boundaries, Maven dependencies, metadata, and
+kind-specific task names are defined in
+[OpenAPI Artifact Generation](../openapi/generation.md).
+
+## 4. Inspect The Result
+
+For contract `retail-loyalty-rewards:1.0.0` with default settings, confirm these
+coordinates:
 
 ```text
-com.smbtech.openapi:retail-loyalty-rewards-models:1.0.0
-com.smbtech.openapi:retail-loyalty-rewards-api:1.0.0
-com.smbtech.openapi:retail-loyalty-rewards-client:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-models:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-server-api:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-client:1.0.0
 ```
 
-Generated JARs are written under:
+Inspect generated sources only to diagnose the contract or template behavior.
+Never edit build output.
 
-```text
-build/libs/openapi/models/
-build/libs/openapi/api/
-build/libs/openapi/client/
-```
+## 5. Validate
 
-## 4. Validate
-
-Run the full OpenAPI validation set:
+Run the complete OpenAPI compatibility lifecycle before publication:
 
 ```bash
-./gradlew openApiCompatibilityCheck
+./gradlew smbtechOpenApiCompatibilityCheck
 ```
 
-This validates:
+Review the evidence under `build/reports/smbtech-openapi`. The exact child tasks,
+reports, and limits are documented in
+[OpenAPI Validation](../openapi/validation.md).
 
-- public OpenAPI Gradle task names;
-- spec naming and the committed spec version catalog;
-- generated metadata;
-- advanced model generation for refs, enums, arrays, maps, and validation
-  annotations;
-- generated `models`, `api`, and `client` JAR contents;
-- artifact separation across `models`, `api`, and `client`;
-- reproducible source and JAR generation;
-- consumer-style compilation against the generated artifacts;
-- local Maven publication layout and POM dependencies;
-- reusable generator module compatibility;
-- OpenAPI Gradle build-logic compatibility.
+## 6. Publish Locally
 
-For local development, this is the main command to run before publishing or
-committing OpenAPI generator changes.
-
-## 5. Publish Locally
-
-Publish generated OpenAPI artifacts to the root local build repository:
+Publish the generated Maven modules to the configured local build repository:
 
 ```bash
-./gradlew publishOpenApiArtifactsToLocalBuildRepository
+./gradlew smbtechOpenApiPublishToLocalRepository
 ```
 
-The repository path is:
+With defaults, consumers resolve them from `build/repository/openapi`. Repository
+overrides, remote publication, credentials, CI ordering, and immutable release
+rules are owned by
+[OpenAPI Artifact Publishing](../openapi/publishing.md).
 
-```text
-build/repository/openapi
-```
+## Expected Result
 
-Consumer builds can use it during local development:
-
-```groovy
-repositories {
-    maven {
-        url = uri('../spring-boot-service-framework/build/repository/openapi')
-    }
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'com.smbtech.openapi:retail-loyalty-rewards-client:1.0.0'
-}
-```
-
-## 6. Implement The Server API
-
-A service exposing the generated API implements the delegate from the API JAR:
-
-```java
-import com.smbtech.openapi.retailloyaltyrewards.api.RetailLoyaltyRewardsApiDelegate;
-import com.smbtech.openapi.retailloyaltyrewards.model.RewardsSummaryResponse;
-import com.smbtech.openapi.retailloyaltyrewards.model.VoucherResponse;
-import org.springframework.stereotype.Component;
-
-@Component
-class RetailLoyaltyRewardsHandler implements RetailLoyaltyRewardsApiDelegate {
-
-    @Override
-    public RewardsSummaryResponse getMemberRewardsSummary(String memberId) {
-        return new RewardsSummaryResponse();
-    }
-
-    @Override
-    public VoucherResponse getVoucher(String memberId, String voucherId) {
-        return new VoucherResponse();
-    }
-}
-```
-
-The generated controller delegates to this bean.
-
-## 7. Consume The Client
-
-A client service can inject or create the generated interface through the REST
-client starter API:
-
-```java
-import com.smbtech.openapi.retailloyaltyrewards.client.RetailLoyaltyRewardsClient;
-import com.smbtech.openapi.retailloyaltyrewards.model.RewardsSummaryResponse;
-import org.springframework.stereotype.Service;
-
-@Service
-class LoyaltyRewardsService {
-
-    private final RetailLoyaltyRewardsClient client;
-
-    LoyaltyRewardsService(RetailLoyaltyRewardsClient client) {
-        this.client = client;
-    }
-
-    RewardsSummaryResponse summary(String memberId) {
-        return client.getMemberRewardsSummary(memberId);
-    }
-}
-```
-
-The generated client uses `@HttpApiClient("retail-loyalty-rewards")`, so the
-consumer application must configure a matching REST client name.
-
-Minimal client configuration:
-
-```yaml
-smbtech:
-  rest-clients:
-    clients:
-      retail-loyalty-rewards:
-        base-url: https://loyalty.example
-        authentication-type: NONE
-```
-
-## References
-
-- [OpenAPI Code Generation](../openapi-codegen.md)
-- [REST Client Starter Guide](../rest-client.md)
-- [Dependency and Local Publication](../rest-client/setup.md)
-- [Troubleshooting](../troubleshooting.md)
+The contract has immutable version identity, separated binary and source JARs,
+compatibility evidence, and locally consumable Maven modules. Provider and
+consumer implementation examples remain in
+[OpenAPI Getting Started](../openapi/getting-started.md); new-service generation
+is documented in [OpenAPI Project Scaffolding](../openapi/scaffolding.md).

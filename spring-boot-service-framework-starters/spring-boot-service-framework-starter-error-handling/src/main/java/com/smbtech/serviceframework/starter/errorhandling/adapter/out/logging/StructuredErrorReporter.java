@@ -1,7 +1,7 @@
 package com.smbtech.serviceframework.starter.errorhandling.adapter.out.logging;
 
-import com.smbtech.serviceframework.error.DefaultNotificationSanitizer;
 import com.smbtech.serviceframework.error.ErrorCategory;
+import com.smbtech.serviceframework.error.NotificationSanitizer;
 import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.metadata.StandardErrorMetadataKeys;
 import com.smbtech.serviceframework.logging.domain.EventType;
@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Emits resolved HTTP failures through the framework structured logging port. */
-public final class StructuredErrorReporter implements ErrorReporter {
+final class StructuredErrorReporter implements ErrorReporter {
 
     /** Correlation key populated by the logging starter transaction filter. */
     public static final String TRANSACTION_ID_KEY = "transactionId";
@@ -38,7 +38,6 @@ public final class StructuredErrorReporter implements ErrorReporter {
 
     private final StructuredLogger logger;
     private final CorrelationContext correlationContext;
-    private final DefaultNotificationSanitizer sanitizer;
     private final boolean includeDiagnostics;
 
     /**
@@ -65,7 +64,6 @@ public final class StructuredErrorReporter implements ErrorReporter {
         this.logger = Objects.requireNonNull(logger, "logger must not be null");
         this.correlationContext =
                 Objects.requireNonNull(correlationContext, "correlationContext must not be null");
-        this.sanitizer = new DefaultNotificationSanitizer();
         this.includeDiagnostics = includeDiagnostics;
     }
 
@@ -124,7 +122,7 @@ public final class StructuredErrorReporter implements ErrorReporter {
             event.with("oauth2ErrorCode", oauth2ErrorCode);
         }
         if (includeDiagnostics) {
-            event.with("diagnostic", sanitizer.sanitizeText(error.diagnosticMessage()));
+            event.with("diagnostic", NotificationSanitizer.redactText(error.diagnosticMessage()));
         }
         logger.log(
                 level,
@@ -150,7 +148,7 @@ public final class StructuredErrorReporter implements ErrorReporter {
             if (isTypeNamed(current.getClass(), OAUTH2_AUTHENTICATION_EXCEPTION)) {
                 String errorCode = invokeOAuth2ErrorCode(current);
                 if (!errorCode.isEmpty()) {
-                    String sanitized = sanitizer.sanitizeText(errorCode);
+                    String sanitized = NotificationSanitizer.redactText(errorCode);
                     return sanitized.substring(
                             0, Math.min(sanitized.length(), MAX_OAUTH2_ERROR_CODE_LENGTH));
                 }
@@ -200,9 +198,9 @@ public final class StructuredErrorReporter implements ErrorReporter {
         Throwable rootCause = rootCause(cause);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("type", cause.getClass().getName());
-        data.put("message", sanitizer.sanitizeText(cause.getMessage()));
+        data.put("message", NotificationSanitizer.redactText(cause.getMessage()));
         data.put("rootType", rootCause.getClass().getName());
-        data.put("rootMessage", sanitizer.sanitizeText(rootCause.getMessage()));
+        data.put("rootMessage", NotificationSanitizer.redactText(rootCause.getMessage()));
         return Map.copyOf(data);
     }
 
@@ -215,7 +213,7 @@ public final class StructuredErrorReporter implements ErrorReporter {
         ReportedErrorException sanitized =
                 new ReportedErrorException(
                         source.getClass().getName(),
-                        sanitizer.sanitizeText(source.getMessage()),
+                        NotificationSanitizer.redactText(source.getMessage()),
                         sanitizedCause);
         sanitized.setStackTrace(source.getStackTrace());
         return sanitized;

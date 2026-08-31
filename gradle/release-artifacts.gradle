@@ -1,0 +1,205 @@
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+
+def releaseArtifactManifest = layout.projectDirectory.file('gradle/release-artifacts.txt')
+def buildLogicArtifactReport = layout.projectDirectory.file(
+        'build-logic/build/reports/release-artifacts.txt'
+)
+def effectiveArtifactReport = layout.buildDirectory.file(
+        'reports/release/release-artifacts.txt'
+)
+def releaseWorkflow = layout.projectDirectory.file('.github/workflows/release.yml')
+def lifecycleScript = layout.projectDirectory.file('gradle/lifecycle.gradle')
+def supplyChainScript = layout.projectDirectory.file('gradle/supply-chain.gradle')
+def releaseDocumentation = layout.projectDirectory.file('docs/releasing.md')
+def mainBuildReleaseCoordinates = providers.provider {
+    rootProject.allprojects.collectMany { candidate ->
+        def publishing = candidate.extensions.findByType(PublishingExtension)
+        if (publishing == null) {
+            return []
+        }
+        publishing.publications.withType(MavenPublication).findResults { publication ->
+            if (publication.groupId != 'com.smbtech') {
+                return null
+            }
+            "${publication.groupId}:${publication.artifactId}:${publication.version}"
+        }
+    }.toSorted()
+}
+
+tasks.register('buildLogicPublicationIntegrationCheck') {
+    group = 'verification'
+    description = 'Validates build-logic publication wiring across Gradle, release staging, and CI.'
+    dependsOn gradle.includedBuild('build-logic').task(':buildLogicPublicationCheck')
+
+    inputs.files(
+            releaseWorkflow,
+            lifecycleScript,
+            supplyChainScript,
+            releaseDocumentation
+    )
+
+    doLast {
+        def failures = []
+        def workflowText = releaseWorkflow.asFile.getText('UTF-8')
+        def lifecycleText = lifecycleScript.asFile.getText('UTF-8')
+        def supplyChainText = supplyChainScript.asFile.getText('UTF-8')
+        def documentationText = releaseDocumentation.asFile.getText('UTF-8')
+
+        if (!workflowText.contains('./gradlew publishRelease -PreleaseBuild=true')) {
+            failures.add('release workflow must publish the included build-logic artifacts')
+        }
+        if (!lifecycleText.contains(
+                "'publishReleaseArtifacts'"
+        )) {
+            failures.add('release lifecycle must publish the included build')
+        }
+        if (!supplyChainText.contains("file('build-logic/build/repository')")) {
+            failures.add('release staging must include the build-logic Maven repository')
+        }
+        if (supplyChainText.contains(
+                "from layout.buildDirectory.dir('repository/openapi')"
+        )) {
+            failures.add('release staging must exclude generated OpenAPI example artifacts')
+        }
+        [
+                'generateReleaseBundleMetadata',
+                'release-manifest.json',
+                'SHA256SUMS',
+                'generateReleaseBundleChecksum'
+        ].each { marker ->
+            if (!supplyChainText.contains(marker)) {
+                failures.add("release bundle must include ${marker}")
+            }
+        }
+        if (!documentationText.contains('./gradlew publishRelease -PreleaseBuild=true')) {
+            failures.add('release documentation must include build-logic publication')
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Build-logic publication integration validation failed:\n' +
+                            failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('releaseArtifactManifestCheck') {
+    group = 'verification'
+    description = 'Validates the complete framework publication set against the release artifact manifest.'
+    dependsOn tasks.named('buildLogicPublicationIntegrationCheck')
+
+    inputs.file(releaseArtifactManifest)
+    inputs.file(buildLogicArtifactReport)
+    inputs.property('frameworkVersion', project.version.toString())
+    inputs.property('mainBuildReleaseCoordinates', mainBuildReleaseCoordinates)
+    outputs.file(effectiveArtifactReport)
+
+    doLast {
+        def manifestFile = releaseArtifactManifest.asFile
+        def supportedKinds = [
+                'platform',
+                'library',
+                'starter',
+                'build-tool',
+                'plugin-marker'
+        ] as Set
+        def entries = []
+        def failures = []
+
+        manifestFile.eachLine('UTF-8') { line, lineNumber ->
+            def normalized = line.trim()
+            if (!normalized || normalized.startsWith('#')) {
+                return
+            }
+
+            def parts = normalized.split('\\|', -1)*.trim()
+            if (parts.size() != 3 || parts.any { it.isEmpty() }) {
+                failures.add("gradle/release-artifacts.txt:${lineNumber}: expected kind|groupId|artifactId")
+                return
+            }
+            if (!supportedKinds.contains(parts[0])) {
+                failures.add(
+                        "gradle/release-artifacts.txt:${lineNumber}: unsupported kind '${parts[0]}'"
+                )
+                return
+            }
+            if (!(parts[1] ==~ /[A-Za-z0-9_.-]+/) || !(parts[2] ==~ /[A-Za-z0-9_.-]+/)) {
+                failures.add(
+                        "gradle/release-artifacts.txt:${lineNumber}: invalid Maven coordinate"
+                )
+                return
+            }
+            entries.add([
+                    kind      : parts[0],
+                    groupId   : parts[1],
+                    artifactId: parts[2]
+            ])
+        }
+
+        def duplicateCoordinates = entries
+                .groupBy { "${it.groupId}:${it.artifactId}" }
+                .findAll { ignored, matching -> matching.size() > 1 }
+                .keySet()
+                .sort()
+        if (!duplicateCoordinates.isEmpty()) {
+            failures.add('duplicate release coordinates: ' + duplicateCoordinates.join(', '))
+        }
+
+        def platformEntries = entries.findAll { it.kind == 'platform' }
+        if (platformEntries.size() != 1) {
+            failures.add('the release artifact manifest must declare exactly one platform')
+        }
+        entries.findAll { it.kind == 'starter' }.each { entry ->
+            if (!entry.artifactId.startsWith('spring-boot-service-framework-starter-')) {
+                failures.add("starter has an invalid artifact id: ${entry.artifactId}")
+            }
+        }
+        entries.findAll { it.kind == 'plugin-marker' }.each { entry ->
+            if (!entry.artifactId.endsWith('.gradle.plugin')) {
+                failures.add("plugin marker has an invalid artifact id: ${entry.artifactId}")
+            }
+        }
+
+        def expectedCoordinates = entries.collect {
+            "${it.groupId}:${it.artifactId}:${project.version}"
+        }.toSet()
+        def mainBuildCoordinates = mainBuildReleaseCoordinates.get().toSet()
+
+        def buildLogicReportFile = buildLogicArtifactReport.asFile
+        if (!buildLogicReportFile.isFile()) {
+            failures.add('build-logic release artifact report was not generated')
+        }
+        def buildLogicCoordinates = buildLogicReportFile.isFile()
+                ? buildLogicReportFile.readLines('UTF-8')
+                        .collect { it.trim() }
+                        .findAll { it && !it.startsWith('#') }
+                        .toSet()
+                : [] as Set
+        def actualCoordinates = mainBuildCoordinates + buildLogicCoordinates
+
+        def missingCoordinates = (expectedCoordinates - actualCoordinates).sort()
+        def unexpectedCoordinates = (actualCoordinates - expectedCoordinates).sort()
+        if (!missingCoordinates.isEmpty()) {
+            failures.add('missing release publications:\n' + missingCoordinates.join('\n'))
+        }
+        if (!unexpectedCoordinates.isEmpty()) {
+            failures.add('unreviewed release publications:\n' + unexpectedCoordinates.join('\n'))
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Release artifact manifest validation failed:\n' + failures.join('\n')
+            )
+        }
+
+        def reportFile = effectiveArtifactReport.get().asFile
+        reportFile.parentFile.mkdirs()
+        reportFile.setText(
+                '# Effective Spring Boot Service Framework release artifacts\n' +
+                        expectedCoordinates.sort().join('\n') + '\n',
+                'UTF-8'
+        )
+    }
+}

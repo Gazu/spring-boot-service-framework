@@ -3,11 +3,35 @@ package com.smbtech.serviceframework.logging.port.in;
 import com.smbtech.serviceframework.logging.domain.EventType;
 import com.smbtech.serviceframework.logging.domain.LogLevel;
 import com.smbtech.serviceframework.logging.domain.StructuredEvent;
+import com.smbtech.serviceframework.logging.port.out.LogEventSink;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /** Inbound port used by application code to emit structured events. */
 public interface StructuredLogger {
+
+    /**
+     * Creates the default logger backed by the supplied output port.
+     *
+     * @param sink output sink
+     * @param production whether production-only restrictions apply
+     * @return default structured logger
+     */
+    static StructuredLogger create(LogEventSink sink, boolean production) {
+        return new DefaultStructuredLogger(sink, () -> production);
+    }
+
+    /**
+     * Creates the default logger with a dynamically evaluated environment policy.
+     *
+     * @param sink output sink
+     * @param production supplier indicating whether production restrictions apply
+     * @return default structured logger
+     */
+    static StructuredLogger create(LogEventSink sink, BooleanSupplier production) {
+        return new DefaultStructuredLogger(sink, production);
+    }
 
     /**
      * Reports whether a level and event type are enabled.

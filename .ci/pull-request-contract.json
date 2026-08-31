@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "authority": "github-actions",
+  "repository": "Gazu/spring-boot-service-framework",
+  "workflow": ".github/workflows/pull-request.yml",
+  "events": [
+    "pull_request",
+    "merge_group"
+  ],
+  "requiredChecks": [
+    {
+      "id": "policy",
+      "name": "Pull Request / Policy"
+    },
+    {
+      "id": "quality",
+      "name": "Pull Request / Quality"
+    },
+    {
+      "id": "security",
+      "name": "Pull Request / Security"
+    }
+  ],
+  "permissions": {
+    "contents": "read"
+  },
+  "commitPolicy": {
+    "conventionalCommits": true,
+    "validatePullRequestTitle": true,
+    "validateEveryCommit": true,
+    "allowAutomaticMergeCommits": true,
+    "language": "en",
+    "languageEnforcement": "review"
+  },
+  "security": {
+    "allowPullRequestTarget": false,
+    "allowRepositorySecrets": false,
+    "allowRemotePublication": false,
+    "allowReleaseEnvironment": false,
+    "scanProfile": "pull-request",
+    "scanMode": "all",
+    "reportsRedacted": true,
+    "blockSecrets": true,
+    "blockCriticalVulnerabilities": true,
+    "blockFixableHighVulnerabilities": true,
+    "blockHighCriticalMisconfigurations": true,
+    "artifactRetentionDays": 7
+  },
+  "evidence": {
+    "publishOnFailure": true,
+    "retentionDays": 7,
+    "includeJUnitXml": true,
+    "includeJacocoXml": true,
+    "includeCycloneDxSbom": true,
+    "includeRedactedSarif": true,
+    "includeSecuritySummary": true,
+    "includeBuildBinaries": false,
+    "includeLocalMavenRepositories": false
+  },
+  "branchProtection": {
+    "branch": "main",
+    "strictStatusChecks": true,
+    "statusCheckApp": "github-actions",
+    "statusCheckAppId": 15368,
+    "requiredApprovingReviewCount": 1,
+    "dismissStaleReviews": true,
+    "requireLastPushApproval": true,
+    "requireCodeOwnerReviews": false,
+    "enforceAdmins": true,
+    "requireLinearHistory": true,
+    "requireConversationResolution": true,
+    "allowBypass": false,
+    "allowForcePushes": false,
+    "allowDeletions": false
+  },
+  "mergePolicy": {
+    "allowMergeCommits": false,
+    "allowSquashMerge": true,
+    "allowRebaseMerge": true,
+    "allowAutoMerge": true,
+    "deleteHeadBranches": true
+  },
+  "execution": {
+    "gateTask": "pullRequestGate",
+    "javaVersion": 21,
+    "supportsForks": true,
+    "supportsDependabot": true,
+    "cancelSupersededRuns": true
+  }
+}

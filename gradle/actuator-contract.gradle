@@ -382,16 +382,11 @@ tasks.register('validateActuatorContract') {
                     'management.endpoints.web.exposure.include',
                     'management.*',
                     actuatorContract.baseAutoConfiguration.className,
-                    actuatorContract.baseAutoConfiguration.guardClassName,
                     actuatorContract.healthAutoConfiguration.className,
-                    actuatorContract.healthAutoConfiguration.adapterClassName,
                     actuatorContract.infoAutoConfiguration.className,
-                    actuatorContract.infoAutoConfiguration.adapterClassName,
                     actuatorContract.endpointAutoConfiguration.className,
-                    actuatorContract.endpointAutoConfiguration.adapterClassName,
                     actuatorContract.integrationsAutoConfiguration.className,
                     actuatorContract.metricsAutoConfiguration.className,
-                    actuatorContract.metricsAutoConfiguration.adapterClassName,
                     actuatorContract.example.directory,
                     actuatorContract.example.smokeTaskName
             ]
@@ -399,9 +394,6 @@ tasks.register('validateActuatorContract') {
             requiredDocumentationValues.addAll(actuatorContract.runtime.metricStatusTagValues)
             requiredDocumentationValues.addAll(
                     actuatorContract.runtime.optionalIntegrationModules
-            )
-            requiredDocumentationValues.addAll(
-                    actuatorContract.integrationsAutoConfiguration.adapterClassNames
             )
             requiredDocumentationValues.each { value ->
                 if (!documentation.contains(value)) {

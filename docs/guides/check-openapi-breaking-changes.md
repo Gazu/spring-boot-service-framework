@@ -34,23 +34,21 @@ Add an exact snapshot for the new version after finishing the edit.
 ## 3. Run Detection
 
 ```bash
-./gradlew openApiBreakingChangeCheck
+./gradlew smbtechOpenApiBreakingChangeCheck
 ```
 
 Review every `BREAKING` and `NON_BREAKING` line. To enforce that a branch has no
 breaking changes at all, run:
 
 ```bash
-./gradlew openApiBreakingChangeCheck -PopenApiFailOnBreakingChanges=true
+./gradlew smbtechOpenApiBreakingChangeCheck -PopenApiFailOnBreakingChanges=true
 ```
 
-## 4. Refresh Version Metadata
+## 4. Validate The Contract Lifecycle
 
 ```bash
-./gradlew generateOpenApiSpecVersionCatalog
-./gradlew openApiCompatibilityCheck
+./gradlew smbtechOpenApiCompatibilityCheck
 ```
 
-Commit the current spec, its new baseline snapshot, and the updated version
-catalog together. The full rule set is documented in
-[OpenAPI Breaking Change Detection](../openapi-breaking-changes.md).
+Commit the current spec and its new baseline snapshot together. The full rule set is documented in
+[OpenAPI Contract Versioning](../openapi/versioning.md).

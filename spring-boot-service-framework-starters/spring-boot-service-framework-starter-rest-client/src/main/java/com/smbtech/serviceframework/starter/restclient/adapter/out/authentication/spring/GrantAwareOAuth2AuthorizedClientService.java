@@ -9,8 +9,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 
 /** Provides grant aware OAuth2 authorized client service behavior. */
-public final class GrantAwareOAuth2AuthorizedClientService
-        implements OAuth2AuthorizedClientService {
+final class GrantAwareOAuth2AuthorizedClientService implements OAuth2AuthorizedClientService {
 
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final OAuth2AuthorizedClientService delegate;

@@ -12,16 +12,45 @@ public-api:
 extension-points:
 
 properties:
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.baselineDirectory
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.failOnBreakingChanges
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.groupId
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.outputDirectory
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.publicationRepositoryUrl
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.publishClient
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.publishModels
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.publishServerApi
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.repositoryDirectory
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.requireBaseline
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.artifactBaseName
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.basePackage
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.clientPackage
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.groupId
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.input
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.modelPackage
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.publishClient
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.publishModels
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.publishServerApi
+- Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.serverApiPackage
 - Gradle plugin com.smbtech.service-framework.openapi-generator|smbtechOpenApi.specs.<name>.version
 
 auto-configuration-imports:
 
 gradle-plugin-ids:
 - Gradle plugin com.smbtech.service-framework.openapi-generator|com.smbtech.service-framework.openapi-generator
+
+runtime-contracts:
+- task=smbtechOpenApiAssemble
+- task=smbtechOpenApiBreakingChangeCheck
+- task=smbtechOpenApiBuildLogicCheck
+- task=smbtechOpenApiCompatibilityCheck
+- task=smbtechOpenApiConsumerTest
+- task=smbtechOpenApiGenerateClient
+- task=smbtechOpenApiGenerateModels
+- task=smbtechOpenApiGenerateServerApi
+- task=smbtechOpenApiMigrationReport
+- task=smbtechOpenApiMockContractCheck
+- task=smbtechOpenApiPublish
+- task=smbtechOpenApiPublishToLocalRepository
+- task=smbtechOpenApiReproducibilityCheck
+- task=smbtechOpenApiValidateSpecs

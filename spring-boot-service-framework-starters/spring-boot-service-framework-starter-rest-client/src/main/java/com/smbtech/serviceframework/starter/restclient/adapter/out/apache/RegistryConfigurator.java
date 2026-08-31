@@ -7,7 +7,7 @@ import org.apache.hc.core5.http.config.Registry;
 import org.apache.hc.core5.http.config.RegistryBuilder;
 
 /** Provides registry configurator behavior. */
-public final class RegistryConfigurator {
+final class RegistryConfigurator {
 
     private final SslConnectionSocketFactoryConfigurator sslConnectionSocketFactoryConfigurator;
 

@@ -37,14 +37,14 @@ def platformContract = [
                 ':spring-boot-service-framework-logging-core',
                 ':spring-boot-service-framework-mock-core',
                 ':spring-boot-service-framework-openapi-contract-testing',
-                ':spring-boot-service-framework-openapi-generator',
+                ':spring-boot-service-framework-project-generator',
                 ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling',
                 ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator',
                 ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging',
                 ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock',
                 ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client'
         ].asImmutable(),
-        excludedCoordinateGroups : ['com.smbtech.openapi'].asImmutable()
+        excludedCoordinateGroups : ['com.smbtech.openapi', 'com.smbtech.contracts'].asImmutable()
 ].asImmutable()
 
 rootProject.ext.serviceFrameworkPlatformContract = platformContract

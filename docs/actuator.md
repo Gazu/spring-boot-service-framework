@@ -61,8 +61,8 @@ is discovered through Spring Boot's `AutoConfiguration.imports` mechanism when
 Spring Boot health infrastructure is available and `smbtech.actuator.enabled`
 is `true` or absent.
 
-It creates one `FrameworkDiagnostics` bean backed by
-`DefaultFrameworkDiagnostics`. All application `DiagnosticProbe` and
+It creates one `FrameworkDiagnostics` bean using the default aggregator exposed
+by `FrameworkDiagnostics.from(...)`. All application `DiagnosticProbe` and
 `FrameworkModuleInfoProvider` beans are collected through their neutral ports.
 If the application publishes a unique `Clock`, it timestamps snapshots;
 otherwise the service uses a UTC system clock without registering a global
@@ -76,7 +76,7 @@ base assembly.
 
 `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration`
 registers a bean named `serviceFrameworkHealthIndicator`, backed by
-`com.smbtech.serviceframework.starter.actuator.adapter.in.health.ServiceFrameworkHealthIndicator`.
+an internal Spring Boot `HealthIndicator` adapter.
 Spring Boot exposes its contributor name as `serviceFramework`.
 
 Neutral statuses map without custom values:
@@ -108,7 +108,7 @@ liveness or readiness.
 
 `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorInfoAutoConfiguration`
 registers a bean named `serviceFrameworkInfoContributor`, backed by
-`com.smbtech.serviceframework.starter.actuator.adapter.in.info.ServiceFrameworkInfoContributor`.
+an internal Spring Boot `InfoContributor` adapter.
 It contributes bounded module information under the `serviceFramework` key of
 the standard Spring Boot info response.
 
@@ -126,7 +126,7 @@ publishing a bean named `serviceFrameworkInfoContributor`.
 
 `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration`
 registers
-`com.smbtech.serviceframework.starter.actuator.adapter.in.endpoint.ServiceFrameworkDiagnosticsEndpoint`
+the internal bean named `serviceFrameworkDiagnosticsEndpoint`
 only when Spring Boot considers the endpoint available. The endpoint id is
 `serviceframework`; it has one `@ReadOperation` and defaults to `Access.NONE`.
 Its response contains the aggregate status, capture time, bounded component
@@ -158,13 +158,13 @@ detects optional framework starter beans and registers passive adapters. The
 optional starters remain `compileOnly` dependencies of the Actuator starter and
 are not published as transitive dependencies.
 
-| Starter | Adapter | Output |
+| Starter | Registered bean | Output |
 |---|---|---|
-| `rest-client` | `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientDiagnosticProbe` | Passive `rest-client` health component with configured, enabled, registered, resilience-enabled, and circuit-breaker-enabled client counts. |
-| `rest-client` | `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientModuleInfoProvider` | Module version and the same bounded client counts. |
-| `mock` | `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.MockModuleInfoProvider` | Module version and configured/enabled endpoint and OpenAPI contract counts. |
-| `logging` | `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.LoggingModuleInfoProvider` | Module version and bounded logging feature state. |
-| `error-handling` | `com.smbtech.serviceframework.starter.actuator.adapter.out.integration.ErrorHandlingModuleInfoProvider` | Module version, response exposure, and bounded feature state. |
+| `rest-client` | `serviceFrameworkRestClientDiagnosticProbe` | Passive `rest-client` health component with configured, enabled, registered, resilience-enabled, and circuit-breaker-enabled client counts. |
+| `rest-client` | `serviceFrameworkRestClientModuleInfoProvider` | Module version and the same bounded client counts. |
+| `mock` | `serviceFrameworkMockModuleInfoProvider` | Module version and configured/enabled endpoint and OpenAPI contract counts. |
+| `logging` | `serviceFrameworkLoggingModuleInfoProvider` | Module version and bounded logging feature state. |
+| `error-handling` | `serviceFrameworkErrorHandlingModuleInfoProvider` | Module version, response exposure, and bounded feature state. |
 
 The REST client probe reads configuration and `RestClientRegistry.names()`
 only. It never constructs a client and never sends an HTTP request. Mock
@@ -184,7 +184,7 @@ replace one adapter without disabling the remaining integrations. Setting
 
 `com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorMetricsAutoConfiguration`
 registers a bean named `serviceFrameworkMetrics`, backed by
-`com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics`,
+an internal Micrometer `MeterBinder`,
 when a `MeterRegistry` and `FrameworkDiagnostics` are available. The
 auto-configuration backs off when the application provides a bean with that
 name.
@@ -237,8 +237,8 @@ consuming application.
 
 ## Security And Performance Guard
 
-The default diagnostics bean is wrapped by
-`com.smbtech.serviceframework.starter.actuator.adapter.out.diagnostics.GuardedFrameworkDiagnostics`.
+The default diagnostics bean is wrapped by an internal safety and performance
+guard.
 The guard protects health, info, the custom endpoint, and metrics readers with
 the same bounded results.
 
@@ -348,6 +348,8 @@ The starter adapts neutral results to Spring Boot health, info, and endpoint
 APIs.
 Application-provided core services, probes, contributors, and adapter beans must
 replace framework defaults through normal Spring Boot backoff behavior.
+Concrete starter adapters are implementation details and are not supported
+injection or construction contracts.
 
 ## Standalone Consumer Example
 
@@ -381,11 +383,11 @@ The supported core contracts are:
 | `DiagnosticProbe` | Outbound component diagnostic extension port. |
 | `FrameworkModuleInfoProvider` | Outbound module information extension port. |
 
-`DefaultFrameworkDiagnostics` is framework infrastructure used to aggregate
-these ports. It executes probes in component-name order, converts runtime probe
-failures to `UNKNOWN`, and never copies exception messages or types into the
-result. Invalid module information providers are omitted from the information
-result.
+The implementation returned by `FrameworkDiagnostics.from(...)` is internal
+framework infrastructure. It executes probes in component-name order, converts
+runtime probe failures to `UNKNOWN`, and never copies exception messages or
+types into the result. Invalid module information providers are omitted from
+the information result.
 
 Core detail values are recursively immutable and bounded to eight nested
 levels, 64 entries per container, and 2,048 characters per string. Cycles and

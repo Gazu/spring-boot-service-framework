@@ -55,6 +55,7 @@ class ActuatorPublicApiCompatibilityTest {
     void preservesExtensionPortMethods() {
         assertEquals(
                 Set.of(
+                        "from(java.util.Collection,java.util.Collection,java.time.Clock):com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics",
                         "modules():java.util.List",
                         "snapshot():com.smbtech.serviceframework.actuator.domain.FrameworkDiagnosticsSnapshot"),
                 Set.copyOf(declaredMethods(FrameworkDiagnostics.class)));

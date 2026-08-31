@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.logging.port.in.StructuredLoggerFactory;
 import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
-import com.smbtech.serviceframework.starter.logging.adapter.in.servlet.TransactionIdFilter;
+import jakarta.servlet.Filter;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -27,14 +27,15 @@ class LoggingAutoConfigurationTest {
                                 .hasSingleBean(LoggingProperties.class)
                                 .hasSingleBean(StructuredLoggerFactory.class)
                                 .hasSingleBean(CorrelationContext.class)
-                                .hasSingleBean(TransactionIdFilter.class));
+                                .hasBean("transactionIdFilter")
+                                .hasSingleBean(Filter.class));
     }
 
     @Test
     void canDisableTransactionFilter() {
         webContextRunner
                 .withPropertyValues("smbtech.logging.transaction.enabled=false")
-                .run(context -> assertThat(context).doesNotHaveBean(TransactionIdFilter.class));
+                .run(context -> assertThat(context).doesNotHaveBean("transactionIdFilter"));
     }
 
     @Test
@@ -77,7 +78,7 @@ class LoggingAutoConfigurationTest {
                         assertThat(context)
                                 .hasSingleBean(StructuredLoggerFactory.class)
                                 .hasSingleBean(CorrelationContext.class)
-                                .doesNotHaveBean(TransactionIdFilter.class));
+                                .doesNotHaveBean("transactionIdFilter"));
     }
 
     @Test

@@ -1,0 +1,25 @@
+# Spring Boot Service Framework release artifact contract.
+#
+# Format: kind|groupId|artifactId
+# Version: every entry uses frameworkVersion from gradle.properties.
+#
+# Generated OpenAPI example contracts use com.smbtech.contracts and are not part
+# of the framework release artifact contract.
+
+platform|com.smbtech|spring-boot-service-framework-platform
+library|com.smbtech|spring-boot-service-framework-actuator-core
+library|com.smbtech|spring-boot-service-framework-commons
+library|com.smbtech|spring-boot-service-framework-error-core
+library|com.smbtech|spring-boot-service-framework-http-client-core
+library|com.smbtech|spring-boot-service-framework-logging-core
+library|com.smbtech|spring-boot-service-framework-mock-core
+library|com.smbtech|spring-boot-service-framework-openapi-contract-testing
+library|com.smbtech|spring-boot-service-framework-project-generator
+starter|com.smbtech|spring-boot-service-framework-starter-actuator
+starter|com.smbtech|spring-boot-service-framework-starter-error-handling
+starter|com.smbtech|spring-boot-service-framework-starter-logging
+starter|com.smbtech|spring-boot-service-framework-starter-mock
+starter|com.smbtech|spring-boot-service-framework-starter-rest-client
+build-tool|com.smbtech|spring-boot-service-framework-openapi-gradle-plugin
+build-tool|com.smbtech|spring-boot-service-framework-openapi-templates
+plugin-marker|com.smbtech.service-framework.openapi-generator|com.smbtech.service-framework.openapi-generator.gradle.plugin

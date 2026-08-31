@@ -103,6 +103,13 @@ com.smbtech.serviceframework.starter.<capability>.autoconfigure
 - A public implementation outside a supported package is infrastructure, not an
   extension point. It must be listed under `Public Internal Types To Review` in
   the public API inventory until its visibility or package is corrected.
+- New public implementations in `adapter`, `application`, `autoconfigure`,
+  `internal`, `serialization`, or `service` are prohibited. A type required by
+  Spring, Gradle, Logback, AOT, reflection, a command-line entry point, or a
+  cross-artifact factory must be explicitly allowlisted with its reason.
+- A replaceable `@Bean` method returns a supported interface or a reviewed
+  external framework contract. Do not expose a new concrete default class as
+  the bean method's declared return type.
 - Dependencies point from starters and adapters toward API and core packages.
   Core modules must not import starter or adapter packages.
 
@@ -151,6 +158,20 @@ com.smbtech.serviceframework.starter.<capability>.autoconfigure
 - OpenAPI sources under `build/generated/smbtech-openapi` are generated output
   and are excluded from formatting and format verification.
 
+## Tests
+
+- Keep each test source in the directory represented by its declared package.
+- Match the top-level test type to its Java file name.
+- Name executable JUnit types `*Test`; use `*IntegrationTest`, `*ContractTest`,
+  or `*CompatibilityTest` when the suffix communicates the tested boundary.
+- Name shared test support `*TestFixtures` and executable test baselines
+  `*Baseline`.
+- Name unit tests after a production type that exists. When a test covers a
+  workflow instead of one type, name the behavior explicitly rather than using
+  a removed or historical class name.
+- `./gradlew testSourceConventionsCheck` validates these rules and runs through
+  `codeQualityCheck` and the pull request quality gate.
+
 ## Gradle Conventions
 
 - Framework libraries apply
@@ -164,6 +185,12 @@ com.smbtech.serviceframework.starter.<capability>.autoconfigure
 
 ## Source Quality
 
+- Every managed module must be registered in its owning `settings.gradle`, and
+  every registered module must provide a build file.
+- Production Java packages must match their source paths, production FQCNs must
+  be unique, and maintained source sets are limited to `main` and `test`.
+- Retired modules, build scripts, compatibility contracts, and documentation
+  paths must not be restored after their replacement is complete.
 - Do not introduce identifiers or file names containing the legacy terms
   `Requestor` or `TransactionalId`. Historical migration references are allowed
   only in documentation, comments, and string literals.
@@ -171,7 +198,8 @@ com.smbtech.serviceframework.starter.<capability>.autoconfigure
   commented out. Remove them and rely on version control.
 - Every supported public package has a documented `package-info.java`.
 - `./gradlew codeQualityCheck` aggregates formatting, public API Javadocs,
-  public package documentation, naming rules, and commented-code detection.
+  public package documentation, project structure, test conventions, naming
+  rules, and commented-code detection.
 - Changes to supported public types, extension points, properties,
   auto-configuration imports, or Gradle plugin ids must refresh and review
   `gradle/compatibility/contracts` with

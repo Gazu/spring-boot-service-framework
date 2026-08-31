@@ -2,7 +2,7 @@
 
 Framework-neutral utilities shared by Spring Boot Service Framework modules.
 This module is intentionally small and does not depend on Spring Boot, HTTP
-clients, logging backends, or application-specific code.
+clients, SLF4J, logging backends, or application-specific code.
 
 ## When to use
 
@@ -17,7 +17,7 @@ mock, or another concrete framework area.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-commons'
 }
@@ -30,6 +30,9 @@ dependencies {
 - `notification.NotificationSeverity`: notification severity values.
 - `notification.NotifyingException`: runtime exception base class that carries
   structured notifications.
+
+These three types are the complete supported API. Metadata copying remains an
+internal implementation detail.
 
 `com.smbtech.serviceframework.commons.notification` is a documented public
 package exception. See [Public API Boundaries](../docs/public-api-boundaries.md).

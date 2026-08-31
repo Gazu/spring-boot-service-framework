@@ -17,16 +17,16 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Publishes bounded-cardinality Micrometer gauges for framework diagnostics. */
-public final class ServiceFrameworkMetrics implements MeterBinder {
+final class ServiceFrameworkMetrics implements MeterBinder {
 
     /** One-hot aggregate status gauge. */
-    public static final String STATUS_METRIC_NAME = "smbtech.service.framework.status";
+    static final String STATUS_METRIC_NAME = "smbtech.service.framework.status";
 
     /** Number of diagnostic components grouped by status. */
-    public static final String COMPONENTS_METRIC_NAME = "smbtech.service.framework.components";
+    static final String COMPONENTS_METRIC_NAME = "smbtech.service.framework.components";
 
     /** Number of detected framework modules. */
-    public static final String MODULES_METRIC_NAME = "smbtech.service.framework.modules";
+    static final String MODULES_METRIC_NAME = "smbtech.service.framework.modules";
 
     private static final String STATUS_TAG = "status";
 
@@ -43,8 +43,7 @@ public final class ServiceFrameworkMetrics implements MeterBinder {
      * @param clock sample cache clock
      * @param cacheTtl duration for which one diagnostics sample is reused
      */
-    public ServiceFrameworkMetrics(
-            FrameworkDiagnostics diagnostics, Clock clock, Duration cacheTtl) {
+    ServiceFrameworkMetrics(FrameworkDiagnostics diagnostics, Clock clock, Duration cacheTtl) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.cacheTtl = Objects.requireNonNull(cacheTtl, "cacheTtl must not be null");

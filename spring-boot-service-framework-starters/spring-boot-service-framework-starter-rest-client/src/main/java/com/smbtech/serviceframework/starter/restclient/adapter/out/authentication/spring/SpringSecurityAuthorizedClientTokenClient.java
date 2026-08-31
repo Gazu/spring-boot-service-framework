@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import com.smbtech.serviceframework.httpclient.domain.AccessToken;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
 import com.smbtech.serviceframework.httpclient.port.out.AccessTokenProvider;
-import com.smbtech.serviceframework.httpclient.service.ScopeValidator;
 import com.smbtech.serviceframework.starter.restclient.api.AccessTokenClient;
 import com.smbtech.serviceframework.starter.restclient.api.JwtBearerTokenRequest;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
@@ -22,7 +21,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
 /** Provides spring security authorized client token client behavior. */
-public final class SpringSecurityAuthorizedClientTokenClient
+final class SpringSecurityAuthorizedClientTokenClient
         implements AccessTokenProvider, AccessTokenClient {
 
     private static final String PRINCIPAL_NAME = "spring-boot-service-framework";
@@ -42,13 +41,43 @@ public final class SpringSecurityAuthorizedClientTokenClient
     private final Authentication principal;
 
     /**
+     * Creates the Spring Security token client with the adapter's scope validation policy.
+     *
+     * @param clientRegistrationRepository client registration repository
+     * @param authorizedClientManager authorized client manager
+     * @param diagnosticsLogger diagnostics logger
+     * @param requestContextManager request context manager
+     * @param requestContextJwtBearerClaimsEnabled whether request-context claims are enabled
+     * @param blockedJwtBearerClaims blocked JWT bearer claims
+     * @param extensionRegistry OAuth2 extension registry
+     */
+    public SpringSecurityAuthorizedClientTokenClient(
+            ClientRegistrationRepository clientRegistrationRepository,
+            OAuth2AuthorizedClientManager authorizedClientManager,
+            OAuth2TokenDiagnosticsLogger diagnosticsLogger,
+            RequestContextManager requestContextManager,
+            boolean requestContextJwtBearerClaimsEnabled,
+            Set<String> blockedJwtBearerClaims,
+            OAuth2ExtensionRegistry extensionRegistry) {
+        this(
+                clientRegistrationRepository,
+                authorizedClientManager,
+                new ScopeValidator(),
+                diagnosticsLogger,
+                requestContextManager,
+                requestContextJwtBearerClaimsEnabled,
+                blockedJwtBearerClaims,
+                extensionRegistry);
+    }
+
+    /**
      * Creates a spring security authorized client token client instance.
      *
      * @param clientRegistrationRepository client registration repository value
      * @param authorizedClientManager authorized client manager value
      * @param scopeValidator scope validator value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator) {
@@ -68,7 +97,7 @@ public final class SpringSecurityAuthorizedClientTokenClient
      * @param scopeValidator scope validator value
      * @param diagnosticsLogger diagnostics logger value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator,
@@ -90,7 +119,7 @@ public final class SpringSecurityAuthorizedClientTokenClient
      * @param diagnosticsLogger diagnostics logger value
      * @param requestContextManager request context manager value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator,
@@ -116,7 +145,7 @@ public final class SpringSecurityAuthorizedClientTokenClient
      * @param requestContextManager request context manager value
      * @param requestContextJwtBearerClaimsEnabled request context JWT bearer claims enabled value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator,
@@ -144,7 +173,7 @@ public final class SpringSecurityAuthorizedClientTokenClient
      * @param requestContextJwtBearerClaimsEnabled request context JWT bearer claims enabled value
      * @param blockedJwtBearerClaims blocked JWT bearer claims value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator,
@@ -175,7 +204,7 @@ public final class SpringSecurityAuthorizedClientTokenClient
      * @param blockedJwtBearerClaims blocked JWT bearer claims value
      * @param extensionRegistry extension registry value
      */
-    public SpringSecurityAuthorizedClientTokenClient(
+    SpringSecurityAuthorizedClientTokenClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientManager authorizedClientManager,
             ScopeValidator scopeValidator,

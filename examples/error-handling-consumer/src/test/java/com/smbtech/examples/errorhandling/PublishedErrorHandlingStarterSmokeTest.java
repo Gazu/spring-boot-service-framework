@@ -9,8 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.smbtech.examples.errorhandling.domain.OrderErrors;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAccessDeniedHandler;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
+import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityErrorCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,7 +121,9 @@ class PublishedErrorHandlingStarterSmokeTest {
     void returnsNotificationForUnauthenticatedRequest() throws Exception {
         mockMvc.perform(get("/api/secure/profile"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(SecurityAuthenticationEntryPoint.ERROR_CODE))
+                .andExpect(
+                        jsonPath("$.code")
+                                .value(SecurityErrorCatalog.AUTHENTICATION_REQUIRED.code()))
                 .andExpect(jsonPath("$.field_name").value(""));
     }
 
@@ -131,7 +132,7 @@ class PublishedErrorHandlingStarterSmokeTest {
     void returnsNotificationForForbiddenRequest() throws Exception {
         mockMvc.perform(get("/api/secure/admin"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value(SecurityAccessDeniedHandler.ERROR_CODE))
+                .andExpect(jsonPath("$.code").value(SecurityErrorCatalog.ACCESS_DENIED.code()))
                 .andExpect(jsonPath("$.field_name").value(""));
     }
 }

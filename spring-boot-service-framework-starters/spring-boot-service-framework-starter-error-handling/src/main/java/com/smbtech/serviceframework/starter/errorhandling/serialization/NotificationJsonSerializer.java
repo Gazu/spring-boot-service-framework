@@ -11,13 +11,13 @@ import tools.jackson.databind.ValueSerializer;
  * Serializes {@link Notification} with a stable snake-case JSON contract. Registration is
  * intentionally local to the writer or mapper used for error responses.
  */
-public final class NotificationJsonSerializer extends ValueSerializer<Notification>
+final class NotificationJsonSerializer extends ValueSerializer<Notification>
         implements NotificationSerializer {
 
     private final NotificationMetadataKeyNormalizer metadataKeyNormalizer;
 
     /** Creates a serializer with the default metadata key normalizer. */
-    public NotificationJsonSerializer() {
+    NotificationJsonSerializer() {
         this(new NotificationMetadataKeyNormalizer());
     }
 
@@ -26,7 +26,7 @@ public final class NotificationJsonSerializer extends ValueSerializer<Notificati
      *
      * @param metadataKeyNormalizer metadata key normalizer
      */
-    public NotificationJsonSerializer(NotificationMetadataKeyNormalizer metadataKeyNormalizer) {
+    NotificationJsonSerializer(NotificationMetadataKeyNormalizer metadataKeyNormalizer) {
         this.metadataKeyNormalizer =
                 Objects.requireNonNull(
                         metadataKeyNormalizer, "metadataKeyNormalizer must not be null");
@@ -53,7 +53,7 @@ public final class NotificationJsonSerializer extends ValueSerializer<Notificati
      *
      * @return metadata key normalizer
      */
-    public NotificationMetadataKeyNormalizer metadataKeyNormalizer() {
+    NotificationMetadataKeyNormalizer metadataKeyNormalizer() {
         return metadataKeyNormalizer;
     }
 }

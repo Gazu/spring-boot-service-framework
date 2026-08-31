@@ -1,0 +1,37 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+description = 'Versioned OpenAPI Generator templates for Spring Boot Service Framework contracts'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'Spring Boot Service Framework - OpenAPI Templates'
+                description = project.description
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = rootProject.layout.buildDirectory.dir('repository')
+        }
+    }
+}

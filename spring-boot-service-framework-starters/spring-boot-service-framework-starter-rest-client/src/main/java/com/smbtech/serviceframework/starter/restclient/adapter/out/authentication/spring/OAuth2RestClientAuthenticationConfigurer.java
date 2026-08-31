@@ -21,8 +21,7 @@ import org.springframework.security.oauth2.client.web.client.RequestAttributePri
 import org.springframework.web.client.RestClient;
 
 /** Applies Spring Security OAuth2 authentication to configured REST clients. */
-public final class OAuth2RestClientAuthenticationConfigurer
-        implements RestClientAuthenticationConfigurer {
+final class OAuth2RestClientAuthenticationConfigurer implements RestClientAuthenticationConfigurer {
 
     private static final String PRINCIPAL_NAME = "spring-boot-service-framework";
 

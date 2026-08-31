@@ -1,14 +1,16 @@
 package com.smbtech.serviceframework.gradle.openapi;
 
-import java.net.URL;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
+import javax.inject.Inject;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.component.SoftwareComponentFactory;
 
 /** Gradle plugin that registers OpenAPI contract generation and verification tasks. */
 public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
+
+    private final SoftwareComponentFactory componentFactory;
 
     /** Configures OpenAPI specifications in a consuming Gradle build. */
     public static final String EXTENSION_NAME = "smbtechOpenApi";
@@ -16,11 +18,18 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
     /** Participates in the consuming build verification lifecycle. */
     public static final String BUILD_LOGIC_CHECK_TASK_NAME = "smbtechOpenApiBuildLogicCheck";
 
-    /** Preserves the public OpenAPI specification validation task name. */
-    public static final String VALIDATE_SPECS_TASK_NAME = "validateOpenApiSpecs";
+    /** Validates configured OpenAPI specifications. */
+    public static final String VALIDATE_SPECS_TASK_NAME = "smbtechOpenApiValidateSpecs";
 
-    /** Creates the OpenAPI generator plugin. */
-    public SmbtechOpenApiGeneratorPlugin() {}
+    /**
+     * Creates the OpenAPI generator plugin.
+     *
+     * @param componentFactory Gradle component factory used for generated Maven variants
+     */
+    @Inject
+    public SmbtechOpenApiGeneratorPlugin(SoftwareComponentFactory componentFactory) {
+        this.componentFactory = componentFactory;
+    }
 
     @Override
     public void apply(Project project) {
@@ -28,6 +37,19 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
 
         SmbtechOpenApiExtension extension =
                 project.getExtensions().create(EXTENSION_NAME, SmbtechOpenApiExtension.class);
+        OpenApiGenerationConfigurer generationConfigurer =
+                new OpenApiGenerationConfigurer(project, componentFactory, extension);
+        OpenApiCompatibilityConfigurer compatibilityConfigurer =
+                new OpenApiCompatibilityConfigurer(project, extension);
+        generationConfigurer.configureLifecycleAndRepositories();
+        compatibilityConfigurer.configureLifecycle();
+
+        extension.getSpecs().configureEach(spec -> configureSpecConventions(extension, spec));
+        extension.onSpecConfigured(
+                spec -> {
+                    generationConfigurer.configure(spec);
+                    compatibilityConfigurer.configure(spec);
+                });
 
         project.getTasks()
                 .register(
@@ -56,6 +78,23 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                                                                     directory
                                                                             .getAsFile()
                                                                             .getPath()));
+                            task.getBaselineDirectory()
+                                    .convention(
+                                            extension
+                                                    .getBaselineDirectory()
+                                                    .map(
+                                                            directory ->
+                                                                    directory
+                                                                            .getAsFile()
+                                                                            .getPath()));
+                            task.getPublicationRepositoryUrl()
+                                    .set(extension.getPublicationRepositoryUrl());
+                            task.getRequireBaseline().convention(extension.getRequireBaseline());
+                            task.getFailOnBreakingChanges()
+                                    .convention(extension.getFailOnBreakingChanges());
+                            task.getPublishModels().convention(extension.getPublishModels());
+                            task.getPublishServerApi().convention(extension.getPublishServerApi());
+                            task.getPublishClient().convention(extension.getPublishClient());
                             task.getSpecConfigurations()
                                     .set(
                                             project.provider(
@@ -76,6 +115,16 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                             task.setDescription(
                                     "Validates OpenAPI 3.0/3.1 documents and generated artifact coordinates.");
                             task.getRootDirectory().set(project.getLayout().getProjectDirectory());
+                            task.getDefaultGroupId().convention(extension.getGroupId());
+                            task.getSpecConfigurations()
+                                    .set(
+                                            project.provider(
+                                                    () ->
+                                                            extension.getSpecs().stream()
+                                                                    .map(
+                                                                            SmbtechOpenApiGeneratorPlugin
+                                                                                    ::specConfiguration)
+                                                                    .collect(Collectors.toList())));
                             task.getSpecFiles()
                                     .from(
                                             project.fileTree(
@@ -113,21 +162,9 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                                                                                             .getAsFile())
                                                                     .collect(Collectors.toList())));
                         });
-
-        applyGeneratorImplementation(project);
     }
 
-    private static void applyGeneratorImplementation(Project project) {
-        URL implementation =
-                SmbtechOpenApiGeneratorPlugin.class.getResource(
-                        "/com/smbtech/serviceframework/gradle/openapi/openapi-generator.gradle");
-        if (implementation == null) {
-            throw new IllegalStateException("OpenAPI generator implementation resource is missing");
-        }
-        project.apply(Map.of("from", implementation.toExternalForm()));
-    }
-
-    private static String specConfiguration(SmbtechOpenApiSpec spec) {
+    static String specConfiguration(SmbtechOpenApiSpec spec) {
         return String.join(
                 "|",
                 spec.getName(),
@@ -135,6 +172,19 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                 spec.getGroupId().getOrElse(""),
                 spec.getArtifactBaseName().getOrElse(""),
                 spec.getVersion().getOrElse(""),
-                spec.getBasePackage().getOrElse(""));
+                spec.getBasePackage().getOrElse(""),
+                spec.getModelPackage().getOrElse(""),
+                spec.getServerApiPackage().getOrElse(""),
+                spec.getClientPackage().getOrElse(""),
+                spec.getPublishModels().getOrElse(true).toString(),
+                spec.getPublishServerApi().getOrElse(true).toString(),
+                spec.getPublishClient().getOrElse(true).toString());
+    }
+
+    private static void configureSpecConventions(
+            SmbtechOpenApiExtension extension, SmbtechOpenApiSpec spec) {
+        spec.getPublishModels().convention(extension.getPublishModels());
+        spec.getPublishServerApi().convention(extension.getPublishServerApi());
+        spec.getPublishClient().convention(extension.getPublishClient());
     }
 }

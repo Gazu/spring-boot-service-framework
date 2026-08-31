@@ -11,7 +11,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /** Provides mock rest client request mapper behavior. */
-public final class MockRestClientRequestMapper {
+final class MockRestClientRequestMapper {
 
     /** Header consulted when selecting the configured mock definition. */
     public static final String DEFAULT_MOCK_KEY_HEADER = "X-Mock-Key";
@@ -19,7 +19,7 @@ public final class MockRestClientRequestMapper {
     private final String mockKeyHeader;
 
     /** Creates a mock rest client request mapper instance. */
-    public MockRestClientRequestMapper() {
+    MockRestClientRequestMapper() {
         this(DEFAULT_MOCK_KEY_HEADER);
     }
 
@@ -28,7 +28,7 @@ public final class MockRestClientRequestMapper {
      *
      * @param mockKeyHeader mock key header value
      */
-    public MockRestClientRequestMapper(String mockKeyHeader) {
+    MockRestClientRequestMapper(String mockKeyHeader) {
         this.mockKeyHeader =
                 Objects.requireNonNullElse(mockKeyHeader, DEFAULT_MOCK_KEY_HEADER).trim();
     }

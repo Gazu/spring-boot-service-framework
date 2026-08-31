@@ -6,7 +6,7 @@ import org.apache.hc.core5.http.ConnectionReuseStrategy;
 import org.apache.hc.core5.http.impl.DefaultConnectionReuseStrategy;
 
 /** Provides connection reuse strategy configurator behavior. */
-public final class ConnectionReuseStrategyConfigurator {
+final class ConnectionReuseStrategyConfigurator {
     /** Creates a connection reuse strategy configurator instance. */
     public ConnectionReuseStrategyConfigurator() {}
 

@@ -6,6 +6,15 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 public interface HttpClientDefinitionValidator {
 
     /**
+     * Returns the framework's neutral validation policy.
+     *
+     * @return default HTTP client definition validator
+     */
+    static HttpClientDefinitionValidator defaultValidator() {
+        return new DefaultHttpClientDefinitionValidator();
+    }
+
+    /**
      * Performs the validate operation.
      *
      * @param definition definition value

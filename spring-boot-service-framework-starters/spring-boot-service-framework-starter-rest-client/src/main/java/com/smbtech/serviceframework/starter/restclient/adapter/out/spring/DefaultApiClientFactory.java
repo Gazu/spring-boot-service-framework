@@ -10,7 +10,7 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 /** Provides default api client factory behavior. */
-public final class DefaultApiClientFactory implements ApiClientFactory {
+final class DefaultApiClientFactory implements ApiClientFactory {
 
     private final RestClientRegistry restClientRegistry;
     private final Map<ApiClientKey, Object> cache = new ConcurrentHashMap<>();

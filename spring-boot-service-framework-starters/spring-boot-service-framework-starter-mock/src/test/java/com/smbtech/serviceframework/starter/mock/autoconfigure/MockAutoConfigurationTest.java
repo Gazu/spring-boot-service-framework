@@ -7,10 +7,8 @@ import com.smbtech.serviceframework.mock.port.in.MockCatalog;
 import com.smbtech.serviceframework.mock.port.in.MockResponder;
 import com.smbtech.serviceframework.mock.port.out.MockDefinitionSource;
 import com.smbtech.serviceframework.mock.port.out.MockResponseSource;
-import com.smbtech.serviceframework.starter.mock.adapter.in.spring.MockResponseEntityMapper;
-import com.smbtech.serviceframework.starter.mock.adapter.out.restclient.MockRestClientInterceptor;
-import com.smbtech.serviceframework.starter.mock.adapter.out.restclient.MockRestClientRequestMapper;
 import com.smbtech.serviceframework.starter.mock.api.MockService;
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -22,6 +20,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.ClientHttpResponse;
 import tools.jackson.core.type.TypeReference;
 
 class MockAutoConfigurationTest {
@@ -40,9 +41,8 @@ class MockAutoConfigurationTest {
                                 .hasSingleBean(MockCatalog.class)
                                 .hasSingleBean(MockResponseSource.class)
                                 .hasSingleBean(MockResponder.class)
-                                .hasSingleBean(MockRestClientRequestMapper.class)
-                                .hasSingleBean(MockRestClientInterceptor.class)
-                                .hasSingleBean(MockResponseEntityMapper.class)
+                                .hasBean("mockRestClientInterceptor")
+                                .hasSingleBean(ClientHttpRequestInterceptor.class)
                                 .hasSingleBean(MockService.class));
     }
 
@@ -189,8 +189,10 @@ class MockAutoConfigurationTest {
                         "smbtech.mocks.endpoints.payments-success.file=mocks/payments-success.json")
                 .run(
                         context -> {
-                            MockRestClientInterceptor interceptor =
-                                    context.getBean(MockRestClientInterceptor.class);
+                            ClientHttpRequestInterceptor interceptor =
+                                    context.getBean(
+                                            "mockRestClientInterceptor",
+                                            ClientHttpRequestInterceptor.class);
                             AtomicBoolean executed = new AtomicBoolean(false);
 
                             var response =
@@ -205,9 +207,7 @@ class MockAutoConfigurationTest {
                                             "{\"amount\":100}".getBytes(StandardCharsets.UTF_8),
                                             (request, body) -> {
                                                 executed.set(true);
-                                                return new com.smbtech.serviceframework.starter.mock
-                                                        .adapter.out.restclient
-                                                        .MockClientHttpResponse(
+                                                return clientHttpResponse(
                                                         MockResponse.ok(
                                                                 "real"
                                                                         .getBytes(
@@ -231,8 +231,10 @@ class MockAutoConfigurationTest {
     void restClientInterceptorExecutesRealRequestWhenMockDoesNotApply() {
         contextRunner.run(
                 context -> {
-                    MockRestClientInterceptor interceptor =
-                            context.getBean(MockRestClientInterceptor.class);
+                    ClientHttpRequestInterceptor interceptor =
+                            context.getBean(
+                                    "mockRestClientInterceptor",
+                                    ClientHttpRequestInterceptor.class);
                     AtomicBoolean executed = new AtomicBoolean(false);
 
                     var response =
@@ -244,8 +246,7 @@ class MockAutoConfigurationTest {
                                     new byte[0],
                                     (request, body) -> {
                                         executed.set(true);
-                                        return new com.smbtech.serviceframework.starter.mock.adapter
-                                                .out.restclient.MockClientHttpResponse(
+                                        return clientHttpResponse(
                                                 new MockResponse(
                                                         202,
                                                         Map.of("X-Real", List.of("true")),
@@ -261,33 +262,6 @@ class MockAutoConfigurationTest {
                                             StandardCharsets.UTF_8))
                             .isEqualTo("real");
                 });
-    }
-
-    @Test
-    void restClientRequestMapperUsesHeaderKeyAndFallsBackToNormalizedPath() {
-        MockRestClientRequestMapper mapper = new MockRestClientRequestMapper();
-
-        var headerBased =
-                mapper.toMockRequest(
-                        httpRequest(
-                                HttpMethod.PUT,
-                                URI.create("https://api.example.test/v1/payments?id=123&id=456"),
-                                Map.of("X-Mock-Key", List.of("payments-success"))),
-                        "request".getBytes(StandardCharsets.UTF_8));
-        var pathBased =
-                mapper.toMockRequest(
-                        httpRequest(
-                                HttpMethod.GET,
-                                URI.create("https://api.example.test/v1/payments"),
-                                Map.of()),
-                        new byte[0]);
-
-        assertThat(headerBased.key()).isEqualTo("payments-success");
-        assertThat(headerBased.method()).isEqualTo("PUT");
-        assertThat(headerBased.path()).isEqualTo("/v1/payments");
-        assertThat(headerBased.queryParams()).containsEntry("id", List.of("123", "456"));
-        assertThat(headerBased.attributes()).containsEntry("host", "api.example.test");
-        assertThat(pathBased.key()).isEqualTo("v1/payments");
     }
 
     private HttpRequest httpRequest(HttpMethod method, URI uri, Map<String, List<String>> headers) {
@@ -320,6 +294,33 @@ class MockAutoConfigurationTest {
         HttpHeaders httpHeaders = new HttpHeaders();
         headers.forEach((name, values) -> values.forEach(value -> httpHeaders.add(name, value)));
         return httpHeaders;
+    }
+
+    private ClientHttpResponse clientHttpResponse(MockResponse response) {
+        return new ClientHttpResponse() {
+            @Override
+            public HttpStatusCode getStatusCode() {
+                return HttpStatusCode.valueOf(response.status());
+            }
+
+            @Override
+            public String getStatusText() {
+                return String.valueOf(response.status());
+            }
+
+            @Override
+            public void close() {}
+
+            @Override
+            public ByteArrayInputStream getBody() {
+                return new ByteArrayInputStream(response.body());
+            }
+
+            @Override
+            public HttpHeaders getHeaders() {
+                return httpHeaders(response.headers());
+            }
+        };
     }
 
     private record PaymentMock(String id, String status) {}

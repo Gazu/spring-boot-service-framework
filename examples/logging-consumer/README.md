@@ -1,7 +1,7 @@
 # Logging consumer example
 
 Standalone Spring Boot application that imports
-`com.smbtech:spring-boot-service-framework-platform:0.4.0` and consumes
+`com.smbtech:spring-boot-service-framework-platform:0.5.0` and consumes
 `com.smbtech:spring-boot-service-framework-starter-logging` without an
 individual version from the local Maven repositories generated under each
 module `build/repository` directory.

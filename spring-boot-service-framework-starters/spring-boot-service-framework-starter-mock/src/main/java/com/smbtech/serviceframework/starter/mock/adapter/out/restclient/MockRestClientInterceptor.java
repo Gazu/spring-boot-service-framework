@@ -12,7 +12,7 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 
 /** Provides mock rest client interceptor behavior. */
-public final class MockRestClientInterceptor implements ClientHttpRequestInterceptor {
+final class MockRestClientInterceptor implements ClientHttpRequestInterceptor {
 
     private final MockResponder mockResponder;
     private final MockRestClientRequestMapper requestMapper;
@@ -23,7 +23,7 @@ public final class MockRestClientInterceptor implements ClientHttpRequestInterce
      * @param mockResponder mock responder value
      * @param requestMapper request mapper value
      */
-    public MockRestClientInterceptor(
+    MockRestClientInterceptor(
             MockResponder mockResponder, MockRestClientRequestMapper requestMapper) {
         this.mockResponder =
                 Objects.requireNonNull(mockResponder, "mockResponder must not be null");

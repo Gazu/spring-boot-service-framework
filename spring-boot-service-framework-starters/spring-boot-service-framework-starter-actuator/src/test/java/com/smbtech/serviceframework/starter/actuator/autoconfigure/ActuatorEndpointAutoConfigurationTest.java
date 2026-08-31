@@ -2,13 +2,7 @@ package com.smbtech.serviceframework.starter.actuator.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.smbtech.serviceframework.actuator.domain.FrameworkDiagnosticsSnapshot;
-import com.smbtech.serviceframework.actuator.domain.FrameworkModuleInfo;
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
-import com.smbtech.serviceframework.starter.actuator.adapter.in.endpoint.ServiceFrameworkDiagnosticsEndpoint;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -27,7 +21,7 @@ class ActuatorEndpointAutoConfigurationTest {
         contextRunner.run(
                 context -> {
                     assertThat(context).hasSingleBean(FrameworkDiagnostics.class);
-                    assertThat(context).doesNotHaveBean(ServiceFrameworkDiagnosticsEndpoint.class);
+                    assertThat(context).doesNotHaveBean("serviceFrameworkDiagnosticsEndpoint");
                 });
     }
 
@@ -41,36 +35,25 @@ class ActuatorEndpointAutoConfigurationTest {
                         context ->
                                 assertThat(context)
                                         .hasSingleBean(FrameworkDiagnostics.class)
-                                        .hasSingleBean(ServiceFrameworkDiagnosticsEndpoint.class)
                                         .hasBean("serviceFrameworkDiagnosticsEndpoint"));
     }
 
     @Test
     void backsOffForApplicationEndpoint() {
-        FrameworkDiagnostics applicationDiagnostics =
-                new FrameworkDiagnostics() {
-                    @Override
-                    public FrameworkDiagnosticsSnapshot snapshot() {
-                        return new FrameworkDiagnosticsSnapshot(Instant.EPOCH, Map.of());
-                    }
-
-                    @Override
-                    public List<FrameworkModuleInfo> modules() {
-                        return List.of();
-                    }
-                };
+        Object applicationEndpoint = new Object();
 
         contextRunner
                 .withPropertyValues(
                         "management.endpoint.serviceframework.access=READ_ONLY",
                         "management.endpoints.web.exposure.include=serviceframework")
                 .withBean(
-                        ServiceFrameworkDiagnosticsEndpoint.class,
-                        () -> new ServiceFrameworkDiagnosticsEndpoint(applicationDiagnostics))
+                        "serviceFrameworkDiagnosticsEndpoint",
+                        Object.class,
+                        () -> applicationEndpoint)
                 .run(
                         context ->
-                                assertThat(context)
-                                        .hasSingleBean(ServiceFrameworkDiagnosticsEndpoint.class));
+                                assertThat(context.getBean("serviceFrameworkDiagnosticsEndpoint"))
+                                        .isSameAs(applicationEndpoint));
     }
 
     @Test
@@ -84,7 +67,6 @@ class ActuatorEndpointAutoConfigurationTest {
                         context ->
                                 assertThat(context)
                                         .doesNotHaveBean(FrameworkDiagnostics.class)
-                                        .doesNotHaveBean(
-                                                ServiceFrameworkDiagnosticsEndpoint.class));
+                                        .doesNotHaveBean("serviceFrameworkDiagnosticsEndpoint"));
     }
 }

@@ -6,7 +6,7 @@ import com.smbtech.serviceframework.starter.errorhandling.api.ErrorExposurePolic
 import java.util.Objects;
 
 /** Applies the configured response audience and detail level to every resolved error. */
-public final class ConfiguredErrorExposurePolicy implements ErrorExposurePolicy {
+final class ConfiguredErrorExposurePolicy implements ErrorExposurePolicy {
 
     private final ErrorExposure exposure;
 
@@ -15,7 +15,7 @@ public final class ConfiguredErrorExposurePolicy implements ErrorExposurePolicy 
      *
      * @param properties error handling configuration
      */
-    public ConfiguredErrorExposurePolicy(ErrorHandlingProperties properties) {
+    ConfiguredErrorExposurePolicy(ErrorHandlingProperties properties) {
         ErrorHandlingProperties source =
                 Objects.requireNonNull(properties, "properties must not be null");
         this.exposure =

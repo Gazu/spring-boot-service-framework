@@ -5,8 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Provides key store properties mapper behavior. */
-public final class KeyStorePropertiesMapper {
+final class KeyStorePropertiesMapper {
 
     private final CredentialResolver credentialResolver;
 
@@ -15,7 +14,7 @@ public final class KeyStorePropertiesMapper {
      *
      * @param credentialResolver credential resolver value
      */
-    public KeyStorePropertiesMapper(CredentialResolver credentialResolver) {
+    KeyStorePropertiesMapper(CredentialResolver credentialResolver) {
         this.credentialResolver = credentialResolver;
     }
 
@@ -25,7 +24,7 @@ public final class KeyStorePropertiesMapper {
      * @param properties properties value
      * @return map result
      */
-    public Map<String, KeyStoreDefinition> map(RestClientProperties properties) {
+    Map<String, KeyStoreDefinition> map(RestClientProperties properties) {
         Map<String, KeyStoreDefinition> definitions = new LinkedHashMap<>();
         RestClientProperties.Authentication authentication =
                 Objects.requireNonNullElseGet(

@@ -160,10 +160,21 @@ tasks.register('validateDocumentationCatalog') {
             'docs/public-api-boundaries.md',
             'docs/module-readme-convention.md',
             'docs/public-api-inventory.md',
+            'docs/pre-1.0-api-policy.md',
+            'docs/openapi/index.md',
+            'docs/openapi/getting-started.md',
+            'docs/openapi/generation.md',
+            'docs/openapi/plugin-reference.md',
+            'docs/openapi/publishing.md',
+            'docs/openapi/validation.md',
+            'docs/openapi/scaffolding.md',
+            'docs/openapi/examples.md',
+            'docs/openapi/troubleshooting.md',
+            'docs/openapi-behavior-inventory.md',
             'docs/openapi-codegen.md',
-            'docs/openapi-breaking-changes.md',
+            'docs/openapi/versioning.md',
             'docs/openapi-contract-testing.md',
-            'docs/openapi-evolution.md',
+            'docs/openapi/documentation-architecture.md',
             'docs/compatibility.md',
             'docs/releasing.md',
             'docs/troubleshooting.md',
@@ -177,6 +188,7 @@ tasks.register('validateDocumentationCatalog') {
             'docs/error-handling/property-reference.md',
             'docs/error-handling-extension-points.md',
             'docs/guides/migrate-shared-exception.md',
+            'docs/guides/migrate-public-names-and-properties.md',
             'docs/rest-client.md',
             'docs/rest-client/property-reference.md',
             'docs/rest-client-extension-points.md',
@@ -209,10 +221,21 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/public-api-boundaries.md',
                 'docs/module-readme-convention.md',
                 'docs/public-api-inventory.md',
+                'docs/pre-1.0-api-policy.md',
+                'docs/openapi/index.md',
+                'docs/openapi/getting-started.md',
+                'docs/openapi/generation.md',
+                'docs/openapi/plugin-reference.md',
+                'docs/openapi/publishing.md',
+                'docs/openapi/validation.md',
+                'docs/openapi/scaffolding.md',
+                'docs/openapi/examples.md',
+                'docs/openapi/troubleshooting.md',
+                'docs/openapi-behavior-inventory.md',
                 'docs/openapi-codegen.md',
-                'docs/openapi-breaking-changes.md',
+                'docs/openapi/versioning.md',
                 'docs/openapi-contract-testing.md',
-                'docs/openapi-evolution.md',
+                'docs/openapi/documentation-architecture.md',
                 'docs/compatibility.md',
                 'docs/releasing.md',
                 'docs/troubleshooting.md',
@@ -225,6 +248,7 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/error-handling/property-reference.md',
                 'docs/error-handling-extension-points.md',
                 'docs/guides/migrate-shared-exception.md',
+                'docs/guides/migrate-public-names-and-properties.md',
                 'docs/rest-client.md',
                 'docs/rest-client-extension-points.md',
                 'docs/mock.md'
@@ -248,10 +272,21 @@ tasks.register('validateDocumentationCatalog') {
                 'public-api-boundaries.md',
                 'module-readme-convention.md',
                 'public-api-inventory.md',
+                'pre-1.0-api-policy.md',
+                'openapi/index.md',
+                'openapi/getting-started.md',
+                'openapi/generation.md',
+                'openapi/plugin-reference.md',
+                'openapi/publishing.md',
+                'openapi/validation.md',
+                'openapi/scaffolding.md',
+                'openapi/examples.md',
+                'openapi/troubleshooting.md',
+                'openapi-behavior-inventory.md',
                 'openapi-codegen.md',
-                'openapi-breaking-changes.md',
+                'openapi/versioning.md',
                 'openapi-contract-testing.md',
-                'openapi-evolution.md',
+                'openapi/documentation-architecture.md',
                 'releasing.md',
                 'troubleshooting.md',
                 'logging.md',
@@ -263,6 +298,7 @@ tasks.register('validateDocumentationCatalog') {
                 'error-handling/property-reference.md',
                 'error-handling-extension-points.md',
                 'guides/migrate-shared-exception.md',
+                'guides/migrate-public-names-and-properties.md',
                 'rest-client.md',
                 'rest-client-extension-points.md',
                 'mock.md',
@@ -284,10 +320,21 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/public-api-boundaries.md',
                 'docs/module-readme-convention.md',
                 'docs/public-api-inventory.md',
+                'docs/pre-1.0-api-policy.md',
+                'docs/openapi/index.md',
+                'docs/openapi/getting-started.md',
+                'docs/openapi/generation.md',
+                'docs/openapi/plugin-reference.md',
+                'docs/openapi/publishing.md',
+                'docs/openapi/validation.md',
+                'docs/openapi/scaffolding.md',
+                'docs/openapi/examples.md',
+                'docs/openapi/troubleshooting.md',
+                'docs/openapi-behavior-inventory.md',
                 'docs/openapi-codegen.md',
-                'docs/openapi-breaking-changes.md',
+                'docs/openapi/versioning.md',
                 'docs/openapi-contract-testing.md',
-                'docs/openapi-evolution.md',
+                'docs/openapi/documentation-architecture.md',
                 'docs/releasing.md',
                 'docs/troubleshooting.md',
                 'docs/rest-client/property-reference.md',
@@ -300,6 +347,7 @@ tasks.register('validateDocumentationCatalog') {
                 'docs/error-handling/property-reference.md',
                 'docs/error-handling-extension-points.md',
                 'docs/guides/migrate-shared-exception.md',
+                'docs/guides/migrate-public-names-and-properties.md',
                 'docs/mock/property-reference.md'
         ].each { path ->
             if (!architecture.contains("`${path}`")) {
@@ -417,6 +465,1667 @@ tasks.register('validateDocumentationVersions') {
     }
 }
 
+tasks.register('validateOpenApiBehaviorInventory') {
+    group = 'verification'
+    description = 'Validates the frozen OpenAPI behavior inventory against the plugin contract and implementation.'
+
+    def inventoryFile = file('docs/openapi-behavior-inventory.md')
+    def pluginReference = file('docs/openapi/plugin-reference.md')
+    def extensionSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiExtension.java')
+    def specSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiSpec.java')
+    def artifactKindSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactKind.java')
+    def generatorSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGenerateTask.java')
+    def generationConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
+    def metadataSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiMetadataTask.java')
+    def pluginSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGeneratorPlugin.java')
+    def toolchainProperties = file('gradle.properties')
+
+    inputs.files(
+            inventoryFile,
+            pluginReference,
+            extensionSource,
+            specSource,
+            artifactKindSource,
+            generatorSource,
+            generationConfigurerSource,
+            metadataSource,
+            pluginSource,
+            toolchainProperties
+    )
+
+    doLast {
+        def failures = []
+        def inventory = inventoryFile.text
+
+        if (!inventory.contains('(openapi/plugin-reference.md)')) {
+            failures << 'OpenAPI behavior inventory must delegate Gradle DSL and tasks to plugin-reference.md'
+        }
+        if (inventory.contains('### Global properties')
+                || inventory.contains('### Per-contract properties')
+                || inventory.contains('## Public Tasks')) {
+            failures << 'OpenAPI behavior inventory must not duplicate the canonical plugin reference'
+        }
+
+        def metadataKeys = [
+                'artifact.group',
+                'artifact.id',
+                'artifact.kind',
+                'contract.id',
+                'contract.sha256',
+                'contract.title',
+                'contract.version',
+                'framework.version',
+                'generator.name',
+                'generator.version',
+                'spring-boot.version'
+        ]
+        metadataKeys.each { key ->
+            if (!metadataSource.text.contains("values.put(\"${key}\"")) {
+                failures << "OpenAPI metadata implementation must contain ${key}"
+            }
+            if (!inventory.contains("`${key}`")) {
+                failures << "OpenAPI behavior inventory must document metadata key ${key}"
+            }
+        }
+
+        def artifactKinds = [
+                MODELS   : 'models',
+                SERVER_API: 'server-api',
+                CLIENT   : 'client'
+        ]
+        artifactKinds.each { enumName, suffix ->
+            if (!artifactKindSource.text.contains("${enumName}(\"${suffix}\")")) {
+                failures << "OpenAPI artifact kind implementation must contain ${enumName}=${suffix}"
+            }
+            if (!inventory.contains("-`${suffix}`") && !inventory.contains("-${suffix}")) {
+                failures << "OpenAPI behavior inventory must document artifact suffix ${suffix}"
+            }
+        }
+
+        [
+                'useSpringBoot4',
+                'useJakartaEe',
+                'useBeanValidation',
+                'performBeanValidation',
+                'useJackson3'
+        ].each { option ->
+            if (!generatorSource.text.contains("addAdditionalProperty(\"${option}\", true)")) {
+                failures << "OpenAPI generator implementation must enable ${option}"
+            }
+            if (!inventory.contains("`${option}`")) {
+                failures << "OpenAPI behavior inventory must document generator option ${option}"
+            }
+        }
+
+        [
+                'META-INF/smbtech/openapi/contract.yaml',
+                'META-INF/smbtech/openapi/contract.properties',
+                'META-INF/smbtech/openapi/contracts/<name>/<version>/contract.yaml',
+                'META-INF/smbtech/openapi/contracts/<name>/<version>/contract.properties',
+                'build/reports/smbtech-openapi',
+                'build/libs/smbtech-openapi'
+        ].each { path ->
+            if (!inventory.contains(path)) {
+                failures << "OpenAPI behavior inventory must document path ${path}"
+            }
+        }
+
+        def versions = new Properties()
+        toolchainProperties.withInputStream { versions.load(it) }
+        [
+                frameworkVersion       : 'Framework',
+                springBootVersion      : 'Spring Boot',
+                openApiGeneratorVersion: 'OpenAPI Generator',
+                openApiDiffVersion     : 'OpenAPI Diff',
+                jackson3Version        : 'Jackson build parser',
+                handlebarsVersion      : 'Handlebars'
+        ].each { propertyName, componentName ->
+            def value = versions.getProperty(propertyName)
+            if (value == null || value.isBlank()) {
+                failures << "gradle.properties must define ${propertyName}"
+            } else if (!inventory.contains("| ${componentName} | `${value}` | `${propertyName}` |")) {
+                failures << "OpenAPI behavior inventory must document ${propertyName}=${value}"
+            }
+        }
+
+        [
+                [pluginSource, 'EXTENSION_NAME = "smbtechOpenApi"'],
+                [generationConfigurerSource, 'task.dependsOn(ASSEMBLE_TASK_NAME)'],
+                [generationConfigurerSource, 'task.dependsOn(jar)'],
+                [extensionSource, 'convention("com.smbtech.contracts")'],
+                [specSource, 'public abstract RegularFileProperty getInput()']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI behavior implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI behavior inventory issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiPluginReference') {
+    group = 'verification'
+    description = 'Validates the canonical OpenAPI Gradle plugin reference against its public contract and implementation.'
+
+    def referenceFile = file('docs/openapi/plugin-reference.md')
+    def compatibilityContract = file('gradle/compatibility/contracts/openApiGradlePlugin.txt')
+    def versionProperties = file('gradle.properties')
+    def extensionSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiExtension.java')
+    def specSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiSpec.java')
+    def pluginSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGeneratorPlugin.java')
+    def generationConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
+    def compatibilityConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilityConfigurer.java')
+    def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def portalFile = file('docs/openapi/index.md')
+    def gettingStartedFile = file('docs/openapi/getting-started.md')
+    def generationFile = file('docs/openapi/generation.md')
+    def codegenFile = file('docs/openapi-codegen.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def pluginReadme = file('build-logic/openapi-generator-plugin/README.md')
+
+    inputs.files(
+            referenceFile,
+            compatibilityContract,
+            versionProperties,
+            extensionSource,
+            specSource,
+            pluginSource,
+            generationConfigurerSource,
+            compatibilityConfigurerSource,
+            buildLogicCheckSource,
+            architectureFile,
+            portalFile,
+            gettingStartedFile,
+            generationFile,
+            codegenFile,
+            behaviorInventory,
+            pluginReadme
+    )
+
+    doLast {
+        def failures = []
+        def reference = referenceFile.text
+
+        [
+                'Plugin Contract',
+                'Apply The Plugin',
+                'DSL',
+                'Global Properties',
+                'Specification Properties',
+                'Configuration Rules',
+                'Public Tasks',
+                'Build Lifecycle Wiring',
+                'Publication Integration',
+                'Multiple Contracts',
+                'Compatibility Contract'
+        ].each { section ->
+            if (!reference.contains("## ${section}")) {
+                failures << "OpenAPI plugin reference must contain section ${section}"
+            }
+        }
+
+        def contractMarkers = compatibilityContract.readLines()
+                .findAll {
+                    (it.startsWith('- Gradle plugin ') && it.contains('|'))
+                            || it.startsWith('- task=')
+                }
+                .collect { line ->
+                    def value = line.substring(2)
+                    value.contains('|')
+                            ? value.substring(value.lastIndexOf('|') + 1)
+                            : value.substring('task='.length())
+                }
+                .toSet()
+        contractMarkers.sort().each { marker ->
+            if (!reference.contains("`${marker}`")) {
+                failures << "OpenAPI plugin reference must document contract marker ${marker}"
+            }
+        }
+
+        def versions = new Properties()
+        versionProperties.withInputStream { versions.load(it) }
+        def frameworkVersion = versions.getProperty('frameworkVersion')
+        if (!reference.contains("version '${frameworkVersion}'")) {
+            failures << "OpenAPI plugin reference must apply framework plugin version ${frameworkVersion}"
+        }
+        if (!reference.contains("openapi-gradle-plugin:${frameworkVersion}`")) {
+            failures << "OpenAPI plugin reference must document artifact version ${frameworkVersion}"
+        }
+
+        [
+                '| `smbtechOpenApi.groupId` | `Property<String>` | `com.smbtech.contracts` |',
+                '| `smbtechOpenApi.outputDirectory` | `DirectoryProperty` | `build/generated/smbtech-openapi` |',
+                '| `smbtechOpenApi.repositoryDirectory` | `DirectoryProperty` | `build/repository/openapi` |',
+                '| `smbtechOpenApi.baselineDirectory` | `DirectoryProperty` | `src/main/openapi-baselines` |',
+                '| `smbtechOpenApi.publicationRepositoryUrl` | `Property<String>` | Not configured |',
+                '| `smbtechOpenApi.requireBaseline` | `Property<Boolean>` | `false` |',
+                '| `smbtechOpenApi.failOnBreakingChanges` | `Property<Boolean>` | `false` |',
+                '| `smbtechOpenApi.publishModels` | `Property<Boolean>` | `true` |',
+                '| `smbtechOpenApi.publishServerApi` | `Property<Boolean>` | `true` |',
+                '| `smbtechOpenApi.publishClient` | `Property<Boolean>` | `true` |',
+                '| `smbtechOpenApi.specs.<name>.input` | `RegularFileProperty` | Required |',
+                '| `smbtechOpenApi.specs.<name>.artifactBaseName` | `Property<String>` | Normalized `info.title` |',
+                '| `smbtechOpenApi.specs.<name>.version` | `Property<String>` | `info.version` |',
+                '| `smbtechOpenApi.specs.<name>.publishModels` | `Property<Boolean>` | Global `publishModels` |',
+                '| `smbtechOpenApi.specs.<name>.publishServerApi` | `Property<Boolean>` | Global `publishServerApi` |',
+                '| `smbtechOpenApi.specs.<name>.publishClient` | `Property<Boolean>` | Global `publishClient` |'
+        ].each { row ->
+            if (!reference.contains(row)) {
+                failures << "OpenAPI plugin reference must preserve default row ${row}"
+            }
+        }
+
+        [
+                [pluginSource, 'apply("maven-publish")'],
+                [pluginSource, 'EXTENSION_NAME = "smbtechOpenApi"'],
+                [extensionSource, 'convention("com.smbtech.contracts")'],
+                [extensionSource, 'dir("generated/smbtech-openapi")'],
+                [extensionSource, 'dir("repository/openapi")'],
+                [extensionSource, 'dir("src/main/openapi-baselines")'],
+                [specSource, 'public abstract RegularFileProperty getInput()'],
+                [generationConfigurerSource, 'task -> task.dependsOn(ASSEMBLE_TASK_NAME)'],
+                [compatibilityConfigurerSource, 'task -> task.dependsOn(compatibility)'],
+                [buildLogicCheckSource, 'must enable at least one generated artifact'],
+                [buildLogicCheckSource, 'must enable models when server API or client generation is enabled']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI plugin implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        [
+                'build/reports/smbtech-openapi',
+                '`assemble` depends on `smbtechOpenApiAssemble`',
+                '`check` depends on `smbtechOpenApiCompatibilityCheck`'
+        ].each { marker ->
+            if (!reference.contains(marker)) {
+                failures << "OpenAPI plugin reference must document ${marker}"
+            }
+        }
+
+        if (!architectureFile.text.contains(
+                '| Gradle DSL, defaults, and tasks | `docs/openapi/plugin-reference.md` | Same plugin reference |')) {
+            failures << 'OpenAPI documentation architecture must assign plugin ownership to plugin-reference.md'
+        }
+        if (!portalFile.text.contains('(plugin-reference.md)')) {
+            failures << 'OpenAPI portal must link to plugin-reference.md'
+        }
+        if (!gettingStartedFile.text.contains('(plugin-reference.md)')) {
+            failures << 'OpenAPI getting started must link to plugin-reference.md'
+        }
+        if (!generationFile.text.contains('(plugin-reference.md)')) {
+            failures << 'OpenAPI generation reference must link to plugin-reference.md'
+        }
+        if (!codegenFile.text.contains('(openapi/plugin-reference.md)')) {
+            failures << 'openapi-codegen.md must delegate Gradle DSL and tasks to plugin-reference.md'
+        }
+        if (!pluginReadme.text.contains('(../../docs/openapi/plugin-reference.md)')) {
+            failures << 'OpenAPI plugin README must link to plugin-reference.md'
+        }
+        if (!behaviorInventory.text.contains('(openapi/plugin-reference.md)')) {
+            failures << 'OpenAPI behavior inventory must link to plugin-reference.md'
+        }
+        if (!reference.contains('(publishing.md)')) {
+            failures << 'OpenAPI plugin reference must delegate publication to publishing.md'
+        }
+
+        if (codegenFile.text.contains('| `groupId` | global/spec |')) {
+            failures << 'openapi-codegen.md must not duplicate the complete Gradle property table'
+        }
+        if (pluginReadme.text.contains('## Configuration API')) {
+            failures << 'OpenAPI plugin README must not own the complete configuration reference'
+        }
+        if (behaviorInventory.text.contains('### Global properties')
+                || behaviorInventory.text.contains('## Public Tasks')) {
+            failures << 'OpenAPI behavior inventory must not duplicate the complete plugin reference'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI Gradle plugin reference issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiPublishingDocumentation') {
+    group = 'verification'
+    description = 'Validates canonical OpenAPI publication documentation against plugin wiring.'
+
+    def publishingFile = file('docs/openapi/publishing.md')
+    def compatibilityContract = file('gradle/compatibility/contracts/openApiGradlePlugin.txt')
+    def pluginSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGeneratorPlugin.java')
+    def generationConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
+    def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
+    def lifecycleSource = file('gradle/lifecycle.gradle')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def portalFile = file('docs/openapi/index.md')
+    def codegenFile = file('docs/openapi-codegen.md')
+    def pluginReference = file('docs/openapi/plugin-reference.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def generationFile = file('docs/openapi/generation.md')
+    def gettingStartedFile = file('docs/openapi/getting-started.md')
+    def artifactGuide = file('docs/guides/openapi-generated-artifacts.md')
+
+    inputs.files(
+            publishingFile,
+            compatibilityContract,
+            pluginSource,
+            generationConfigurerSource,
+            buildLogicCheckSource,
+            lifecycleSource,
+            architectureFile,
+            portalFile,
+            codegenFile,
+            pluginReference,
+            behaviorInventory,
+            generationFile,
+            gettingStartedFile,
+            artifactGuide
+    )
+
+    doLast {
+        def failures = []
+        def guide = publishingFile.text
+        def generationSource = generationConfigurerSource.text
+
+        [
+                'Publication Contract',
+                'Before Publishing',
+                'Local Publication',
+                'Consume Local Artifacts',
+                'Remote Publication',
+                'Credentials',
+                'CI Publication',
+                'Version Immutability',
+                'Failure Modes',
+                'Validation'
+        ].each { section ->
+            if (!guide.contains("## ${section}")) {
+                failures << "OpenAPI publishing guide must contain section ${section}"
+            }
+        }
+
+        [
+                '<group>:<name>-models:<version>',
+                '<group>:<name>-server-api:<version>',
+                '<group>:<name>-client:<version>',
+                'smbtechOpenApiPublishToLocalRepository',
+                'smbtechOpenApiPublish',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApi.repositoryDirectory',
+                'smbtechOpenApi.publicationRepositoryUrl',
+                'build/repository/openapi',
+                'smbtechOpenApiLocal',
+                'smbtechOpenApiRemote',
+                'openApiRepositoryUsername',
+                'OPENAPI_REPOSITORY_USERNAME',
+                'openApiRepositoryPassword',
+                'OPENAPI_REPOSITORY_PASSWORD',
+                'OPENAPI_REPOSITORY_URL',
+                'warehouse-inventory-catalog-models-1.0.0.jar',
+                'warehouse-inventory-catalog-models-1.0.0-sources.jar',
+                'warehouse-inventory-catalog-models-1.0.0.pom',
+                'warehouse-inventory-catalog-models-1.0.0.module',
+                '`.sha256`',
+                '~/.gradle/gradle.properties',
+                'file:///absolute/path/to/contract-project/build/repository/openapi',
+                'publishLocalArtifacts'
+        ].each { marker ->
+            if (!guide.contains(marker)) {
+                failures << "OpenAPI publishing guide must document ${marker}"
+            }
+        }
+
+        [
+                [pluginSource, 'apply("maven-publish")'],
+                [generationConfigurerSource, 'PUBLISH_LOCAL_TASK_NAME = "smbtechOpenApiPublishToLocalRepository"'],
+                [generationConfigurerSource, 'PUBLISH_REMOTE_TASK_NAME = "smbtechOpenApiPublish"'],
+                [generationConfigurerSource, 'repository.setName("smbtechOpenApiLocal")'],
+                [generationConfigurerSource, 'repository.setName("smbtechOpenApiRemote")'],
+                [generationConfigurerSource, 'gradleProperty("openApiRepositoryUsername")'],
+                [generationConfigurerSource, '"OPENAPI_REPOSITORY_USERNAME"'],
+                [generationConfigurerSource, 'gradleProperty("openApiRepositoryPassword")'],
+                [generationConfigurerSource, '"OPENAPI_REPOSITORY_PASSWORD"'],
+                [generationConfigurerSource, 'publication.artifact(sourcesJar)'],
+                [generationConfigurerSource, 'publication.getPom()'],
+                [generationConfigurerSource, 'Apache License, Version 2.0'],
+                [generationConfigurerSource, 'equals("smbtechOpenApiRemote")'],
+                [generationConfigurerSource, 'publicationRepositoryUrl is required for remote publication'],
+                [buildLogicCheckSource, 'publicationRepositoryUrl must be an absolute URI'],
+                [lifecycleSource, "tasks.named('smbtechOpenApiPublishToLocalRepository')"]
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI publication implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        [
+                'smbtechOpenApi.publicationRepositoryUrl',
+                'smbtechOpenApi.repositoryDirectory',
+                'smbtechOpenApiPublish',
+                'smbtechOpenApiPublishToLocalRepository'
+        ].each { marker ->
+            if (!compatibilityContract.text.contains(marker)) {
+                failures << "OpenAPI publication compatibility contract must protect ${marker}"
+            }
+        }
+
+        if (generationSource.contains('smbtechOpenApiCompatibilityCheck')) {
+            failures << 'publication task wiring must not silently absorb the explicit compatibility gate'
+        }
+        if (!guide.contains('it does not run\n`smbtechOpenApiCompatibilityCheck` automatically')) {
+            failures << 'OpenAPI publishing guide must state that publication does not run compatibility automatically'
+        }
+        if (!guide.contains('1. Gradle project property.')
+                || !guide.contains('2. Environment variable.')) {
+            failures << 'OpenAPI publishing guide must document credential precedence'
+        }
+
+        if (!architectureFile.text.contains(
+                '| Maven publication and credentials | `docs/openapi/publishing.md` | Same publishing guide |')) {
+            failures << 'OpenAPI documentation architecture must assign publication to publishing.md'
+        }
+        [
+                [portalFile, '(publishing.md)'],
+                [codegenFile, '(openapi/publishing.md)'],
+                [pluginReference, '(publishing.md)'],
+                [behaviorInventory, '(openapi/publishing.md)'],
+                [generationFile, '(publishing.md)'],
+                [gettingStartedFile, '(publishing.md)'],
+                [artifactGuide, '(../openapi/publishing.md)']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "${relativePath(expectation[0])} must link to publishing.md"
+            }
+        }
+
+        [codegenFile, pluginReference, behaviorInventory].each { secondary ->
+            if (secondary.text.contains('openApiRepositoryUsername')
+                    || secondary.text.contains('OPENAPI_REPOSITORY_PASSWORD')) {
+                failures << "${relativePath(secondary)} must not duplicate publication credentials"
+            }
+        }
+        if (codegenFile.text.contains('./gradlew smbtechOpenApiPublish')) {
+            failures << 'openapi-codegen.md must delegate publication commands to publishing.md'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI publishing documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiVersioningDocumentation') {
+    group = 'verification'
+    description = 'Validates canonical OpenAPI versioning documentation against baseline and SemVer implementation.'
+
+    def versioningFile = file('docs/openapi/versioning.md')
+    def compatibilityContract = file('gradle/compatibility/contracts/openApiGradlePlugin.txt')
+    def contractReaderSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiContractReader.java')
+    def compatibilitySupportSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilitySupport.java')
+    def breakingTaskSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBreakingChangeTask.java')
+    def compatibilityConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilityConfigurer.java')
+    def extensionSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiExtension.java')
+    def rootBuild = file('build.gradle')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def portalFile = file('docs/openapi/index.md')
+    def codegenFile = file('docs/openapi-codegen.md')
+    def pluginReference = file('docs/openapi/plugin-reference.md')
+    def publishingFile = file('docs/openapi/publishing.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def gettingStartedFile = file('docs/openapi/getting-started.md')
+    def breakingGuide = file('docs/guides/check-openapi-breaking-changes.md')
+    def artifactGuide = file('docs/guides/openapi-generated-artifacts.md')
+
+    inputs.files(
+            versioningFile,
+            compatibilityContract,
+            contractReaderSource,
+            compatibilitySupportSource,
+            breakingTaskSource,
+            compatibilityConfigurerSource,
+            extensionSource,
+            rootBuild,
+            architectureFile,
+            portalFile,
+            codegenFile,
+            pluginReference,
+            publishingFile,
+            behaviorInventory,
+            gettingStartedFile,
+            breakingGuide,
+            artifactGuide
+    )
+
+    doLast {
+        def failures = []
+        def reference = versioningFile.text
+
+        [
+                'Version Source',
+                'Effective Artifact Version',
+                'Contract Identity',
+                'Baseline Layout',
+                'Exact Baseline',
+                'Previous Baseline Selection',
+                'Semantic Version Policy',
+                'Change Classification',
+                'Strict Mode',
+                'Contract Update Workflow',
+                'Reports',
+                'Failure Modes',
+                'Current Limits',
+                'Validation'
+        ].each { section ->
+            if (!reference.contains("## ${section}")) {
+                failures << "OpenAPI versioning reference must contain section ${section}"
+            }
+        }
+
+        [
+                'info.version',
+                'info.title',
+                'smbtechOpenApi.specs.<name>.version',
+                'artifactBaseName',
+                'smbtechOpenApi.baselineDirectory',
+                'smbtechOpenApi.requireBaseline',
+                'smbtechOpenApi.failOnBreakingChanges',
+                'src/main/openapi-baselines',
+                'docs/openapi-baselines',
+                'smbtechOpenApiBreakingChangeCheck',
+                'smbtechOpenApiCompatibilityCheck',
+                'openApiFailOnBreakingChanges',
+                'build/reports/smbtech-openapi/diff/',
+                '<normalized-title>.md',
+                'summary.txt',
+                'OpenAPI compatibility checks passed',
+                'No earlier baseline was found',
+                'current contract differs from its immutable',
+                'compatible additions require a minor or major version increase',
+                'breaking changes require a major version increase',
+                'strict mode rejects breaking changes',
+                '0.4.0',
+                '1.0.0',
+                'Pre-release and build suffixes',
+                'does not reject that divergence',
+                'overrides are not used for baseline\n  identity or SemVer comparison'
+        ].each { marker ->
+            if (!reference.contains(marker)) {
+                failures << "OpenAPI versioning reference must document ${marker}"
+            }
+        }
+
+        [
+                [contractReaderSource, 'ARTIFACT_VERSION'],
+                [contractReaderSource, 'normalizeTitle(String title)'],
+                [compatibilitySupportSource, 'SEMANTIC_VERSION'],
+                [compatibilitySupportSource, 'exactBaseline(Path root'],
+                [compatibilitySupportSource, 'previousBaseline(Path root'],
+                [compatibilitySupportSource, 'baseline.version().compareTo(currentVersion) < 0'],
+                [compatibilitySupportSource, 'sha256(Path source)'],
+                [compatibilitySupportSource, 'boolean isMajorIncreaseFrom'],
+                [compatibilitySupportSource, 'boolean isMinorOrMajorIncreaseFrom'],
+                [breakingTaskSource, 'OpenApiCompatibilitySupport.sha256(exact)'],
+                [breakingTaskSource, 'new MarkdownRender().render(difference, writer)'],
+                [breakingTaskSource, 'No earlier baseline was found.'],
+                [breakingTaskSource, 'currentVersion.isMajorIncreaseFrom(previousVersion)'],
+                [breakingTaskSource, 'currentVersion.isMinorOrMajorIncreaseFrom(previousVersion)'],
+                [breakingTaskSource, 'getFailOnBreakingChanges().get()'],
+                [extensionSource, 'dir("src/main/openapi-baselines")'],
+                [extensionSource, 'getRequireBaseline()'],
+                [extensionSource, 'getFailOnBreakingChanges()'],
+                [compatibilityConfigurerSource, 'reports/smbtech-openapi/diff'],
+                [rootBuild, "gradleProperty('openApiFailOnBreakingChanges')"],
+                [rootBuild, "dir('docs/openapi-baselines')"]
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI versioning implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        [
+                'smbtechOpenApi.baselineDirectory',
+                'smbtechOpenApi.requireBaseline',
+                'smbtechOpenApi.failOnBreakingChanges',
+                'smbtechOpenApiBreakingChangeCheck',
+                'smbtechOpenApiCompatibilityCheck'
+        ].each { marker ->
+            if (!compatibilityContract.text.contains(marker)) {
+                failures << "OpenAPI compatibility contract must protect versioning marker ${marker}"
+            }
+        }
+
+        if (!architectureFile.text.contains(
+                '| Coordinates, SemVer, baselines, and breaking changes | `docs/openapi/versioning.md` | Same versioning reference |')) {
+            failures << 'OpenAPI documentation architecture must assign versioning to versioning.md'
+        }
+        [
+                [portalFile, '(versioning.md)'],
+                [codegenFile, '(openapi/versioning.md)'],
+                [pluginReference, '(versioning.md)'],
+                [publishingFile, '(versioning.md)'],
+                [behaviorInventory, '(openapi/versioning.md)'],
+                [gettingStartedFile, '(versioning.md)'],
+                [breakingGuide, '(../openapi/versioning.md)'],
+                [artifactGuide, '(../openapi/versioning.md)']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "${relativePath(expectation[0])} must link to versioning.md"
+            }
+        }
+
+        if (file('docs/openapi-breaking-changes.md').exists()) {
+            failures << 'legacy docs/openapi-breaking-changes.md must remain removed'
+        }
+        markdownDocumentationFiles().files.sort().each { source ->
+            if (source.text.contains('(openapi-breaking-changes.md)')
+                    || source.text.contains('(../openapi-breaking-changes.md)')
+                    || source.text.contains('(docs/openapi-breaking-changes.md)')) {
+                failures << "${relativePath(source)} must not link to the retired versioning document"
+            }
+        }
+        if (codegenFile.text.contains('A baseline is optional for a new contract')) {
+            failures << 'openapi-codegen.md must not duplicate the canonical baseline policy'
+        }
+        if (behaviorInventory.text.contains('Baselines live under `smbtechOpenApi.baselineDirectory`')) {
+            failures << 'OpenAPI behavior inventory must delegate baseline policy to versioning.md'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI versioning documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiValidationDocumentation') {
+    group = 'verification'
+    description = 'Validates canonical OpenAPI validation documentation against plugin tasks and implementation.'
+
+    def validationFile = file('docs/openapi/validation.md')
+    def compatibilityContract = file('gradle/compatibility/contracts/openApiGradlePlugin.txt')
+    def pluginSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGeneratorPlugin.java')
+    def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
+    def validateSpecsSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiValidateSpecsTask.java')
+    def contractReaderSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiContractReader.java')
+    def generationConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
+    def compatibilityConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilityConfigurer.java')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def portalFile = file('docs/openapi/index.md')
+    def codegenFile = file('docs/openapi-codegen.md')
+    def pluginReference = file('docs/openapi/plugin-reference.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def gettingStartedFile = file('docs/openapi/getting-started.md')
+    def generationFile = file('docs/openapi/generation.md')
+    def artifactGuide = file('docs/guides/openapi-generated-artifacts.md')
+
+    inputs.files(
+            validationFile,
+            compatibilityContract,
+            pluginSource,
+            buildLogicCheckSource,
+            validateSpecsSource,
+            contractReaderSource,
+            generationConfigurerSource,
+            compatibilityConfigurerSource,
+            architectureFile,
+            portalFile,
+            codegenFile,
+            pluginReference,
+            behaviorInventory,
+            gettingStartedFile,
+            generationFile,
+            artifactGuide
+    )
+
+    doLast {
+        def failures = []
+        def reference = validationFile.text
+
+        [
+                'Validation Model',
+                'Configuration Validation',
+                'Spec Discovery',
+                'Document Validation',
+                'Coordinate Validation',
+                'Compatibility Validation',
+                'Gradle Lifecycle Wiring',
+                'Outputs And Reports',
+                'Failure Diagnostics',
+                'Validation Boundaries',
+                'CI Gate',
+                'Validation'
+        ].each { section ->
+            if (!reference.contains("## ${section}")) {
+                failures << "OpenAPI validation reference must contain section ${section}"
+            }
+        }
+
+        [
+                'smbtechOpenApiBuildLogicCheck',
+                'smbtechOpenApiValidateSpecs',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApiBreakingChangeCheck',
+                'smbtechOpenApiReproducibilityCheck',
+                'smbtechOpenApiMigrationReport',
+                'smbtechOpenApiConsumerTest',
+                'smbtechOpenApiMockContractCheck',
+                'src/main/openapi/',
+                'openapi/',
+                'swagger/',
+                'OpenAPI `3.0.x` and `3.1.x`',
+                'operationId',
+                'publicationRepositoryUrl',
+                'artifactBaseName',
+                'basePackage',
+                'modelPackage',
+                'serverApiPackage',
+                'clientPackage',
+                'build/reports/smbtech-openapi/',
+                'reproducibility.sha256',
+                'migration.md',
+                'consumer-test.txt',
+                'mock-contracts.properties',
+                'OpenAPI spec validation issues found:',
+                'does not\ndirectly aggregate the configuration and spec validation tasks',
+                'permits an empty specification set',
+                'does not enforce a complete Maven group naming grammar',
+                'OpenAPI Contract Testing',
+                'openApiDocumentationCheck',
+                'build/reports/smbtech-openapi/documentation-check.txt'
+        ].each { marker ->
+            if (!reference.contains(marker)) {
+                failures << "OpenAPI validation reference must document ${marker}"
+            }
+        }
+
+        [
+                [pluginSource, 'BUILD_LOGIC_CHECK_TASK_NAME = "smbtechOpenApiBuildLogicCheck"'],
+                [pluginSource, 'VALIDATE_SPECS_TASK_NAME = "smbtechOpenApiValidateSpecs"'],
+                [pluginSource, '"**/src/main/openapi/*.yaml"'],
+                [pluginSource, '"**/openapi/*.json"'],
+                [pluginSource, '"**/swagger/*.yml"'],
+                [pluginSource, 'patterns.exclude'],
+                [generationConfigurerSource, '.named("check")'],
+                [compatibilityConfigurerSource, '.named("check")'],
+                [buildLogicCheckSource, 'must enable at least one generated artifact'],
+                [buildLogicCheckSource, 'must enable models when server API or client generation is enabled'],
+                [buildLogicCheckSource, 'must be a valid Java package'],
+                [buildLogicCheckSource, 'publicationRepositoryUrl must be an absolute URI'],
+                [validateSpecsSource, 'FRAMEWORK_ARTIFACT_NAMES'],
+                [validateSpecsSource, 'generated coordinate '],
+                [validateSpecsSource, 'duplicates '],
+                [validateSpecsSource, 'generated artifact collides with '],
+                [validateSpecsSource, 'sorted(Comparator.comparing(File::getAbsolutePath))'],
+                [contractReaderSource, 'openapi must declare a supported 3.0.x or 3.1.x version'],
+                [contractReaderSource, 'info.title is required'],
+                [contractReaderSource, 'info.version is required'],
+                [contractReaderSource, 'paths must contain at least one operation'],
+                [contractReaderSource, 'operationId is required'],
+                [contractReaderSource, 'must be unique'],
+                [generationConfigurerSource, 'task.dependsOn(\n                                            SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME)'],
+                [compatibilityConfigurerSource, 'COMPATIBILITY_TASK_NAME = "smbtechOpenApiCompatibilityCheck"'],
+                [compatibilityConfigurerSource, 'task.dependsOn(\n                                            breakingChange,\n                                            reproducibility,\n                                            migration,\n                                            consumerTest,\n                                            mockContract)']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI validation implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        [
+                'smbtechOpenApiBuildLogicCheck',
+                'smbtechOpenApiValidateSpecs',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApiBreakingChangeCheck',
+                'smbtechOpenApiReproducibilityCheck',
+                'smbtechOpenApiMigrationReport',
+                'smbtechOpenApiConsumerTest',
+                'smbtechOpenApiMockContractCheck'
+        ].each { taskName ->
+            if (!compatibilityContract.text.contains("task=${taskName}")) {
+                failures << "OpenAPI compatibility contract must protect validation task ${taskName}"
+            }
+            if (tasks.findByName(taskName) == null) {
+                failures << "documented OpenAPI validation task is not registered: ${taskName}"
+            }
+        }
+
+        if (compatibilityConfigurerSource.text.contains('BUILD_LOGIC_CHECK_TASK_NAME')
+                || compatibilityConfigurerSource.text.contains('VALIDATE_SPECS_TASK_NAME')) {
+            failures << 'compatibility aggregate must remain distinct from configuration and spec validation'
+        }
+        if (!architectureFile.text.contains(
+                '| Configuration, document, coordinate, and compatibility validation | `docs/openapi/validation.md` | Same validation reference |')) {
+            failures << 'OpenAPI documentation architecture must assign build-time validation to validation.md'
+        }
+        [
+                [portalFile, '(validation.md)'],
+                [codegenFile, '(openapi/validation.md)'],
+                [pluginReference, '(validation.md)'],
+                [behaviorInventory, '(openapi/validation.md)'],
+                [gettingStartedFile, '(validation.md)'],
+                [generationFile, '(validation.md)'],
+                [artifactGuide, '(../openapi/validation.md)']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "${relativePath(expectation[0])} must link to validation.md"
+            }
+        }
+
+        if (codegenFile.text.contains('uses Swagger Parser and rejects')) {
+            failures << 'openapi-codegen.md must not duplicate document validation rules'
+        }
+        if (pluginReference.text.contains('rejects configuration when:')) {
+            failures << 'plugin-reference.md must not duplicate configuration validation rules'
+        }
+        if (behaviorInventory.text.contains('discovers configured inputs and YAML')) {
+            failures << 'OpenAPI behavior inventory must delegate validation rules to validation.md'
+        }
+        if (artifactGuide.text.contains('plugin configuration and contract naming;')) {
+            failures << 'generated-artifacts procedure must not duplicate the compatibility checklist'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI validation documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiScaffoldingDocumentation') {
+    group = 'verification'
+    description = 'Validates the canonical OpenAPI project scaffolding reference against the generator implementation.'
+
+    def scaffoldingFile = file('docs/openapi/scaffolding.md')
+    def portalFile = file('docs/openapi/index.md')
+    def indexFile = file('docs/index.md')
+    def rootReadme = file('README.md')
+    def moduleReadme = file('spring-boot-service-framework-project-generator/README.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def repositoryArchitectureFile = file('docs/documentation-architecture.md')
+    def moduleBuild = file('spring-boot-service-framework-project-generator/build.gradle')
+    def cliSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/ProjectGeneratorCli.java')
+    def requestSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/ProjectGenerationRequest.java')
+    def resolvedProjectSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/ResolvedProject.java')
+    def descriptorLoaderSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/ContractDescriptorLoader.java')
+    def contributorSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/HexagonalProjectContributor.java')
+    def generatorSource = file('spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/DefaultHexagonalProjectGenerator.java')
+    def lifecycleSource = file('gradle/lifecycle.gradle')
+
+    inputs.files(
+            scaffoldingFile,
+            portalFile,
+            indexFile,
+            rootReadme,
+            moduleReadme,
+            architectureFile,
+            repositoryArchitectureFile,
+            moduleBuild,
+            cliSource,
+            requestSource,
+            resolvedProjectSource,
+            descriptorLoaderSource,
+            contributorSource,
+            generatorSource,
+            lifecycleSource
+    )
+
+    doLast {
+        def failures = []
+        def reference = scaffoldingFile.text
+
+        [
+                'Generation Model',
+                'Prerequisites',
+                'Gradle Task',
+                'Command-Line Interface',
+                'Java API',
+                'Contract Source Rules',
+                'Generated Project',
+                'Hexagonal Boundaries',
+                'Output Safety',
+                'Contract Evolution',
+                'Validation',
+                'Troubleshooting',
+                'Related Documentation'
+        ].each { section ->
+            if (!reference.contains("## ${section}")) {
+                failures << "OpenAPI scaffolding reference must contain section ${section}"
+            }
+        }
+
+        [
+                'generateHexagonalProject',
+                'scaffoldingCompatibilityCheck',
+                '-Pspec',
+                '-PapiJar',
+                '-Poutput',
+                'contractRepository',
+                'contractApiPackage',
+                'ProjectGenerationRequest',
+                'OpenApiDocumentSource',
+                'ServerApiJarSource',
+                'GeneratedProject',
+                'ProjectGenerationException',
+                'ProjectGeneratorCli',
+                'META-INF/smbtech/openapi/contract.properties',
+                'META-INF/smbtech/openapi/contract.yaml',
+                'artifact.kind=server-api',
+                'src/main/openapi/contract.yaml',
+                'ApplicationContextTest.java',
+                'HexagonalArchitectureTest.java',
+                'domain.model',
+                'application.port.in',
+                'application.port.out',
+                'adapter.in.web',
+                '0.1.0-SNAPSHOT',
+                'com.smbtech.contracts',
+                'PUBLIC',
+                'one-time bootstrap'
+        ].each { marker ->
+            if (!reference.contains(marker)) {
+                failures << "OpenAPI scaffolding reference must document ${marker}"
+            }
+        }
+
+        [
+                [moduleBuild, "tasks.register('generateHexagonalProject', JavaExec)"],
+                [moduleBuild, "tasks.register('scaffoldingCompatibilityCheck', GradleBuild)"],
+                [moduleBuild, "Provide exactly one of -Pspec=<file> or -PapiJar=<file>."],
+                [moduleBuild, "Provide -Poutput=<directory>."],
+                [cliSource, 'Provide exactly one of --spec or --api-jar'],
+                [cliSource, '--contract-api-package=<package>'],
+                [cliSource, 'System.exit(2)'],
+                [requestSource, 'private String groupId = "com.smbtech"'],
+                [requestSource, 'private String projectVersion = "0.1.0-SNAPSHOT"'],
+                [resolvedProjectSource, 'contract.id() + "-service"'],
+                [resolvedProjectSource, 'request.groupId() + ".services."'],
+                [descriptorLoaderSource, '"META-INF/smbtech/openapi/contract.properties"'],
+                [descriptorLoaderSource, '"META-INF/smbtech/openapi/contract.yaml"'],
+                [descriptorLoaderSource, '"com.smbtech.contracts"'],
+                [descriptorLoaderSource, 'id + "-server-api"'],
+                [descriptorLoaderSource, 'contractApiPackage cannot override classes embedded in a server API JAR'],
+                [contributorSource, 'src/main/openapi/contract.yaml'],
+                [contributorSource, 'HexagonalArchitectureTest.java'],
+                [contributorSource, 'exposure: PUBLIC'],
+                [contributorSource, 'domain_is_framework_independent'],
+                [contributorSource, 'application_does_not_depend_on_adapters'],
+                [contributorSource, 'inbound_adapters_do_not_depend_on_outbound_adapters'],
+                [generatorSource, 'Use overwrite only for disposable scaffolds.'],
+                [generatorSource, 'Refusing to replace unsafe output directory'],
+                [lifecycleSource, ':spring-boot-service-framework-project-generator:scaffoldingCompatibilityCheck']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "OpenAPI scaffolding implementation marker is missing: ${expectation[1]}"
+            }
+        }
+
+        if (!architectureFile.text.contains(
+                '| Hexagonal project generation | `docs/openapi/scaffolding.md` | Same scaffolding reference |')) {
+            failures << 'OpenAPI documentation architecture must assign project generation to scaffolding.md'
+        }
+        if (!repositoryArchitectureFile.text.contains(
+                '| OpenAPI service scaffolding inputs, output, and hexagonal boundaries | `docs/openapi/scaffolding.md` |')) {
+            failures << 'repository documentation architecture must classify scaffolding.md'
+        }
+        [
+                [portalFile, '(scaffolding.md)'],
+                [indexFile, '(openapi/scaffolding.md)'],
+                [rootReadme, '(docs/openapi/scaffolding.md)'],
+                [moduleReadme, '(../docs/openapi/scaffolding.md)']
+        ].each { expectation ->
+            if (!expectation[0].text.contains(expectation[1])) {
+                failures << "${relativePath(expectation[0])} must link to scaffolding.md"
+            }
+        }
+
+        if (moduleReadme.text.contains('Generate from a server API JAR:')
+                || moduleReadme.text.contains('The generated project contains:')) {
+            failures << 'project-generator README must delegate detailed scaffolding behavior to scaffolding.md'
+        }
+        if (tasks.findByPath(':spring-boot-service-framework-project-generator:scaffoldingCompatibilityCheck') == null) {
+            failures << 'documented scaffoldingCompatibilityCheck task is not registered'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI scaffolding documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiDocumentationDeduplication') {
+    group = 'verification'
+    description = 'Validates canonical OpenAPI documentation ownership and prevents parallel manuals.'
+
+    def codegenOverview = file('docs/openapi-codegen.md')
+    def artifactProcedure = file('docs/guides/openapi-generated-artifacts.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def pluginReadme = file('build-logic/openapi-generator-plugin/README.md')
+    def projectGeneratorReadme = file('spring-boot-service-framework-project-generator/README.md')
+    def contractTestingReadme = file('spring-boot-service-framework-openapi-contract-testing/README.md')
+    def openApiDocumentation = files(
+            fileTree('docs') {
+                include 'openapi/**/*.md'
+                include 'openapi-*.md'
+                include 'guides/*openapi*.md'
+            },
+            pluginReadme,
+            file('build-logic/openapi-templates/README.md'),
+            projectGeneratorReadme,
+            contractTestingReadme
+    )
+
+    inputs.files(
+            openApiDocumentation,
+            architectureFile
+    )
+
+    doLast {
+        def failures = []
+
+        [
+                'Capability Map',
+                'Build-Time Boundary',
+                'Runtime Boundary',
+                'Workflow Boundaries',
+                'Ownership',
+                'Validation'
+        ].each { section ->
+            if (!codegenOverview.text.contains("## ${section}")) {
+                failures << "OpenAPI code-generation overview must contain section ${section}"
+            }
+        }
+        [
+                '(openapi/plugin-reference.md)',
+                '(openapi/generation.md)',
+                '(openapi/validation.md)',
+                '(openapi/publishing.md)',
+                '(openapi/versioning.md)',
+                '(openapi-contract-testing.md)',
+                '(openapi/scaffolding.md)'
+        ].each { link ->
+            if (!codegenOverview.text.contains(link)) {
+                failures << "OpenAPI code-generation overview must delegate to ${link}"
+            }
+        }
+        if (codegenOverview.text.contains('```')) {
+            failures << 'OpenAPI code-generation overview must not duplicate executable examples'
+        }
+        if (codegenOverview.readLines().size() > 100) {
+            failures << 'OpenAPI code-generation overview must remain under 100 lines'
+        }
+
+        [
+                '## 1. Add The Spec',
+                '## 2. Register The Baseline',
+                '## 3. Generate Artifacts',
+                '## 4. Inspect The Result',
+                '## 5. Validate',
+                '## 6. Publish Locally',
+                '## Expected Result'
+        ].each { section ->
+            if (!artifactProcedure.text.contains(section)) {
+                failures << "generated-artifacts procedure must contain ${section}"
+            }
+        }
+        [
+                '```java',
+                '```yaml',
+                '@Component',
+                '@HttpApiClient',
+                'authentication-type:',
+                'DefaultApiDelegate',
+                'META-INF/smbtech/openapi/',
+                'smbtechOpenApi {'
+        ].each { duplicate ->
+            if (artifactProcedure.text.contains(duplicate)) {
+                failures << "generated-artifacts procedure must delegate implementation detail ${duplicate}"
+            }
+        }
+
+        def uniqueOwners = [
+                '| `smbtechOpenApi.groupId`'   : file('docs/openapi/plugin-reference.md'),
+                '| `artifact.group`'           : behaviorInventory,
+                'OPENAPI_REPOSITORY_USERNAME'  : file('docs/openapi/publishing.md'),
+                'HexagonalArchitectureTest.java': file('docs/openapi/scaffolding.md')
+        ]
+        uniqueOwners.each { marker, owner ->
+            def occurrences = openApiDocumentation.files.findAll { it.text.contains(marker) }
+            if (occurrences.toSet() != ([owner] as Set)) {
+                failures << "OpenAPI documentation marker ${marker} must be owned only by ${relativePath(owner)}; found ${occurrences.collect { relativePath(it) }.sort()}"
+            }
+        }
+
+        def embeddedVersionedPath =
+                'META-INF/smbtech/openapi/contracts/<name>/<version>/contract.yaml'
+        def embeddedPathOwners = [
+                behaviorInventory,
+                file('docs/openapi/generation.md')
+        ] as Set
+        def embeddedPathOccurrences = openApiDocumentation.files.findAll {
+            it.text.contains(embeddedVersionedPath)
+        } as Set
+        if (embeddedPathOccurrences != embeddedPathOwners) {
+            failures << "versioned embedded contract path must remain only in generation.md and the compatibility inventory"
+        }
+
+        if (!behaviorInventory.text.contains(
+                'It records only values protected by automated checks; canonical references own')) {
+            failures << 'OpenAPI behavior inventory must declare its compatibility-snapshot boundary'
+        }
+        [pluginReadme, projectGeneratorReadme, contractTestingReadme].each { moduleReadme ->
+            if (!moduleReadme.text.contains('OpenAPI Portal')) {
+                failures << "${relativePath(moduleReadme)} must delegate navigation to the OpenAPI portal"
+            }
+        }
+        [
+                'smbtechOpenApiValidateSpecs',
+                'build/reports/smbtech-openapi',
+                'OpenAPI Diff with SemVer enforcement'
+        ].each { duplicate ->
+            if (pluginReadme.text.contains(duplicate)) {
+                failures << "OpenAPI plugin README must delegate detailed behavior ${duplicate}"
+            }
+        }
+        if (projectGeneratorReadme.text.contains('The generated project contains:')
+                || projectGeneratorReadme.text.contains('Generate from a server API JAR:')) {
+            failures << 'project-generator README must delegate output and input details to scaffolding.md'
+        }
+
+        if (!architectureFile.text.contains(
+                'The behavior inventory is a compatibility snapshot, not a second usage')) {
+            failures << 'OpenAPI documentation architecture must define the inventory duplication exception'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI documentation duplication issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiDocumentationArchitecture') {
+    group = 'verification'
+    description = 'Validates canonical OpenAPI documentation ownership and module boundaries.'
+
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def behaviorInventory = file('docs/openapi-behavior-inventory.md')
+    def adrFile = file('docs/adr/0001-openapi-generator-engine.md')
+    def moduleLinks = [
+            'build-logic/openapi-generator-plugin/README.md': '../../docs/openapi/documentation-architecture.md',
+            'build-logic/openapi-templates/README.md': '../../docs/openapi/documentation-architecture.md',
+            'spring-boot-service-framework-openapi-contract-testing/README.md': '../docs/openapi/documentation-architecture.md',
+            'spring-boot-service-framework-project-generator/README.md': '../docs/openapi/documentation-architecture.md'
+    ]
+
+    inputs.files(
+            architectureFile,
+            behaviorInventory,
+            adrFile,
+            moduleLinks.keySet().collect { file(it) },
+            markdownDocumentationFiles()
+    )
+
+    doLast {
+        def failures = []
+        def architecture = architectureFile.text
+
+        [
+                'Principles',
+                'Document Layers',
+                'Canonical Ownership',
+                'Content Boundaries',
+                'Duplication Policy',
+                'Naming And Links',
+                'Change Ownership',
+                'Validation Contract',
+                'Compatibility And Rollout'
+        ].each { section ->
+            if (!architecture.contains("## ${section}")) {
+                failures << "OpenAPI documentation architecture must contain section ${section}"
+            }
+        }
+
+        [
+                'docs/openapi/index.md',
+                'docs/openapi/documentation-architecture.md',
+                'docs/openapi/behavior-inventory.md',
+                'docs/openapi/getting-started.md',
+                'docs/openapi/generation.md',
+                'docs/openapi/plugin-reference.md',
+                'docs/openapi/publishing.md',
+                'docs/openapi/validation.md',
+                'docs/openapi/versioning.md',
+                'docs/openapi/testing.md',
+                'docs/openapi/scaffolding.md',
+                'docs/openapi/examples.md',
+                'docs/openapi/troubleshooting.md',
+                'docs/adr/0001-openapi-generator-engine.md',
+                'build-logic/openapi-generator-plugin/README.md',
+                'build-logic/openapi-templates/README.md',
+                'spring-boot-service-framework-openapi-contract-testing/README.md'
+        ].each { owner ->
+            if (!architecture.contains("`${owner}`")) {
+                failures << "OpenAPI documentation architecture must classify ${owner}"
+            }
+        }
+
+        [
+                'validateOpenApiDocumentationCommands',
+                'openApiDocumentationCheck',
+                'build/reports/smbtech-openapi/documentation-check.txt',
+                'openApiDocumentationCompatibilityCheck',
+                'gradle/compatibility/contracts/openApiDocumentation.txt'
+        ].each { marker ->
+            if (!architecture.contains(marker)) {
+                failures << "OpenAPI documentation architecture must document ${marker}"
+            }
+        }
+
+        moduleLinks.each { path, target ->
+            if (!file(path).text.contains("(${target})")) {
+                failures << "${path} must link to ${target}"
+            }
+        }
+
+        if (!behaviorInventory.text.contains('(openapi/documentation-architecture.md)')) {
+            failures << 'OpenAPI behavior inventory must link to the documentation architecture'
+        }
+        if (!adrFile.text.contains('- Status: Accepted')) {
+            failures << 'OpenAPI generator ADR must retain an explicit accepted status'
+        }
+        if (file('docs/openapi-evolution.md').exists()) {
+            failures << 'completed docs/openapi-evolution.md roadmap must remain removed'
+        }
+
+        markdownDocumentationFiles().files.sort().each { source ->
+            if (source != architectureFile && source.text.contains('openapi-evolution.md')) {
+                failures << "${relativePath(source)} must not link to the completed OpenAPI evolution roadmap"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI documentation architecture issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiPortal') {
+    group = 'verification'
+    description = 'Validates the OpenAPI portal as the canonical goal-oriented entry point.'
+
+    def portalFile = file('docs/openapi/index.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def entryPoints = [
+            'README.md': 'docs/openapi/index.md',
+            'docs/index.md': 'openapi/index.md',
+            'build-logic/openapi-generator-plugin/README.md': '../../docs/openapi/index.md',
+            'build-logic/openapi-templates/README.md': '../../docs/openapi/index.md',
+            'spring-boot-service-framework-openapi-contract-testing/README.md': '../docs/openapi/index.md',
+            'spring-boot-service-framework-project-generator/README.md': '../docs/openapi/index.md'
+    ]
+
+    inputs.files(portalFile, architectureFile, entryPoints.keySet().collect { file(it) })
+
+    doLast {
+        def failures = []
+        def portal = portalFile.text
+
+        [
+                'Choose A Goal',
+                'Choose By Role',
+                'Reference',
+                'Implementation Boundaries',
+                'Repository Examples'
+        ].each { section ->
+            if (!portal.contains("## ${section}")) {
+                failures << "OpenAPI portal must contain section ${section}"
+            }
+        }
+
+        [
+                'getting-started.md',
+                'generation.md',
+                'plugin-reference.md',
+                'publishing.md',
+                'validation.md',
+                'examples.md',
+                'troubleshooting.md',
+                '../openapi-codegen.md',
+                '../openapi-behavior-inventory.md',
+                '../guides/openapi-generated-artifacts.md',
+                'versioning.md',
+                '../guides/check-openapi-breaking-changes.md',
+                '../openapi-contract-testing.md',
+                '../guides/openapi-contract-testing.md',
+                '../mock.md',
+                '../../build-logic/openapi-generator-plugin/README.md',
+                '../../build-logic/openapi-templates/README.md',
+                '../../spring-boot-service-framework-openapi-contract-testing/README.md',
+                '../../spring-boot-service-framework-project-generator/README.md',
+                '../adr/0001-openapi-generator-engine.md',
+                'documentation-architecture.md',
+                'merchant-order-status.yaml',
+                'retail-loyalty-rewards.yaml',
+                'warehouse-inventory-catalog.yaml'
+        ].each { target ->
+            if (!portal.contains("(${target})")) {
+                failures << "OpenAPI portal must link to ${target}"
+            }
+        }
+
+        if (portal.contains('```')) {
+            failures << 'OpenAPI portal must not contain code blocks'
+        }
+        if ((portal =~ /(?m)^#{3,6}\s/).find()) {
+            failures << 'OpenAPI portal must remain a shallow H1/H2 navigation document'
+        }
+        if (portal.readLines().size() > 120) {
+            failures << 'OpenAPI portal must remain under 120 lines'
+        }
+        if (!architectureFile.text.contains(
+                '| OpenAPI navigation | `docs/openapi/index.md` | Same portal |')) {
+            failures << 'OpenAPI documentation architecture must assign navigation to the portal'
+        }
+
+        entryPoints.each { path, target ->
+            if (!file(path).text.contains("(${target})")) {
+                failures << "${path} must link to the OpenAPI portal at ${target}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("OpenAPI portal issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiGettingStarted') {
+    group = 'verification'
+    description = 'Validates the executable OpenAPI getting-started contract.'
+
+    def gettingStartedFile = file('docs/openapi/getting-started.md')
+    def portalFile = file('docs/openapi/index.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def repositoryGuide = file('docs/guides/openapi-generated-artifacts.md')
+    def contractFile = file('docs/openapi/warehouse-inventory-catalog.yaml')
+    def versionProperties = file('gradle.properties')
+
+    inputs.files(
+            gettingStartedFile,
+            portalFile,
+            architectureFile,
+            repositoryGuide,
+            contractFile,
+            versionProperties
+    )
+
+    doLast {
+        def failures = []
+        def guide = gettingStartedFile.text
+        def versions = new Properties()
+        versionProperties.withInputStream { versions.load(it) }
+        def frameworkVersion = versions.getProperty('frameworkVersion')
+
+        [
+                'Before You Start',
+                '1. Create The Contract',
+                '2. Apply And Configure The Plugin',
+                '3. Validate The Contract',
+                '4. Generate The Artifacts',
+                '5. Publish Locally',
+                '6. Implement The Server API',
+                '7. Consume The HTTP Client',
+                '8. Run The Compatibility Gate',
+                'Expected Result'
+        ].each { section ->
+            if (!guide.contains("## ${section}")) {
+                failures << "OpenAPI getting started must contain section ${section}"
+            }
+        }
+
+        [
+                'com.smbtech.service-framework.openapi-generator',
+                "version '${frameworkVersion}'",
+                'src/main/openapi/warehouse-inventory-catalog.yaml',
+                "title: warehouse-inventory-catalog",
+                "version: '1.0.0'",
+                'operationId: getWarehouseInventoryItem',
+                "register('warehouseInventoryCatalog')",
+                'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0',
+                'build/libs/smbtech-openapi',
+                'build/repository/openapi',
+                'DefaultApiDelegate',
+                '@HttpApiClient(\"warehouse-inventory-catalog\")',
+                'authentication-type: NONE',
+                'src/main/openapi-baselines/warehouse-inventory-catalog/1.0.0.yaml'
+        ].each { marker ->
+            if (!guide.contains(marker)) {
+                failures << "OpenAPI getting started must document ${marker}"
+            }
+        }
+
+        [
+                'smbtechOpenApiBuildLogicCheck',
+                'smbtechOpenApiValidateSpecs',
+                'smbtechOpenApiAssemble',
+                'smbtechOpenApiPublishToLocalRepository',
+                'smbtechOpenApiCompatibilityCheck'
+        ].each { taskName ->
+            if (!guide.contains("./gradlew ${taskName}")
+                    && !guide.contains(" ${taskName}")) {
+                failures << "OpenAPI getting started must invoke ${taskName}"
+            }
+            if (tasks.findByName(taskName) == null) {
+                failures << "documented OpenAPI task is not registered: ${taskName}"
+            }
+        }
+
+        def repositoryContract = contractFile.text
+        [
+                'title: warehouse-inventory-catalog',
+                "version: '1.0.0'",
+                'operationId: getWarehouseInventoryItem'
+        ].each { marker ->
+            if (!repositoryContract.contains(marker)) {
+                failures << "repository getting-started fixture must contain ${marker}"
+            }
+        }
+
+        if (!portalFile.text.contains('(getting-started.md)')) {
+            failures << 'OpenAPI portal must link to getting-started.md'
+        }
+        if (!repositoryGuide.text.contains('(../openapi/getting-started.md)')) {
+            failures << 'generated-artifacts guide must link to OpenAPI getting started'
+        }
+        if (!architectureFile.text.contains(
+                '| Minimal end-to-end adoption | `docs/openapi/getting-started.md` | Same getting-started guide |')) {
+            failures << 'OpenAPI documentation architecture must assign minimal adoption to getting started'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI getting-started issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiGenerationDocumentation') {
+    group = 'verification'
+    description = 'Validates the canonical OpenAPI generated-artifact contract.'
+
+    def generationFile = file('docs/openapi/generation.md')
+    def portalFile = file('docs/openapi/index.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def codegenFile = file('docs/openapi-codegen.md')
+    def artifactKindSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactKind.java')
+    def generationSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
+    def generateTaskSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGenerateTask.java')
+    def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
+    def metadataSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiMetadataTask.java')
+
+    inputs.files(
+            generationFile,
+            portalFile,
+            architectureFile,
+            codegenFile,
+            artifactKindSource,
+            generationSource,
+            generateTaskSource,
+            buildLogicCheckSource,
+            metadataSource
+    )
+
+    doLast {
+        def failures = []
+        def reference = generationFile.text
+
+        [
+                'Generation Pipeline',
+                'Artifact Set',
+                'Package Layout',
+                'Models Artifact',
+                'Server API Artifact',
+                'Client Artifact',
+                'Artifact Dependency Rules',
+                'Generated Outputs',
+                'Embedded Contract',
+                'Generation Tasks',
+                'Generated Code Policy',
+                'Validation'
+        ].each { section ->
+            if (!reference.contains("## ${section}")) {
+                failures << "OpenAPI generation reference must contain section ${section}"
+            }
+        }
+
+        [
+                'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0',
+                'com.smbtech.contracts.warehouseinventorycatalog.model',
+                'com.smbtech.contracts.warehouseinventorycatalog.api',
+                'com.smbtech.contracts.warehouseinventorycatalog.client',
+                'DefaultApiDelegate',
+                'DefaultApiController',
+                'ApiUtil',
+                '@HttpApiClient(\"warehouse-inventory-catalog\")',
+                'build/generated/smbtech-openapi/<spec-name>/<kind>/src/main/java',
+                'build/classes/smbtech-openapi/<spec-name>/<kind>',
+                'build/generated/smbtech-openapi-metadata/<spec-name>/<kind>',
+                'build/libs/smbtech-openapi',
+                'META-INF/smbtech/openapi/contract.yaml',
+                'META-INF/smbtech/openapi/contracts/<name>/<version>/contract.yaml',
+                'Java 21',
+                'Jackson annotations',
+                'Jakarta Validation API',
+                'Spring Context',
+                'Hibernate Validator',
+                'Spring Web',
+                'Jakarta Servlet',
+                'spring-boot-service-framework-starter-rest-client'
+        ].each { marker ->
+            if (!reference.contains(marker)) {
+                failures << "OpenAPI generation reference must document ${marker}"
+            }
+        }
+
+        [
+                MODELS   : 'models',
+                SERVER_API: 'server-api',
+                CLIENT   : 'client'
+        ].each { enumName, suffix ->
+            if (!artifactKindSource.text.contains("${enumName}(\"${suffix}\")")) {
+                failures << "OpenAPI artifact kind implementation must contain ${enumName}=${suffix}"
+            }
+            if (!reference.contains("-${suffix}:1.0.0")) {
+                failures << "OpenAPI generation reference must document ${suffix} coordinates"
+            }
+        }
+
+        [
+                'smbtechOpenApiGenerateModels',
+                'smbtechOpenApiGenerateServerApi',
+                'smbtechOpenApiGenerateClient',
+                'smbtechOpenApiAssemble'
+        ].each { taskName ->
+            if (!reference.contains("`${taskName}`")) {
+                failures << "OpenAPI generation reference must document task ${taskName}"
+            }
+            if (tasks.findByName(taskName) == null) {
+                failures << "documented OpenAPI generation task is not registered: ${taskName}"
+            }
+        }
+
+        [
+                'com.fasterxml.jackson.core:jackson-annotations',
+                'jakarta.validation:jakarta.validation-api',
+                'org.springframework:spring-context',
+                'org.hibernate.validator:hibernate-validator',
+                'org.springframework:spring-web',
+                'jakarta.servlet:jakarta.servlet-api',
+                'spring-boot-service-framework-starter-rest-client'
+        ].each { dependency ->
+            if (!generationSource.text.contains(dependency)) {
+                failures << "OpenAPI generation implementation must contain dependency ${dependency}"
+            }
+        }
+
+        [
+                'setGeneratorName("spring")',
+                'setLibrary("spring-boot")',
+                'setLibrary("spring-http-interface")',
+                'addAdditionalProperty("delegatePattern", true)',
+                'addAdditionalProperty("interfaceOnly", true)',
+                'addAdditionalProperty("useResponseEntity", true)'
+        ].each { marker ->
+            if (!generateTaskSource.text.contains(marker)) {
+                failures << "OpenAPI source generator implementation marker is missing: ${marker}"
+            }
+        }
+
+        if (!generationSource.text.contains('getRelease().set(21)')) {
+            failures << 'OpenAPI generated sources must remain compiled with Java 21'
+        }
+        if (!buildLogicCheckSource.text.contains(
+                'must enable models when server API or client generation is enabled')) {
+            failures << 'OpenAPI build logic must preserve the generated artifact dependency rule'
+        }
+        if (!metadataSource.text.contains('resolve("contracts")')) {
+            failures << 'OpenAPI metadata implementation must preserve collision-free contract paths'
+        }
+        if (!portalFile.text.contains('(generation.md)')) {
+            failures << 'OpenAPI portal must link to generation.md'
+        }
+        if (!architectureFile.text.contains(
+                '| Artifact generation and contents | `docs/openapi/generation.md` | Same generation reference |')) {
+            failures << 'OpenAPI documentation architecture must assign artifacts to generation.md'
+        }
+        if (!codegenFile.text.contains('(openapi/generation.md)')) {
+            failures << 'legacy OpenAPI code-generation reference must delegate artifact content to generation.md'
+        }
+        if (codegenFile.text.contains('META-INF/smbtech/openapi/contract.yaml')) {
+            failures << 'openapi-codegen.md must not duplicate the embedded artifact layout'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI generation documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
 tasks.register('validateModuleReadmes') {
     group = 'verification'
     description = 'Validates the required module README convention.'
@@ -429,7 +2138,6 @@ tasks.register('validateModuleReadmes') {
             'spring-boot-service-framework-http-client-core/README.md',
             'spring-boot-service-framework-mock-core/README.md',
             'spring-boot-service-framework-error-core/README.md',
-            'spring-boot-service-framework-openapi-generator/README.md',
             'spring-boot-service-framework-openapi-contract-testing/README.md',
             'spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md',
             'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md',
@@ -615,6 +2323,636 @@ tasks.register('validateExampleApplicationConfig') {
     }
 }
 
+tasks.register('validatePreOneMigrationDocumentation') {
+    group = 'verification'
+    description = 'Validates pre-1.0 binary exceptions and their consumer migration guidance.'
+
+    def migrationGuide = file('docs/guides/migrate-public-names-and-properties.md')
+    def apiPolicy = file('docs/pre-1.0-api-policy.md')
+    def changelog = file('CHANGELOG.md')
+    def approvedBreaks = file('gradle/compatibility/binary-breaking-changes.txt')
+
+    inputs.files(migrationGuide, apiPolicy, changelog, approvedBreaks)
+
+    doLast {
+        def failures = []
+        def guideText = migrationGuide.text
+        def policyText = apiPolicy.text
+        def changelogText = changelog.text
+        def entries = approvedBreaks.readLines()
+                .collect { it.trim() }
+                .findAll { !it.isEmpty() && !it.startsWith('#') }
+
+        def duplicates = entries.countBy { it }.findAll { entry, count -> count > 1 }.keySet()
+        duplicates.each { entry ->
+            failures << "duplicate binary compatibility exception: ${entry}"
+        }
+
+        entries.each { entry ->
+            def separator = entry.indexOf('|')
+            if (separator < 1 || separator == entry.length() - 1) {
+                failures << "invalid binary compatibility exception: ${entry}"
+                return
+            }
+
+            def member = entry.substring(separator + 1)
+            def owner = member.contains('#') ? member.substring(0, member.indexOf('#')) : member
+            def simpleName = owner.substring(owner.lastIndexOf('.') + 1)
+            if (!guideText.contains("`${simpleName}`")) {
+                failures << "migration guide must document binary exception owner ${simpleName}"
+            }
+        }
+
+        [
+                'tools.jackson',
+                'JwtBearerTokenRequest',
+                'ErrorReporter.composite',
+                'NotificationAggregationPolicy.defaultPolicy',
+                'RestClientBuilderCustomizer',
+                'OpenApiArtifactKind',
+                'HexagonalProjectGenerator.create',
+                'FrameworkDiagnostics.from'
+        ].each { marker ->
+            if (!guideText.contains(marker)) {
+                failures << "migration guide must document ${marker}"
+            }
+        }
+
+        def migrationLink = '[Pre-1.0 Migration Guide](guides/migrate-public-names-and-properties.md)'
+        if (!policyText.contains(migrationLink)) {
+            failures << 'pre-1.0 API policy must link to the migration guide'
+        }
+        if (!changelogText.toLowerCase(Locale.ROOT).contains('pre-1.0 migration guide')) {
+            failures << 'CHANGELOG.md must mention the pre-1.0 migration guide'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Pre-1.0 migration documentation issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiExamplesAndTroubleshooting') {
+    group = 'verification'
+    description = 'Validates OpenAPI examples and troubleshooting against repository fixtures and diagnostics.'
+
+    def examplesFile = file('docs/openapi/examples.md')
+    def troubleshootingFile = file('docs/openapi/troubleshooting.md')
+    def generalTroubleshootingFile = file('docs/troubleshooting.md')
+    def portalFile = file('docs/openapi/index.md')
+    def architectureFile = file('docs/openapi/documentation-architecture.md')
+    def rootBuildFile = file('build.gradle')
+    def contracts = [
+            [
+                    name      : 'Merchant Order Status',
+                    registration: 'merchantOrderStatus',
+                    path      : 'docs/openapi/merchant-order-status.yaml',
+                    baseline  : 'docs/openapi-baselines/merchant-order-status/1.1.0.yaml',
+                    title     : 'merchant-order-status',
+                    version   : '1.1.0',
+                    operations: ['getOrderStatus']
+            ],
+            [
+                    name      : 'Retail Loyalty Rewards',
+                    registration: 'retailLoyaltyRewards',
+                    path      : 'docs/openapi/retail-loyalty-rewards.yaml',
+                    baseline  : 'docs/openapi-baselines/retail-loyalty-rewards/1.0.0.yaml',
+                    title     : 'retail-loyalty-rewards',
+                    version   : '1.0.0',
+                    operations: ['getMemberRewardsSummary', 'getVoucher']
+            ],
+            [
+                    name      : 'Warehouse Inventory Catalog',
+                    registration: 'warehouseInventoryCatalog',
+                    path      : 'docs/openapi/warehouse-inventory-catalog.yaml',
+                    baseline  : 'docs/openapi-baselines/warehouse-inventory-catalog/1.0.0.yaml',
+                    title     : 'warehouse-inventory-catalog',
+                    version   : '1.0.0',
+                    operations: ['getWarehouseInventoryItem']
+            ]
+    ]
+    def diagnosticSources = [
+            'build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiValidateSpecsTask.java',
+            'build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBreakingChangeTask.java',
+            'build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiReproducibilityTask.java',
+            'build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiConsumerCompatibilityTask.java',
+            'build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiMockContractTask.java',
+            'spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/ContractDescriptorLoader.java',
+            'spring-boot-service-framework-project-generator/src/main/java/com/smbtech/serviceframework/project/generator/DefaultHexagonalProjectGenerator.java',
+            'spring-boot-service-framework-openapi-contract-testing/src/main/java/com/smbtech/serviceframework/openapi/contract/OpenApiContractViolationCode.java'
+    ]
+
+    inputs.files(
+            examplesFile,
+            troubleshootingFile,
+            generalTroubleshootingFile,
+            portalFile,
+            architectureFile,
+            rootBuildFile,
+            contracts.collectMany { [file(it.path), file(it.baseline)] },
+            file('docs/openapi-baselines/merchant-order-status/1.0.0.yaml'),
+            diagnosticSources.collect { file(it) }
+    )
+
+    doLast {
+        def failures = []
+        def examples = examplesFile.text
+        def troubleshooting = troubleshootingFile.text
+        def generalTroubleshooting = generalTroubleshootingFile.text
+        def implementation = diagnosticSources.collect { file(it).text }.join('\n')
+        def rootBuild = rootBuildFile.text
+
+        [
+                'Example Matrix',
+                'Run All Examples',
+                'Merchant Order Status',
+                'Retail Loyalty Rewards',
+                'Warehouse Inventory Catalog',
+                'Inspect Generated Artifacts',
+                'Add An Example',
+                'Validation'
+        ].each { section ->
+            if (!examples.contains("## ${section}")) {
+                failures << "OpenAPI examples must contain section ${section}"
+            }
+        }
+
+        contracts.each { contract ->
+            def spec = file(contract.path)
+            def baseline = file(contract.baseline)
+            if (!examples.contains(contract.name)
+                    || !examples.contains("(${spec.name})")
+                    || !examples.contains(contract.version)) {
+                failures << "OpenAPI examples must document ${contract.name} ${contract.version}"
+            }
+            if (!rootBuild.contains("register('${contract.registration}')")) {
+                failures << "root build must register OpenAPI example ${contract.registration}"
+            }
+            if (!spec.text.contains("title: ${contract.title}")
+                    || !spec.text.contains("version: '${contract.version}'")) {
+                failures << "${contract.path} must preserve documented title and version"
+            }
+            contract.operations.each { operation ->
+                if (!spec.text.contains("operationId: ${operation}")) {
+                    failures << "${contract.path} must contain operation ${operation}"
+                }
+                if (!examples.contains(operation)) {
+                    failures << "OpenAPI examples must document operation ${operation}"
+                }
+            }
+            if (!java.util.Arrays.equals(spec.bytes, baseline.bytes)) {
+                failures << "${contract.baseline} must be byte-identical to the current contract"
+            }
+        }
+
+        def previousMerchant = file('docs/openapi-baselines/merchant-order-status/1.0.0.yaml').text
+        def currentMerchant = file('docs/openapi/merchant-order-status.yaml').text
+        if (previousMerchant.contains('updatedAt') || !currentMerchant.contains('updatedAt')) {
+            failures << 'Merchant Order Status must demonstrate the documented optional updatedAt addition'
+        }
+
+        [
+                'nine binary JARs and nine source JARs',
+                'build/reports/smbtech-openapi/diff/merchant-order-status.md',
+                'build/reports/smbtech-openapi/reproducibility.sha256',
+                'build/reports/smbtech-openapi/consumer-test.txt',
+                'build/reports/smbtech-openapi/mock-contracts.properties',
+                './gradlew validateOpenApiExamplesAndTroubleshooting'
+        ].each { marker ->
+            if (!examples.contains(marker)) {
+                failures << "OpenAPI examples must document ${marker}"
+            }
+        }
+
+        [
+                'Fast Triage',
+                'Evidence Map',
+                'Configuration Failures',
+                'Document And Coordinate Failures',
+                'Generation And Compilation Failures',
+                'Baseline And SemVer Failures',
+                'Reproducibility Failures',
+                'Consumer And Mock Failures',
+                'Publication Failures',
+                'Scaffolding Failures',
+                'Contract Test Failures',
+                'CI Diagnostics',
+                'Validation'
+        ].each { section ->
+            if (!troubleshooting.contains("## ${section}")) {
+                failures << "OpenAPI troubleshooting must contain section ${section}"
+            }
+        }
+
+        [
+                'OpenAPI spec validation issues found:',
+                'missing exact baseline for version',
+                'contains duplicate entries',
+                'generated JAR is missing',
+                'mock server requires at least one numeric response',
+                'embedded contract metadata is missing',
+                'Refusing to replace unsafe output directory'
+        ].each { marker ->
+            if (!implementation.contains(marker)) {
+                failures << "OpenAPI implementation diagnostic is missing: ${marker}"
+            }
+            if (!troubleshooting.contains(marker)) {
+                failures << "OpenAPI troubleshooting must document diagnostic: ${marker}"
+            }
+        }
+
+        [
+                'UNKNOWN_OPERATION',
+                'MISSING_TEST_CASE',
+                'MISSING_PATH_PARAMETER',
+                'MISSING_REQUEST_PARAMETER',
+                'UNDECLARED_REQUEST_BODY',
+                'UNDECLARED_REQUEST_CONTENT_TYPE',
+                'INVALID_JSON_REQUEST',
+                'REQUEST_SCHEMA_MISMATCH',
+                'UNEXPECTED_STATUS',
+                'UNDECLARED_STATUS',
+                'UNDECLARED_CONTENT_TYPE',
+                'INVALID_JSON_RESPONSE',
+                'RESPONSE_SCHEMA_MISMATCH'
+        ].each { code ->
+            if (!implementation.contains(code) || !troubleshooting.contains(code)) {
+                failures << "OpenAPI troubleshooting must track contract violation ${code}"
+            }
+        }
+
+        if (!portalFile.text.contains('(examples.md)')
+                || !portalFile.text.contains('(troubleshooting.md)')) {
+            failures << 'OpenAPI portal must link to examples and troubleshooting'
+        }
+        if (!generalTroubleshooting.contains('(openapi/troubleshooting.md)')) {
+            failures << 'General troubleshooting must delegate OpenAPI failures to the canonical guide'
+        }
+        [
+                '`smbtechOpenApiValidateSpecs` fails',
+                '`smbtechOpenApiBreakingChangeCheck` reports',
+                '`smbtechOpenApiCompatibilityCheck` fails'
+        ].each { duplicate ->
+            if (generalTroubleshooting.contains(duplicate)) {
+                failures << "General troubleshooting must not duplicate ${duplicate}"
+            }
+        }
+        if (!architectureFile.text.contains(
+                '| Executable repository examples and expected evidence | `docs/openapi/examples.md` | Same examples guide |')
+                || !architectureFile.text.contains(
+                '| OpenAPI-specific failure diagnosis | `docs/openapi/troubleshooting.md` | Same troubleshooting guide |')) {
+            failures << 'OpenAPI documentation architecture must assign examples and troubleshooting ownership'
+        }
+
+        [
+                'smbtechOpenApiBuildLogicCheck',
+                'smbtechOpenApiValidateSpecs',
+                'smbtechOpenApiAssemble',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApiBreakingChangeCheck',
+                'smbtechOpenApiReproducibilityCheck',
+                'smbtechOpenApiConsumerTest',
+                'smbtechOpenApiMockContractCheck'
+        ].each { taskName ->
+            if (tasks.findByName(taskName) == null) {
+                failures << "documented OpenAPI task is not registered: ${taskName}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI examples and troubleshooting issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validateOpenApiDocumentationCommands') {
+    group = 'verification'
+    description = 'Validates every Gradle command published in canonical OpenAPI documentation.'
+
+    def documentationFiles = files(
+            fileTree('docs/openapi') {
+                include '**/*.md'
+            },
+            file('docs/openapi-codegen.md'),
+            file('docs/openapi-behavior-inventory.md'),
+            file('docs/openapi-contract-testing.md'),
+            fileTree('docs/guides') {
+                include '*openapi*.md'
+            },
+            file('build-logic/openapi-generator-plugin/README.md'),
+            file('build-logic/openapi-templates/README.md'),
+            file('spring-boot-service-framework-openapi-contract-testing/README.md'),
+            file('spring-boot-service-framework-project-generator/README.md')
+    )
+    def reportFile = layout.buildDirectory.file(
+            'reports/smbtech-openapi/documentation-check.txt')
+    def includedBuildSettings = file('build-logic/settings.gradle')
+
+    inputs.files(documentationFiles, includedBuildSettings)
+    outputs.file(reportFile)
+
+    doLast {
+        def failures = []
+        def commands = []
+        def checkedTasks = [] as Set
+
+        documentationFiles.files.sort().each { source ->
+            def lines = source.readLines()
+            for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+                def line = lines[lineIndex]
+                int wrapperIndex = line.indexOf('./gradlew')
+                if (wrapperIndex < 0) {
+                    continue
+                }
+
+                def command = line.substring(wrapperIndex)
+                int inlineEnd = command.indexOf('`')
+                if (inlineEnd >= 0) {
+                    command = command.substring(0, inlineEnd)
+                } else {
+                    while (command.trim().endsWith('\\') && lineIndex + 1 < lines.size()) {
+                        command = command.trim().substring(0, command.trim().length() - 1)
+                        lineIndex++
+                        command += ' ' + lines[lineIndex].trim()
+                    }
+                }
+                commands << [source: source, line: lineIndex + 1, text: command.trim()]
+            }
+        }
+
+        if (commands.isEmpty()) {
+            failures << 'canonical OpenAPI documentation must contain executable Gradle commands'
+        }
+
+        commands.each { command ->
+            def tokens = command.text.split(/\s+/) as List
+            def projectDirectory = null
+            for (int tokenIndex = 1; tokenIndex < tokens.size(); tokenIndex++) {
+                def token = tokens[tokenIndex]
+                        .replaceAll(/^[`'\"]+|[`'\".,;:]+$/, '')
+                if (token in ['-p', '--project-dir']) {
+                    if (tokenIndex + 1 >= tokens.size()) {
+                        failures << "${relativePath(command.source)}:${command.line}: ${token} requires a directory"
+                        break
+                    }
+                    projectDirectory = tokens[++tokenIndex]
+                            .replaceAll(/^[`'\"]+|[`'\".,;]+$/, '')
+                    continue
+                }
+                if (token.startsWith('-') || token.isBlank()) {
+                    continue
+                }
+
+                if (projectDirectory != null) {
+                    if (projectDirectory != 'build-logic') {
+                        failures << "${relativePath(command.source)}:${command.line}: unsupported documented project directory ${projectDirectory}"
+                        continue
+                    }
+                    int separator = token.lastIndexOf(':')
+                    def projectPath = separator > 0 ? token.substring(0, separator) : ''
+                    def taskName = separator >= 0 ? token.substring(separator + 1) : token
+                    def assignmentPrefix = "project('${projectPath}').projectDir = file('"
+                    def assignment = includedBuildSettings.readLines().find {
+                        it.trim().startsWith(assignmentPrefix)
+                    }
+                    def projectFolder = projectPath.substring(1).replace(':', '/')
+                    if (assignment != null) {
+                        def assignedFolder = assignment.trim()
+                                .substring(assignmentPrefix.length())
+                        projectFolder = assignedFolder.substring(0, assignedFolder.indexOf("')"))
+                    }
+                    if (projectPath.isBlank()
+                            || !file("build-logic/${projectFolder}/build.gradle").isFile()
+                            || taskName != 'check') {
+                        failures << "${relativePath(command.source)}:${command.line}: unknown included-build task ${token}"
+                    } else {
+                        checkedTasks << "build-logic${token}"
+                    }
+                    continue
+                }
+
+                if (token.startsWith(':')) {
+                    int separator = token.lastIndexOf(':')
+                    def projectPath = token.substring(0, separator)
+                    def taskName = token.substring(separator + 1)
+                    def targetProject = project.findProject(projectPath)
+                    if (targetProject == null || targetProject.tasks.findByName(taskName) == null) {
+                        failures << "${relativePath(command.source)}:${command.line}: unknown Gradle task ${token}"
+                    } else {
+                        checkedTasks << token
+                    }
+                } else if (token == 'test'
+                        && relativePath(command.source).startsWith('docs/guides/')) {
+                    checkedTasks << 'consumer:test'
+                } else if (tasks.findByName(token) == null) {
+                    failures << "${relativePath(command.source)}:${command.line}: unknown Gradle task ${token}"
+                } else {
+                    checkedTasks << token
+                }
+            }
+        }
+
+        def requiredTasks = [
+                'documentationCheck',
+                'openApiDocumentationCompatibilityCheck',
+                'smbtechOpenApiBuildLogicCheck',
+                'smbtechOpenApiValidateSpecs',
+                'smbtechOpenApiAssemble',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApiPublishToLocalRepository',
+                ':spring-boot-service-framework-openapi-contract-testing:check',
+                ':spring-boot-service-framework-project-generator:scaffoldingCompatibilityCheck'
+        ]
+        requiredTasks.each { taskName ->
+            if (!checkedTasks.contains(taskName)) {
+                failures << "canonical OpenAPI documentation must publish command ${taskName}"
+            }
+        }
+
+        def report = reportFile.get().asFile
+        report.parentFile.mkdirs()
+        report.text = """\
+status=${failures.isEmpty() ? 'compatible' : 'failed'}
+documents=${documentationFiles.files.size()}
+commands=${commands.size()}
+tasks=${checkedTasks.size()}
+${failures.collect { "failure=${it}" }.join('\n')}
+"""
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI documentation command issues found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('openApiDocumentationCheck') {
+    group = 'verification'
+    description = 'Runs the complete OpenAPI documentation validation contract.'
+    dependsOn(
+            tasks.named('validateOpenApiBehaviorInventory'),
+            tasks.named('validateOpenApiPluginReference'),
+            tasks.named('validateOpenApiPublishingDocumentation'),
+            tasks.named('validateOpenApiVersioningDocumentation'),
+            tasks.named('validateOpenApiValidationDocumentation'),
+            tasks.named('validateOpenApiScaffoldingDocumentation'),
+            tasks.named('validateOpenApiDocumentationDeduplication'),
+            tasks.named('validateOpenApiDocumentationArchitecture'),
+            tasks.named('validateOpenApiPortal'),
+            tasks.named('validateOpenApiGettingStarted'),
+            tasks.named('validateOpenApiGenerationDocumentation'),
+            tasks.named('validateOpenApiExamplesAndTroubleshooting'),
+            tasks.named('validateOpenApiDocumentationCommands'),
+            tasks.named('smbtechOpenApiValidateSpecs'),
+            tasks.named('smbtechOpenApiBuildLogicCheck')
+    )
+}
+
+def openApiDocumentationCompatibilityModel = [
+        documents  : [
+                'docs/openapi/index.md',
+                'docs/openapi/documentation-architecture.md',
+                'docs/openapi/getting-started.md',
+                'docs/openapi/generation.md',
+                'docs/openapi/plugin-reference.md',
+                'docs/openapi/publishing.md',
+                'docs/openapi/versioning.md',
+                'docs/openapi/validation.md',
+                'docs/openapi/scaffolding.md',
+                'docs/openapi/examples.md',
+                'docs/openapi/troubleshooting.md',
+                'docs/openapi-behavior-inventory.md',
+                'docs/openapi-codegen.md',
+                'docs/openapi-contract-testing.md'
+        ],
+        tasks      : [
+                'generateOpenApiDocumentationCompatibilityContract',
+                'openApiDocumentationCheck',
+                'openApiDocumentationCompatibilityCheck',
+                'validateOpenApiBehaviorInventory',
+                'validateOpenApiDocumentationArchitecture',
+                'validateOpenApiDocumentationCommands',
+                'validateOpenApiDocumentationCompatibilityContract',
+                'validateOpenApiDocumentationDeduplication',
+                'validateOpenApiExamplesAndTroubleshooting',
+                'validateOpenApiGenerationDocumentation',
+                'validateOpenApiGettingStarted',
+                'validateOpenApiPluginReference',
+                'validateOpenApiPortal',
+                'validateOpenApiPublishingDocumentation',
+                'validateOpenApiScaffoldingDocumentation',
+                'validateOpenApiValidationDocumentation',
+                'validateOpenApiVersioningDocumentation'
+        ],
+        evidence   : [
+                'build/reports/smbtech-openapi/documentation-check.txt'
+        ],
+        integrations: [
+                'documentationCheck',
+                'compatibilityCheck',
+                'pullRequestGate',
+                'releaseGate'
+        ]
+]
+
+def renderOpenApiDocumentationCompatibilityContract = {
+    def output = new StringBuilder()
+    output << '# Generated by ./gradlew generateOpenApiDocumentationCompatibilityContract. Do not edit manually.\n'
+    output << 'schema-version=1\n'
+    output << 'contract=openapi-documentation\n'
+    openApiDocumentationCompatibilityModel.each { section, values ->
+        output << "\n${section}:\n"
+        values.toSet().sort().each { value ->
+            output << "- ${value}\n"
+        }
+    }
+    output.toString()
+}
+
+def openApiDocumentationCompatibilityContract =
+        file('gradle/compatibility/contracts/openApiDocumentation.txt')
+
+tasks.register('generateOpenApiDocumentationCompatibilityContract') {
+    group = 'build setup'
+    description = 'Generates the reviewed OpenAPI documentation compatibility baseline.'
+    outputs.file(openApiDocumentationCompatibilityContract)
+
+    doLast {
+        openApiDocumentationCompatibilityContract.parentFile.mkdirs()
+        openApiDocumentationCompatibilityContract.setText(
+                renderOpenApiDocumentationCompatibilityContract(),
+                'UTF-8')
+    }
+}
+
+tasks.register('validateOpenApiDocumentationCompatibilityContract') {
+    group = 'verification'
+    description = 'Validates the reviewed OpenAPI documentation compatibility baseline.'
+    mustRunAfter tasks.named('generateOpenApiDocumentationCompatibilityContract')
+    inputs.files(openApiDocumentationCompatibilityModel.documents.collect { file(it) })
+    inputs.file(openApiDocumentationCompatibilityContract)
+    inputs.files(
+            file('gradle/documentation-checks.gradle'),
+            file('gradle/lifecycle.gradle'),
+            file('.github/workflows/pull-request.yml'))
+
+    doLast {
+        def failures = []
+        if (!openApiDocumentationCompatibilityContract.isFile()) {
+            failures << 'missing gradle/compatibility/contracts/openApiDocumentation.txt'
+        } else {
+            def expected = renderOpenApiDocumentationCompatibilityContract()
+                    .replace('\r\n', '\n')
+            def actual = openApiDocumentationCompatibilityContract
+                    .getText('UTF-8')
+                    .replace('\r\n', '\n')
+            if (actual != expected) {
+                failures << 'OpenAPI documentation compatibility contract changed; run ./gradlew generateOpenApiDocumentationCompatibilityContract and review the diff'
+            }
+        }
+
+        openApiDocumentationCompatibilityModel.documents.each { path ->
+            if (!file(path).isFile()) {
+                failures << "protected OpenAPI document is missing: ${path}"
+            }
+        }
+        openApiDocumentationCompatibilityModel.tasks.each { taskName ->
+            if (tasks.findByName(taskName) == null) {
+                failures << "protected OpenAPI documentation task is missing: ${taskName}"
+            }
+        }
+
+        def workflow = file('.github/workflows/pull-request.yml').text
+        openApiDocumentationCompatibilityModel.evidence.each { path ->
+            if (!workflow.contains(path)) {
+                failures << "pull request quality evidence must include ${path}"
+            }
+        }
+        def lifecycle = file('gradle/lifecycle.gradle').text
+        if (!lifecycle.contains("tasks.named('openApiDocumentationCompatibilityCheck')")) {
+            failures << 'compatibilityCheck must depend on openApiDocumentationCompatibilityCheck'
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "OpenAPI documentation compatibility issues found:\n" +
+                            failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('openApiDocumentationCompatibilityCheck') {
+    group = 'verification'
+    description = 'Validates the OpenAPI documentation contract and its rollout integrations.'
+    dependsOn(
+            tasks.named('validateOpenApiDocumentationCompatibilityContract'),
+            tasks.named('openApiDocumentationCheck'),
+            'validatePullRequestCiContract'
+    )
+}
+
 tasks.register('documentationCheck') {
     group = 'verification'
     description = 'Runs public API inventory, documentation, OpenAPI, property reference, and example safety checks.'
@@ -625,21 +2963,10 @@ tasks.register('documentationCheck') {
             tasks.named('validateDocumentationCatalog'),
             tasks.named('validateChangelogAndReleaseDocs'),
             tasks.named('validateDocumentationVersions'),
+            tasks.named('openApiDocumentationCheck'),
             tasks.named('validateModuleReadmes'),
-            tasks.named('validateOpenApiNameNormalization'),
-            tasks.named('validateOpenApiSpecs'),
-            tasks.named('validateOpenApiSpecVersionCatalog'),
-            tasks.named('validateOpenApiMetadata'),
-            tasks.named('validateOpenApiAdvancedModelGeneration'),
-            tasks.named('validateOpenApiModelsJar'),
-            tasks.named('validateOpenApiServerApiJar'),
-            tasks.named('validateOpenApiClientJar'),
-            tasks.named('validateOpenApiArtifactSeparation'),
-            tasks.named('validateOpenApiReproducibleGeneration'),
-            tasks.named('validateOpenApiCompilationTests'),
-            tasks.named('openApiBreakingChangeCheck'),
-            tasks.named('validateOpenApiTaskCompatibility'),
             tasks.named('validateExampleSecrets'),
-            tasks.named('validateExampleApplicationConfig')
+            tasks.named('validateExampleApplicationConfig'),
+            tasks.named('validatePreOneMigrationDocumentation')
     )
 }

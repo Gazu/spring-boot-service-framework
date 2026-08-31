@@ -43,18 +43,30 @@ source, but should not duplicate long explanations.
 | Public API and implementation package boundaries | `docs/public-api-boundaries.md` |
 | Module README convention | `docs/module-readme-convention.md` |
 | Supported versions and compatibility contract | `docs/compatibility.md` |
-| OpenAPI code generation coordinate convention | `docs/openapi-codegen.md` |
-| OpenAPI breaking change detection and baseline policy | `docs/openapi-breaking-changes.md` |
+| OpenAPI documentation navigation | `docs/openapi/index.md` |
+| Minimal OpenAPI adoption workflow | `docs/openapi/getting-started.md` |
+| OpenAPI generated artifact contents and boundaries | `docs/openapi/generation.md` |
+| OpenAPI Gradle plugin DSL, defaults, validation, and tasks | `docs/openapi/plugin-reference.md` |
+| OpenAPI local and remote Maven publication | `docs/openapi/publishing.md` |
+| OpenAPI contract identity, baselines, and SemVer policy | `docs/openapi/versioning.md` |
+| OpenAPI configuration, spec, coordinate, and compatibility validation | `docs/openapi/validation.md` |
+| OpenAPI service scaffolding inputs, output, and hexagonal boundaries | `docs/openapi/scaffolding.md` |
+| OpenAPI repository examples and expected evidence | `docs/openapi/examples.md` |
+| OpenAPI task diagnostics, reports, and recovery | `docs/openapi/troubleshooting.md` |
+| Frozen OpenAPI plugin and generated-artifact behavior | `docs/openapi-behavior-inventory.md` |
+| OpenAPI documentation ownership and content boundaries | `docs/openapi/documentation-architecture.md` |
+| OpenAPI code generation capability overview | `docs/openapi-codegen.md` |
+| OpenAPI contract identity, baselines, and SemVer policy | `docs/openapi/versioning.md` |
 | OpenAPI contract testing | `docs/openapi-contract-testing.md` |
-| OpenAPI generator evolution roadmap | `docs/openapi-evolution.md` |
-| OpenAPI generator module boundary | `spring-boot-service-framework-openapi-generator/README.md` |
 | OpenAPI contract testing module boundary | `spring-boot-service-framework-openapi-contract-testing/README.md` |
 | OpenAPI Gradle build-logic boundary | `build-logic/openapi-generator-plugin/README.md` |
 | Java and Spring Boot Gradle conventions | `build-logic/conventions/README.md` |
 | Documentation validation build logic | `gradle/documentation-checks.gradle` |
 | Generated public surface baseline | `docs/public-api-inventory.md` |
+| Pre-1.0 API and binary compatibility policy | `docs/pre-1.0-api-policy.md` |
 | Public boundary and marker validation build logic | `gradle/public-api-inventory.gradle` |
 | Root lifecycle build logic | `gradle/lifecycle.gradle` |
+| Pull request CI contract and ownership | `docs/quality-pipeline.md` |
 | Release history | `CHANGELOG.md` |
 | Release process | `docs/releasing.md` |
 | Troubleshooting catalog | `docs/troubleshooting.md` |
@@ -73,7 +85,7 @@ source, but should not duplicate long explanations.
 | Error handling property reference | `docs/error-handling/property-reference.md` |
 | Error handling public extension points | `docs/error-handling-extension-points.md` |
 | Migration from copied shared exception code | `docs/guides/migrate-shared-exception.md` |
-| Migration of renamed public types, packages, and properties | `docs/guides/migrate-public-names-and-properties.md` |
+| Pre-1.0 source, binary, dependency, and configuration migration | `docs/guides/migrate-public-names-and-properties.md` |
 | Contribution rules | `CONTRIBUTING.md` |
 | Code of conduct | `CODE_OF_CONDUCT.md` |
 | Provenance and publication constraints | `PROVENANCE.md` |
@@ -168,15 +180,24 @@ When changing public behavior, update documentation in the same pull request:
 - new configuration property: update the canonical property reference and at
   least one usage example when useful;
 - new public interface or customizer: update the extension-point guide;
-- new OpenAPI generation behavior: update `docs/openapi-codegen.md`;
-- new OpenAPI generator module behavior: update
-  `spring-boot-service-framework-openapi-generator/README.md` and
-  `docs/openapi-codegen.md`;
+- new OpenAPI generation behavior: update `docs/openapi/generation.md` and
+  `docs/openapi-behavior-inventory.md`;
 - new OpenAPI Gradle plugin behavior: update
-  `build-logic/openapi-generator-plugin/README.md` and
-  `docs/openapi-codegen.md`;
-- new OpenAPI generator migration stage or long-term capability: update
-  `docs/openapi-evolution.md`;
+  `docs/openapi/plugin-reference.md`, then update the compatibility contract
+  and `docs/openapi-behavior-inventory.md` when implemented behavior changes;
+- new OpenAPI publication behavior: update `docs/openapi/publishing.md` and its
+  executable documentation check;
+- new OpenAPI versioning or baseline behavior: update
+  `docs/openapi/versioning.md`, its executable documentation check, and the
+  focused breaking-change procedure;
+- new OpenAPI validation behavior: update `docs/openapi/validation.md` and its
+  executable documentation check;
+- new or changed OpenAPI fixture: update `docs/openapi/examples.md` and its
+  executable documentation check;
+- new OpenAPI failure message or report: update
+  `docs/openapi/troubleshooting.md` and its executable documentation check;
+- new OpenAPI documentation owner or content layer: update
+  `docs/openapi/documentation-architecture.md`;
 - new documentation validation task: update `gradle/documentation-checks.gradle`
   and this document;
 - new root lifecycle task: update `gradle/lifecycle.gradle`, `README.md`, and

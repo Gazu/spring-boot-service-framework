@@ -16,7 +16,7 @@ import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 
 /** Read-only Actuator endpoint for bounded Service Framework diagnostics. */
 @Endpoint(id = "serviceframework", defaultAccess = Access.NONE)
-public final class ServiceFrameworkDiagnosticsEndpoint {
+final class ServiceFrameworkDiagnosticsEndpoint {
 
     private final FrameworkDiagnostics diagnostics;
 
@@ -25,7 +25,7 @@ public final class ServiceFrameworkDiagnosticsEndpoint {
      *
      * @param diagnostics framework diagnostics use case
      */
-    public ServiceFrameworkDiagnosticsEndpoint(FrameworkDiagnostics diagnostics) {
+    ServiceFrameworkDiagnosticsEndpoint(FrameworkDiagnostics diagnostics) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 

@@ -17,13 +17,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Provides rest client properties mapper behavior. */
-public final class RestClientPropertiesMapper {
+final class RestClientPropertiesMapper {
 
     private final CredentialResolver credentialResolver;
 
     /** Creates a rest client properties mapper instance. */
-    public RestClientPropertiesMapper() {
+    RestClientPropertiesMapper() {
         this.credentialResolver = null;
     }
 
@@ -32,7 +31,7 @@ public final class RestClientPropertiesMapper {
      *
      * @param credentialResolver credential resolver value
      */
-    public RestClientPropertiesMapper(CredentialResolver credentialResolver) {
+    RestClientPropertiesMapper(CredentialResolver credentialResolver) {
         this.credentialResolver = credentialResolver;
     }
 
@@ -42,7 +41,7 @@ public final class RestClientPropertiesMapper {
      * @param properties properties value
      * @return map result
      */
-    public Map<String, HttpClientDefinition> map(RestClientProperties properties) {
+    Map<String, HttpClientDefinition> map(RestClientProperties properties) {
         Map<String, HttpClientDefinition> definitions = new LinkedHashMap<>();
 
         properties

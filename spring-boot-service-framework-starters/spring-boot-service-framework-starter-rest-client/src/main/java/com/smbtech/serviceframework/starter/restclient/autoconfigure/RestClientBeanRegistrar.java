@@ -1,10 +1,11 @@
 package com.smbtech.serviceframework.starter.restclient.autoconfigure;
 
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.ConfiguredRestClientFactoryBean;
+import com.smbtech.serviceframework.starter.restclient.api.RestClientRegistry;
 import java.util.Map;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -13,11 +14,9 @@ import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 
-/** Provides rest client bean registrar behavior. */
-public final class RestClientBeanRegistrar
+final class RestClientBeanRegistrar
         implements BeanDefinitionRegistryPostProcessor, EnvironmentAware {
-    /** Creates a rest client bean registrar instance. */
-    public RestClientBeanRegistrar() {}
+    RestClientBeanRegistrar() {}
 
     private Environment environment;
 
@@ -39,9 +38,13 @@ public final class RestClientBeanRegistrar
         if (registry.containsBeanDefinition(definition.beanName())) {
             return;
         }
-        RootBeanDefinition beanDefinition =
-                new RootBeanDefinition(ConfiguredRestClientFactoryBean.class);
-        beanDefinition.getConstructorArgumentValues().addIndexedArgumentValue(0, name);
+        RootBeanDefinition beanDefinition = new RootBeanDefinition(DynamicRestClientFactory.class);
+        beanDefinition.setFactoryMethodName("create");
+        beanDefinition
+                .getConstructorArgumentValues()
+                .addIndexedArgumentValue(0, new RuntimeBeanReference(RestClientRegistry.class));
+        beanDefinition.getConstructorArgumentValues().addIndexedArgumentValue(1, name);
+        beanDefinition.setLazyInit(true);
         beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
         registry.registerBeanDefinition(definition.beanName(), beanDefinition);
     }

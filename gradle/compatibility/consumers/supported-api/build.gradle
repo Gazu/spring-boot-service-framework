@@ -1,0 +1,43 @@
+plugins {
+    id 'java-library'
+}
+
+def frameworkRoot = file('../../../..')
+def frameworkProperties = new Properties()
+file("${frameworkRoot}/gradle.properties").withInputStream { frameworkProperties.load(it) }
+def frameworkVersion = frameworkProperties.getProperty('frameworkVersion')
+
+group = 'com.smbtech.compatibility'
+version = frameworkVersion
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    maven { url = uri("${frameworkRoot}/spring-boot-service-framework-platform/build/repository") }
+    maven { url = uri("${frameworkRoot}/spring-boot-service-framework-commons/build/repository") }
+    maven { url = uri("${frameworkRoot}/spring-boot-service-framework-error-core/build/repository") }
+    maven { url = uri("${frameworkRoot}/spring-boot-service-framework-http-client-core/build/repository") }
+    maven { url = uri("${frameworkRoot}/spring-boot-service-framework-logging-core/build/repository") }
+    maven {
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/build/repository")
+    }
+    maven {
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/build/repository")
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform("com.smbtech:spring-boot-service-framework-platform:${frameworkVersion}")
+    implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
+    implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}

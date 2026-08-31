@@ -23,9 +23,16 @@ allprojects {
 }
 
 smbtechOpenApi {
-    groupId.set('com.smbtech.openapi')
+    groupId.set('com.smbtech.contracts')
     outputDirectory.set(layout.buildDirectory.dir('generated/smbtech-openapi'))
     repositoryDirectory.set(layout.buildDirectory.dir('repository/openapi'))
+    baselineDirectory.set(layout.projectDirectory.dir('docs/openapi-baselines'))
+    requireBaseline.set(true)
+    failOnBreakingChanges.set(
+            providers.gradleProperty('openApiFailOnBreakingChanges')
+                    .map { it.toBoolean() }
+                    .orElse(false)
+    )
 
     specs {
         register('merchantOrderStatus') {
@@ -44,11 +51,13 @@ apply from: 'gradle/platform-contract.gradle'
 apply from: 'gradle/actuator-contract.gradle'
 apply from: 'gradle/logging-async-contract.gradle'
 apply from: 'gradle/documentation-checks.gradle'
+apply from: 'gradle/pull-request-ci.gradle'
 apply from: 'gradle/convention-checks.gradle'
 apply from: 'gradle/formatting.gradle'
 apply from: 'gradle/code-quality.gradle'
 apply from: 'gradle/module-compatibility.gradle'
 apply from: 'gradle/binary-compatibility.gradle'
+apply from: 'gradle/release-artifacts.gradle'
 apply from: 'gradle/supply-chain.gradle'
 apply from: 'gradle/lifecycle.gradle'
 apply from: 'gradle/sonarqube.gradle'

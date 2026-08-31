@@ -7,17 +7,6 @@ import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticatio
 import com.smbtech.serviceframework.httpclient.port.out.CorrelationHeadersProvider;
 import com.smbtech.serviceframework.httpclient.port.out.HttpErrorResponseBodyReader;
 import com.smbtech.serviceframework.httpclient.port.out.HttpExchangeAuditSink;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.apache.HttpClientConfigurator;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.error.HttpErrorResponseMapper;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.AuditLogInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.BasicAuthenticationInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.CorrelationHeadersInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.DefaultHeadersInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.MicrometerHttpClientObservationInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.RequestContextHeadersInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.ResilienceInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.interceptor.StandardErrorHandlingInterceptor;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.resilience.ResilienceStateRegistry;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientAuthenticationConfigurer;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer;
@@ -25,13 +14,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /** Creates configured REST clients without depending on a concrete authentication provider. */
-public final class ConfiguredRestClientFactory {
+final class ConfiguredRestClientFactory {
 
     private final RestClient.Builder restClientBuilder;
     private final CorrelationHeadersProvider correlationHeadersProvider;
@@ -39,7 +29,7 @@ public final class ConfiguredRestClientFactory {
     private final boolean requestContextHeadersEnabled;
     private final Set<String> blockedRequestContextHeaders;
     private final HttpExchangeAuditSink auditSink;
-    private final HttpClientConfigurator httpClientConfigurator;
+    private final Function<HttpClientDefinition, ClientHttpRequestFactory> requestFactoryBuilder;
     private final HttpErrorResponseMapper errorResponseMapper;
     private final HttpErrorResponseBodyReader errorResponseBodyReader;
     private final ResilienceStateRegistry resilienceStateRegistry;
@@ -56,7 +46,7 @@ public final class ConfiguredRestClientFactory {
      * @param requestContextHeadersEnabled whether dynamic headers are enabled
      * @param blockedRequestContextHeaders header names that cannot be propagated
      * @param auditSink HTTP exchange audit sink
-     * @param httpClientConfigurator HTTP transport configurator
+     * @param requestFactoryBuilder HTTP transport request factory builder
      * @param errorResponseMapper error response mapper
      * @param errorResponseBodyReader error body reader
      * @param resilienceStateRegistry resilience state registry
@@ -71,7 +61,7 @@ public final class ConfiguredRestClientFactory {
             boolean requestContextHeadersEnabled,
             Set<String> blockedRequestContextHeaders,
             HttpExchangeAuditSink auditSink,
-            HttpClientConfigurator httpClientConfigurator,
+            Function<HttpClientDefinition, ClientHttpRequestFactory> requestFactoryBuilder,
             HttpErrorResponseMapper errorResponseMapper,
             HttpErrorResponseBodyReader errorResponseBodyReader,
             ResilienceStateRegistry resilienceStateRegistry,
@@ -86,7 +76,7 @@ public final class ConfiguredRestClientFactory {
                 Set.copyOf(
                         Objects.requireNonNullElse(blockedRequestContextHeaders, Set.<String>of()));
         this.auditSink = Objects.requireNonNull(auditSink);
-        this.httpClientConfigurator = Objects.requireNonNull(httpClientConfigurator);
+        this.requestFactoryBuilder = Objects.requireNonNull(requestFactoryBuilder);
         this.errorResponseMapper = Objects.requireNonNull(errorResponseMapper);
         this.errorResponseBodyReader = errorResponseBodyReader;
         this.resilienceStateRegistry = resilienceStateRegistry;
@@ -172,7 +162,7 @@ public final class ConfiguredRestClientFactory {
     }
 
     private ClientHttpRequestFactory requestFactory(HttpClientDefinition definition) {
-        ClientHttpRequestFactory delegate = httpClientConfigurator.build(definition);
+        ClientHttpRequestFactory delegate = requestFactoryBuilder.apply(definition);
         if (definition.audit().enabled() && definition.audit().includeBody()) {
             return new BufferingClientHttpRequestFactory(delegate);
         }

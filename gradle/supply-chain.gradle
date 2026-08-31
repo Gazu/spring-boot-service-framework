@@ -1,5 +1,9 @@
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.xml.XmlParser
 import groovy.xml.XmlSlurper
+import groovy.xml.XmlUtil
+import java.security.MessageDigest
 import java.time.Instant
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.GenerateMavenPom
@@ -13,6 +17,45 @@ def signingKey = providers.gradleProperty('signingKey')
         .orElse(providers.environmentVariable('SIGNING_KEY'))
 def signingPassword = providers.gradleProperty('signingPassword')
         .orElse(providers.environmentVariable('SIGNING_PASSWORD'))
+def releaseArtifactManifest = layout.projectDirectory.file('gradle/release-artifacts.txt')
+def releaseLifecycleContract = layout.projectDirectory.file(
+        'gradle/release-lifecycle.properties'
+)
+def releaseDocumentationFiles = [
+        'README.md',
+        'CHANGELOG.md',
+        'LICENSE',
+        'docs/releasing.md'
+]
+def changelogFile = layout.projectDirectory.file('CHANGELOG.md')
+def releaseNotesFile = layout.buildDirectory.file(
+        'release/documentation/RELEASE_NOTES.md'
+)
+def releaseArtifactEntries = {
+    def entries = []
+    releaseArtifactManifest.asFile.eachLine('UTF-8') { line ->
+        def normalized = line.trim()
+        if (!normalized || normalized.startsWith('#')) {
+            return
+        }
+        def parts = normalized.split('\\|', -1)*.trim()
+        if (parts.size() == 3) {
+            entries.add([kind: parts[0], groupId: parts[1], artifactId: parts[2]])
+        }
+    }
+    entries
+}
+def sha256 = { File source ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    source.withInputStream { input ->
+        byte[] buffer = new byte[8192]
+        int read
+        while ((read = input.read(buffer)) != -1) {
+            digest.update(buffer, 0, read)
+        }
+    }
+    digest.digest().encodeHex().toString()
+}
 
 publishing.publications.withType(MavenPublication).configureEach { publication ->
     pom {
@@ -104,18 +147,85 @@ tasks.named('cyclonedxBom') {
         def reproducibleTimestamp = Instant.ofEpochSecond(sourceDateEpoch.toLong()).toString()
         def jsonFile = jsonOutput.get().asFile
         def xmlFile = xmlOutput.get().asFile
-        jsonFile.text = jsonFile.getText('UTF-8').replaceFirst(
-                /"timestamp"\s*:\s*"[^"]+"/,
-                "\"timestamp\" : \"${reproducibleTimestamp}\""
+
+        def bom = new JsonSlurper().parse(jsonFile)
+        def rootReference = bom.metadata?.component?.'bom-ref'
+        if (!rootReference) {
+            throw new GradleException('CycloneDX metadata.component.bom-ref is required.')
+        }
+
+        def apacheLicense = [[license: [id: 'Apache-2.0']]]
+        bom.metadata.component.licenses = apacheLicense
+        (bom.components ?: []).findAll {
+            it.group?.startsWith('com.smbtech')
+        }.each {
+            it.licenses = apacheLicense
+        }
+
+        def referencedComponents = (bom.dependencies ?: [])
+                .collectMany { it.dependsOn ?: [] }
+                .toSet()
+        def aggregateDependencies = (bom.components ?: [])
+                .collect { it.'bom-ref' }
+                .findAll { it && !referencedComponents.contains(it) }
+                .toSorted()
+
+        def dependencies = bom.dependencies ?: []
+        dependencies.removeAll { it.ref == rootReference }
+        dependencies.add(0, [
+                ref      : rootReference,
+                dependsOn: aggregateDependencies
+        ])
+        bom.dependencies = dependencies
+        bom.metadata.timestamp = reproducibleTimestamp
+        jsonFile.setText(
+                JsonOutput.prettyPrint(JsonOutput.toJson(bom)) + System.lineSeparator(),
+                'UTF-8'
         )
-        xmlFile.text = xmlFile.getText('UTF-8').replaceFirst(
-                /<timestamp>[^<]+<\/timestamp>/,
-                "<timestamp>${reproducibleTimestamp}</timestamp>"
+
+        def xml = new XmlParser(false, false).parse(xmlFile)
+        xml.metadata.timestamp[0].value = reproducibleTimestamp
+        def applyApacheLicense = { component ->
+            component.licenses.each { component.remove(it) }
+            def licenses = component.appendNode('licenses')
+            licenses.appendNode('license').appendNode('id', 'Apache-2.0')
+            component.children().remove(licenses)
+            def purlIndex = component.children().findIndexOf {
+                it instanceof Node && it.name() == 'purl'
+            }
+            component.children().add(
+                    purlIndex >= 0 ? purlIndex : component.children().size(),
+                    licenses
+            )
+        }
+        applyApacheLicense(xml.metadata.component[0])
+        xml.components.component.findAll {
+            it.group.text().startsWith('com.smbtech')
+        }.each(applyApacheLicense)
+        def xmlDependencies = xml.dependencies[0]
+        xmlDependencies.dependency
+                .findAll { it.attributes()['ref'] == rootReference }
+                .each { xmlDependencies.remove(it) }
+        def rootDependency = xmlDependencies.appendNode(
+                'dependency',
+                [ref: rootReference]
         )
+        aggregateDependencies.each {
+            rootDependency.appendNode('dependency', [ref: it])
+        }
+        xmlFile.setText(XmlUtil.serialize(xml), 'UTF-8')
     }
 }
 
 project(':spring-boot-service-framework-starters').tasks.named('cyclonedxDirectBom') {
+    enabled = false
+}
+
+project(':examples').tasks.named('cyclonedxDirectBom') {
+    enabled = false
+}
+
+project(':examples:quality-pilot').tasks.named('cyclonedxDirectBom') {
     enabled = false
 }
 
@@ -140,8 +250,22 @@ tasks.register('validateCycloneDxSbom') {
             throw new GradleException('CycloneDX JSON and XML SBOM files must both exist and be non-empty.')
         }
 
-        def bom = new JsonSlurper().parse(jsonFile)
         def failures = []
+        def cyclonedxClassLoader = tasks.named('cyclonedxBom').get().class.classLoader
+        def bomParserFactory = cyclonedxClassLoader.loadClass(
+                'org.cyclonedx.parsers.BomParserFactory'
+        )
+        [JSON: jsonFile, XML: xmlFile].each { format, source ->
+            def parser = bomParserFactory.getMethod('createParser', File)
+                    .invoke(null, source)
+            def schemaErrors = parser.validate(source)
+            if (!schemaErrors.isEmpty()) {
+                failures.add("${format} does not conform to CycloneDX 1.6: " +
+                        schemaErrors.collect { it.message }.join('; '))
+            }
+        }
+
+        def bom = new JsonSlurper().parse(jsonFile)
         if (bom.bomFormat != 'CycloneDX') {
             failures.add('JSON bomFormat must be CycloneDX')
         }
@@ -176,6 +300,17 @@ tasks.register('validateCycloneDxSbom') {
         if (dependencies.isEmpty()) {
             failures.add('JSON dependencies must not be empty')
         }
+        def rootReference = rootComponent?.'bom-ref'
+        if (!rootReference) {
+            failures.add('JSON metadata.component.bom-ref is required')
+        } else {
+            def rootDependencies = dependencies.findAll { it.ref == rootReference }
+            if (rootDependencies.size() != 1) {
+                failures.add('JSON dependencies must contain the root component exactly once')
+            } else if ((rootDependencies[0].dependsOn ?: []).isEmpty()) {
+                failures.add('JSON root component must reference aggregate dependencies')
+            }
+        }
 
         def duplicateReferences = components
                 .findAll { it.'bom-ref' }
@@ -186,12 +321,96 @@ tasks.register('validateCycloneDxSbom') {
             failures.add("JSON contains duplicate component references: ${duplicateReferences.sort().join(', ')}")
         }
 
+        def runtimeReleaseKinds = ['platform', 'library', 'starter'] as Set
+        def expectedRuntimeCoordinates = releaseArtifactEntries()
+                .findAll { runtimeReleaseKinds.contains(it.kind) }
+                .collect { "${it.groupId}:${it.artifactId}" }
+                .toSet()
+        def localCoordinates = components.findAll {
+            it.group?.startsWith('com.smbtech')
+        }.collect {
+            "${it.group}:${it.name}"
+        }.toSet()
+        def missingRuntimeComponents = expectedRuntimeCoordinates - localCoordinates
+        if (!missingRuntimeComponents.isEmpty()) {
+            failures.add('JSON is missing published runtime components: ' +
+                    missingRuntimeComponents.sort().join(', '))
+        }
+        def unexpectedLocalComponents = localCoordinates - expectedRuntimeCoordinates
+        if (!unexpectedLocalComponents.isEmpty()) {
+            failures.add('JSON contains non-published local components: ' +
+                    unexpectedLocalComponents.sort().join(', '))
+        }
+
+        def hasApacheLicense = { component ->
+            (component?.licenses ?: []).any {
+                it.license?.id == 'Apache-2.0' || it.expression == 'Apache-2.0'
+            }
+        }
+        if (!hasApacheLicense(rootComponent)) {
+            failures.add('JSON root component must declare Apache-2.0')
+        }
+        def localComponentsWithoutLicense = components.findAll {
+            it.group?.startsWith('com.smbtech') && !hasApacheLicense(it)
+        }.collect {
+            "${it.group}:${it.name}:${it.version}"
+        }
+        if (!localComponentsWithoutLicense.isEmpty()) {
+            failures.add('JSON local components missing Apache-2.0: ' +
+                    localComponentsWithoutLicense.sort().join(', '))
+        }
+
+        def componentReferences = components.collect { it.'bom-ref' }.findAll().toSet()
+        def knownReferences = componentReferences + ([rootReference] as Set)
+        def duplicateDependencyReferences = dependencies
+                .findAll { it.ref }
+                .groupBy { it.ref }
+                .findAll { ignored, matching -> matching.size() > 1 }
+                .keySet()
+        if (!duplicateDependencyReferences.isEmpty()) {
+            failures.add('JSON contains duplicate dependency references: ' +
+                    duplicateDependencyReferences.sort().join(', '))
+        }
+        def unknownDependencyReferences = dependencies.collectMany { dependency ->
+            [dependency.ref] + (dependency.dependsOn ?: [])
+        }.findAll {
+            it && !knownReferences.contains(it)
+        }.toSet()
+        if (!unknownDependencyReferences.isEmpty()) {
+            failures.add('JSON dependency graph contains unknown references: ' +
+                    unknownDependencyReferences.sort().join(', '))
+        }
+        def dependenciesByReference = dependencies.findAll { it.ref }.collectEntries {
+            [(it.ref): (it.dependsOn ?: [])]
+        }
+        def reachableReferences = [] as Set
+        def pendingReferences = new ArrayDeque()
+        pendingReferences.add(rootReference)
+        while (!pendingReferences.isEmpty()) {
+            def reference = pendingReferences.removeFirst()
+            if (reachableReferences.add(reference)) {
+                (dependenciesByReference[reference] ?: []).each {
+                    pendingReferences.addLast(it)
+                }
+            }
+        }
+        def unreachableComponents = componentReferences - reachableReferences
+        if (!unreachableComponents.isEmpty()) {
+            failures.add('JSON dependency graph contains unreachable components: ' +
+                    unreachableComponents.sort().join(', '))
+        }
+
         def testDependencyGroups = [
+                'com.tngtech.archunit',
+                'net.bytebuddy',
+                'org.awaitility',
                 'org.assertj',
+                'org.hamcrest',
                 'org.junit',
                 'org.junit.jupiter',
                 'org.junit.platform',
-                'org.mockito'
+                'org.mockito',
+                'org.objenesis'
         ] as Set
         def testDependencies = components.findAll {
             testDependencyGroups.contains(it.group)
@@ -218,6 +437,36 @@ tasks.register('validateCycloneDxSbom') {
                 xml.metadata.component.@type.text() != 'framework') {
             failures.add('XML root component identity does not match the Gradle project')
         }
+        def xmlRootReference = xml.metadata.component.@'bom-ref'.text()
+        def xmlRootDependencies = xml.dependencies.dependency.findAll {
+            it.@ref.text() == xmlRootReference
+        }
+        if (!xmlRootReference) {
+            failures.add('XML metadata component bom-ref is required')
+        } else if (xmlRootDependencies.size() != 1) {
+            failures.add('XML dependencies must contain the root component exactly once')
+        } else if (xmlRootDependencies[0].dependency.isEmpty()) {
+            failures.add('XML root component must reference aggregate dependencies')
+        }
+        if (xml.metadata.component.licenses.license.id.text() != 'Apache-2.0') {
+            failures.add('XML root component must declare Apache-2.0')
+        }
+        def xmlLocalComponentsWithoutLicense = xml.components.component.findAll {
+            it.group.text().startsWith('com.smbtech') &&
+                    it.licenses.license.id.text() != 'Apache-2.0'
+        }.collect {
+            "${it.group.text()}:${it.name.text()}:${it.version.text()}"
+        }
+        if (!xmlLocalComponentsWithoutLicense.isEmpty()) {
+            failures.add('XML local components missing Apache-2.0: ' +
+                    xmlLocalComponentsWithoutLicense.sort().join(', '))
+        }
+        def xmlComponentReferences = xml.components.component.collect {
+            it.@'bom-ref'.text()
+        }.findAll().toSet()
+        if (xmlComponentReferences != componentReferences) {
+            failures.add('JSON and XML component references must match')
+        }
 
         if (!failures.isEmpty()) {
             throw new GradleException('Invalid CycloneDX SBOM:\n' + failures.join('\n'))
@@ -229,6 +478,108 @@ tasks.register('dependencyTrackSbom') {
     group = 'build'
     description = 'Generates and validates the CycloneDX SBOM consumed by Dependency-Track.'
     dependsOn tasks.named('validateCycloneDxSbom')
+}
+
+tasks.register('generateReleaseNotes') {
+    group = 'publishing'
+    description = 'Generates standalone release notes from the current CHANGELOG section.'
+    inputs.file(changelogFile)
+    inputs.property('frameworkVersion', project.version.toString())
+    outputs.file(releaseNotesFile)
+
+    doLast {
+        def changelog = changelogFile.asFile.getText('UTF-8')
+        def versionPattern = java.util.regex.Pattern.quote(project.version.toString())
+        def headingPattern = java.util.regex.Pattern.compile(
+                '(?m)^## ' + versionPattern + ' - (\\d{4}-\\d{2}-\\d{2})$'
+        )
+        def headingMatcher = headingPattern.matcher(changelog)
+        if (!headingMatcher.find()) {
+            throw new GradleException(
+                    "CHANGELOG.md does not contain release notes for ${project.version}."
+            )
+        }
+        def releaseDate = headingMatcher.group(1)
+        def sectionStart = headingMatcher.end()
+        if (headingMatcher.find()) {
+            throw new GradleException(
+                    "CHANGELOG.md contains duplicate release sections for ${project.version}."
+            )
+        }
+        def nextHeading = java.util.regex.Pattern.compile('(?m)^## .+$')
+                .matcher(changelog)
+        def sectionEnd = changelog.length()
+        if (nextHeading.find(sectionStart)) {
+            sectionEnd = nextHeading.start()
+        }
+        def releaseBody = changelog.substring(sectionStart, sectionEnd).trim()
+        if (!releaseBody || !releaseBody.contains('- ')) {
+            throw new GradleException(
+                    "CHANGELOG.md release ${project.version} must contain user-facing changes."
+            )
+        }
+
+        releaseBody = releaseBody
+                .replaceAll('(?m)^### ', '## ')
+                .replace(
+                        '](docs/',
+                        "](${projectUrl}/blob/v${project.version}/docs/"
+                )
+        def output = releaseNotesFile.get().asFile
+        output.parentFile.mkdirs()
+        output.setText(
+                "# Spring Boot Service Framework v${project.version}\n\n" +
+                        "Released: ${releaseDate}\n\n${releaseBody}\n",
+                'UTF-8'
+        )
+    }
+}
+
+tasks.register('validateReleaseNotes') {
+    group = 'verification'
+    description = 'Validates the standalone release notes prepared for the current version.'
+    dependsOn tasks.named('generateReleaseNotes')
+    inputs.file(releaseNotesFile)
+
+    doLast {
+        def notes = releaseNotesFile.get().asFile.getText('UTF-8')
+        def failures = []
+        if (!notes.startsWith("# Spring Boot Service Framework v${project.version}\n")) {
+            failures.add('release notes title does not match frameworkVersion')
+        }
+        if (!(notes =~ /(?m)^Released: \d{4}-\d{2}-\d{2}$/).find()) {
+            failures.add('release notes must contain a release date')
+        }
+        if (!notes.contains('## Highlights')) {
+            failures.add('release notes must contain ## Highlights')
+        }
+        def changeCategories = [
+                '## Added',
+                '## Changed',
+                '## Deprecated',
+                '## Removed',
+                '## Fixed',
+                '## Security'
+        ]
+        if (!changeCategories.any { notes.contains(it) }) {
+            failures.add('release notes must contain at least one change category')
+        }
+        if (notes.contains('## Removed') &&
+                !notes.toLowerCase(Locale.ROOT).contains('migration guide')) {
+            failures.add('release notes with removals must link to migration guidance')
+        }
+        if (notes.contains('## Unreleased') || notes.contains('No unreleased changes.')) {
+            failures.add('release notes must contain only the released version')
+        }
+        if (notes.contains('](docs/')) {
+            failures.add('release note links must resolve outside the repository checkout')
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Invalid release notes:\n' + failures.join('\n')
+            )
+        }
+    }
 }
 
 tasks.register('validateReleaseTag') {
@@ -363,11 +714,12 @@ tasks.register('validateDependencyVerificationMetadata') {
 
 tasks.register('supplyChainCheck') {
     group = 'verification'
-    description = 'Validates SBOM generation, release identity, reproducible archives, POM metadata, and coverage.'
+    description = 'Validates the production-only SBOM, release identity, reproducible archives, POM metadata, and coverage.'
     dependsOn(
             tasks.named('validateCycloneDxSbom'),
             tasks.named('validateDependencyVerificationMetadata'),
             tasks.named('validatePublishedPomMetadata'),
+            tasks.named('releaseArtifactManifestCheck'),
             tasks.named('validateReleaseTag'),
             tasks.named('validateReproducibleArchives')
     )
@@ -375,21 +727,142 @@ tasks.register('supplyChainCheck') {
 
 tasks.register('stageReleaseRepository', Sync) {
     group = 'publishing'
-    description = 'Stages all locally published Maven artifacts in one release repository.'
-    dependsOn tasks.named('publishLocalArtifacts'), tasks.named('cyclonedxBom')
+    description = 'Stages only manifest-approved Maven artifacts in one release repository.'
+    dependsOn(
+            tasks.named('publishLocalArtifacts'),
+            tasks.named('cyclonedxBom'),
+            tasks.named('releaseArtifactManifestCheck')
+    )
     into layout.buildDirectory.dir('release/repository')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude '**/maven-metadata.xml*'
-    from layout.buildDirectory.dir('repository/openapi')
+    def releaseRepositoryIncludes = releaseArtifactEntries().collect { coordinate ->
+        coordinate.groupId.replace('.', '/') + '/' + coordinate.artifactId +
+                "/${project.version}/**"
+    }
+    from(file('build-logic/build/repository')) {
+        include releaseRepositoryIncludes
+    }
     subprojects.each { candidateProject ->
-        from candidateProject.layout.buildDirectory.dir('repository')
+        from(candidateProject.layout.buildDirectory.dir('repository')) {
+            include releaseRepositoryIncludes
+        }
+    }
+
+    doLast {
+        def requiredBuildLogicArtifacts = [
+                'com/smbtech/spring-boot-service-framework-openapi-gradle-plugin/' +
+                        "${project.version}/spring-boot-service-framework-openapi-gradle-plugin-" +
+                        "${project.version}.jar",
+                'com/smbtech/spring-boot-service-framework-openapi-templates/' +
+                        "${project.version}/spring-boot-service-framework-openapi-templates-" +
+                        "${project.version}.jar",
+                'com/smbtech/service-framework/openapi-generator/' +
+                        'com.smbtech.service-framework.openapi-generator.gradle.plugin/' +
+                        "${project.version}/" +
+                        'com.smbtech.service-framework.openapi-generator.gradle.plugin-' +
+                        "${project.version}.pom"
+        ]
+        def missingArtifacts = requiredBuildLogicArtifacts.findAll { relativePath ->
+            !new File(destinationDir, relativePath).isFile()
+        }
+        if (!missingArtifacts.isEmpty()) {
+            throw new GradleException(
+                    'Release repository is missing build-logic artifacts:\n' +
+                            missingArtifacts.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('generateReleaseBundleMetadata') {
+    group = 'publishing'
+    description = 'Generates the deterministic release manifest and payload checksums.'
+    dependsOn(
+            tasks.named('stageReleaseRepository'),
+            tasks.named('cyclonedxBom'),
+            tasks.named('validateReleaseNotes')
+    )
+
+    def stagedRepository = layout.buildDirectory.dir('release/repository')
+    def metadataDirectory = layout.buildDirectory.dir('release/metadata')
+    def releaseManifestFile = metadataDirectory.map { it.file('release-manifest.json') }
+    def checksumsFile = metadataDirectory.map { it.file('SHA256SUMS') }
+    inputs.dir(stagedRepository)
+    inputs.files(
+            releaseArtifactManifest,
+            releaseLifecycleContract,
+            releaseDocumentationFiles.collect { file(it) },
+            releaseNotesFile,
+            sbomJsonFile,
+            sbomXmlFile
+    )
+    inputs.property('frameworkVersion', project.version.toString())
+    inputs.property('springBootVersion', providers.gradleProperty('springBootVersion'))
+    outputs.files(releaseManifestFile, checksumsFile)
+
+    doLast {
+        def outputDirectory = metadataDirectory.get().asFile
+        delete outputDirectory
+        outputDirectory.mkdirs()
+
+        def coordinates = releaseArtifactEntries().collect { coordinate ->
+            [
+                    kind       : coordinate.kind,
+                    group_id   : coordinate.groupId,
+                    artifact_id: coordinate.artifactId,
+                    version    : project.version.toString()
+            ]
+        }
+        def manifest = [
+                schema_version    : 1,
+                name              : project.name,
+                version           : project.version.toString(),
+                spring_boot_version: providers.gradleProperty('springBootVersion').get(),
+                java_version      : 21,
+                repository        : projectUrl,
+                tag               : "v${project.version}",
+                artifacts         : coordinates,
+                sbom              : ['sbom/bom.json', 'sbom/bom.xml'],
+                release_notes     : 'documentation/RELEASE_NOTES.md'
+        ]
+        releaseManifestFile.get().asFile.setText(
+                JsonOutput.prettyPrint(JsonOutput.toJson(manifest)) + '\n',
+                'UTF-8'
+        )
+
+        def payloadFiles = [:]
+        fileTree(stagedRepository).matching { include '**/*' }.files
+                .findAll { it.isFile() }
+                .each { source ->
+                    def relative = stagedRepository.get().asFile.toPath()
+                            .relativize(source.toPath()).toString().replace('\\', '/')
+                    payloadFiles["repository/${relative}"] = source
+                }
+        payloadFiles['sbom/bom.json'] = sbomJsonFile.get().asFile
+        payloadFiles['sbom/bom.xml'] = sbomXmlFile.get().asFile
+        releaseDocumentationFiles.each { sourcePath ->
+            payloadFiles["documentation/${new File(sourcePath).name}"] = file(sourcePath)
+        }
+        payloadFiles['documentation/RELEASE_NOTES.md'] = releaseNotesFile.get().asFile
+        payloadFiles['metadata/release-artifacts.txt'] = releaseArtifactManifest.asFile
+        payloadFiles['metadata/release-lifecycle.properties'] =
+                releaseLifecycleContract.asFile
+        payloadFiles['metadata/release-manifest.json'] = releaseManifestFile.get().asFile
+
+        checksumsFile.get().asFile.setText(
+                payloadFiles.keySet().sort().collect { path ->
+                    "${sha256(payloadFiles[path])}  ${path}"
+                }.join('\n') + '\n',
+                'UTF-8'
+        )
     }
 }
 
 tasks.register('releaseBundle', Zip) {
     group = 'publishing'
-    description = 'Creates the reproducible Maven repository and SBOM release bundle.'
-    dependsOn tasks.named('stageReleaseRepository')
+    description = 'Creates the complete reproducible framework release bundle.'
+    dependsOn tasks.named('generateReleaseBundleMetadata')
     archiveFileName = "${project.name}-${project.version}.zip"
     destinationDirectory = layout.buildDirectory.dir('distributions')
     from(tasks.named('stageReleaseRepository')) {
@@ -401,4 +874,43 @@ tasks.register('releaseBundle', Zip) {
     from(sbomXmlFile) {
         into 'sbom'
     }
+    from(releaseDocumentationFiles.collect { file(it) }) {
+        into 'documentation'
+    }
+    from(releaseNotesFile) {
+        into 'documentation'
+    }
+    from(releaseArtifactManifest) {
+        into 'metadata'
+    }
+    from(releaseLifecycleContract) {
+        into 'metadata'
+    }
+    from(layout.buildDirectory.dir('release/metadata')) {
+        into 'metadata'
+    }
+}
+
+tasks.register('generateReleaseBundleChecksum') {
+    group = 'publishing'
+    description = 'Generates the SHA-256 checksum for the complete release archive.'
+    dependsOn tasks.named('releaseBundle')
+
+    def archive = tasks.named('releaseBundle', Zip).flatMap { it.archiveFile }
+    def checksum = archive.map { it.asFile.parentFile.toPath()
+            .resolve("${it.asFile.name}.sha256").toFile() }
+    inputs.file(archive)
+    outputs.file(checksum)
+
+    doLast {
+        def archiveFile = archive.get().asFile
+        checksum.get().setText(
+                "${sha256(archiveFile)}  ${archiveFile.name}\n",
+                'UTF-8'
+        )
+    }
+}
+
+tasks.named('releaseBundle') {
+    finalizedBy tasks.named('generateReleaseBundleChecksum')
 }

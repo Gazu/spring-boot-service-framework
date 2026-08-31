@@ -25,9 +25,9 @@ framework platform so logging core, the starter, and Spring Boot remain aligned.
 | Consumer behavior | `loggingConsumerSmoke` validates published Maven artifacts, HTTP logging, tracing, metrics, and Spring AOT. |
 
 `StructuredLoggers`, the logging-core domain, and logging-core ports are the
-supported application-facing Java surface. Public Logback adapters exist for
-reflective construction or diagnostics and remain implementation types unless
-explicitly documented above as runtime contracts.
+supported application-facing Java surface. The formatter and async appender
+remain public only because Logback constructs them reflectively from XML.
+Servlet, MDC, metrics, and SLF4J adapters are internal.
 
 ## Stable Logback Resources
 

@@ -9,7 +9,6 @@ import com.smbtech.serviceframework.actuator.domain.FrameworkModuleInfo;
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
 import com.smbtech.serviceframework.actuator.port.out.DiagnosticProbe;
 import com.smbtech.serviceframework.actuator.port.out.FrameworkModuleInfoProvider;
-import com.smbtech.serviceframework.starter.actuator.adapter.out.diagnostics.GuardedFrameworkDiagnostics;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,7 +34,6 @@ class ActuatorAutoConfigurationTest {
                     assertThat(context)
                             .hasSingleBean(ActuatorProperties.class)
                             .hasSingleBean(FrameworkDiagnostics.class)
-                            .hasSingleBean(GuardedFrameworkDiagnostics.class)
                             .doesNotHaveBean(Clock.class);
                     assertThat(context.getBean(ActuatorProperties.class).isEnabled()).isTrue();
                     assertThat(context.getBean(FrameworkDiagnostics.class).snapshot().isEmpty())

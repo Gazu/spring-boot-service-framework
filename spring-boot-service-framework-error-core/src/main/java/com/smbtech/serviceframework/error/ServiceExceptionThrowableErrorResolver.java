@@ -5,15 +5,15 @@ import java.util.Objects;
 /**
  * Resolves {@link ServiceException} instances using a configurable notification aggregation policy.
  */
-public final class ServiceExceptionThrowableErrorResolver implements ThrowableErrorResolver {
+final class ServiceExceptionThrowableErrorResolver implements ThrowableErrorResolver {
 
     /** Gives explicit service errors precedence over framework fallbacks. */
-    public static final int DEFAULT_ORDER = -1_000;
+    static final int DEFAULT_ORDER = ThrowableErrorResolver.SERVICE_EXCEPTION_ORDER;
 
     private final NotificationAggregationPolicy aggregationPolicy;
 
     /** Creates a resolver using the default notification aggregation policy. */
-    public ServiceExceptionThrowableErrorResolver() {
+    ServiceExceptionThrowableErrorResolver() {
         this(new DefaultNotificationAggregationPolicy());
     }
 
@@ -22,7 +22,7 @@ public final class ServiceExceptionThrowableErrorResolver implements ThrowableEr
      *
      * @param aggregationPolicy notification aggregation policy
      */
-    public ServiceExceptionThrowableErrorResolver(NotificationAggregationPolicy aggregationPolicy) {
+    ServiceExceptionThrowableErrorResolver(NotificationAggregationPolicy aggregationPolicy) {
         this.aggregationPolicy =
                 Objects.requireNonNull(aggregationPolicy, "aggregationPolicy must not be null");
     }
@@ -54,7 +54,7 @@ public final class ServiceExceptionThrowableErrorResolver implements ThrowableEr
      *
      * @return aggregation policy
      */
-    public NotificationAggregationPolicy aggregationPolicy() {
+    NotificationAggregationPolicy aggregationPolicy() {
         return aggregationPolicy;
     }
 }

@@ -16,7 +16,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Provides resource mock response source behavior. */
-public final class ResourceMockResponseSource implements MockResponseSource {
+final class ResourceMockResponseSource implements MockResponseSource {
 
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper;
@@ -27,7 +27,7 @@ public final class ResourceMockResponseSource implements MockResponseSource {
      * @param resourceLoader resource loader value
      * @param objectMapper object mapper value
      */
-    public ResourceMockResponseSource(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
+    ResourceMockResponseSource(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
         this.resourceLoader =
                 Objects.requireNonNull(resourceLoader, "resourceLoader must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");

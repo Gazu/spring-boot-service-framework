@@ -32,12 +32,15 @@ When the application also includes
 adding the mock interceptor through the standard customizer hook:
 
 ```java
-import com.smbtech.serviceframework.starter.mock.adapter.out.restclient.MockRestClientInterceptor;
 import com.smbtech.serviceframework.starter.restclient.api.customizer.RestClientBuilderCustomizer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 @Bean
-RestClientBuilderCustomizer mockRestClientCustomizer(MockRestClientInterceptor mockInterceptor) {
+RestClientBuilderCustomizer mockRestClientCustomizer(
+        @Qualifier("mockRestClientInterceptor") ClientHttpRequestInterceptor mockInterceptor
+) {
     return (definition, builder) -> builder.requestInterceptor(mockInterceptor);
 }
 ```

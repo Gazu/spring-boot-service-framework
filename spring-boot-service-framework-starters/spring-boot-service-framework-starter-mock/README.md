@@ -23,7 +23,7 @@ framework-neutral adapter or test helper.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-mock'
 }
@@ -46,8 +46,10 @@ smbtech:
 - Core `domain` and `port.*` contracts exposed through the `mock-core`
   dependency.
 
-`MockRestClientInterceptor`, mock adapters, `MockAutoConfiguration`, and
-`MockProperties` are framework implementation or infrastructure. See
+The `mockRestClientInterceptor` bean, mock adapters, `MockAutoConfiguration`,
+and `MockProperties` are framework implementation or infrastructure. Compose
+the interceptor through the standard `ClientHttpRequestInterceptor` contract.
+See
 [Public API Boundaries](../../docs/public-api-boundaries.md).
 
 ## What this module does not do

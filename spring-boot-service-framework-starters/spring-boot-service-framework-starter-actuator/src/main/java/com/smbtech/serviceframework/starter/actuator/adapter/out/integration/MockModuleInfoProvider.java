@@ -8,10 +8,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Provides bounded application information for the mock starter. */
-public final class MockModuleInfoProvider implements FrameworkModuleInfoProvider {
+final class MockModuleInfoProvider implements FrameworkModuleInfoProvider {
 
     /** Stable framework module name. */
-    public static final String MODULE_NAME = "mock";
+    static final String MODULE_NAME = "mock";
 
     private final MockProperties properties;
 
@@ -20,7 +20,7 @@ public final class MockModuleInfoProvider implements FrameworkModuleInfoProvider
      *
      * @param properties mock configuration
      */
-    public MockModuleInfoProvider(MockProperties properties) {
+    MockModuleInfoProvider(MockProperties properties) {
         this.properties = Objects.requireNonNull(properties, "properties");
     }
 

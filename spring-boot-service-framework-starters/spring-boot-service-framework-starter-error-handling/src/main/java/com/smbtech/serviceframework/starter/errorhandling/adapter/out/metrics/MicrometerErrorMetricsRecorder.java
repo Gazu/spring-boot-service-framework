@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Records resolved error counters with stable, bounded tag dimensions. */
-public final class MicrometerErrorMetricsRecorder implements ErrorMetricsRecorder {
+final class MicrometerErrorMetricsRecorder implements ErrorMetricsRecorder {
 
     /** Counter used when no application-specific metric name is configured. */
     public static final String DEFAULT_METRIC_NAME = "smbtech.error.handling.errors";

@@ -9,7 +9,7 @@ import java.util.Objects;
  * Selects the first supporting resolver by precedence and delegates to a fallback when no
  * specialized resolver matches.
  */
-public final class ThrowableErrorResolutionPipeline {
+final class ThrowableErrorResolutionPipeline implements ThrowableErrorResolver {
 
     private static final Comparator<ThrowableErrorResolver> BY_ORDER =
             Comparator.comparingInt(ThrowableErrorResolver::order);
@@ -23,7 +23,7 @@ public final class ThrowableErrorResolutionPipeline {
      *
      * @param resolvers specialized resolvers
      */
-    public ThrowableErrorResolutionPipeline(List<? extends ThrowableErrorResolver> resolvers) {
+    ThrowableErrorResolutionPipeline(List<? extends ThrowableErrorResolver> resolvers) {
         this(resolvers, new FallbackThrowableErrorResolver());
     }
 
@@ -33,7 +33,7 @@ public final class ThrowableErrorResolutionPipeline {
      * @param resolvers specialized resolvers
      * @param fallbackResolver resolver invoked when no specialized resolver matches
      */
-    public ThrowableErrorResolutionPipeline(
+    ThrowableErrorResolutionPipeline(
             List<? extends ThrowableErrorResolver> resolvers,
             ThrowableErrorResolver fallbackResolver) {
         this.resolvers = orderedCopy(resolvers);
@@ -47,6 +47,12 @@ public final class ThrowableErrorResolutionPipeline {
      * @param throwable failure to resolve
      * @return resolved error
      */
+    @Override
+    public boolean supports(Throwable throwable) {
+        return throwable != null;
+    }
+
+    @Override
     public ResolvedError resolve(Throwable throwable) {
         Throwable safeThrowable = Objects.requireNonNull(throwable, "throwable must not be null");
         for (ThrowableErrorResolver resolver : resolvers) {
@@ -62,7 +68,7 @@ public final class ThrowableErrorResolutionPipeline {
      *
      * @return ordered resolvers
      */
-    public List<ThrowableErrorResolver> resolvers() {
+    List<ThrowableErrorResolver> resolvers() {
         return resolvers;
     }
 
@@ -71,7 +77,7 @@ public final class ThrowableErrorResolutionPipeline {
      *
      * @return fallback resolver
      */
-    public ThrowableErrorResolver fallbackResolver() {
+    ThrowableErrorResolver fallbackResolver() {
         return fallbackResolver;
     }
 

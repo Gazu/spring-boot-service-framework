@@ -10,7 +10,7 @@ scope. Swagger 2 documents are rejected explicitly.
 ```groovy
 dependencies {
     testImplementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

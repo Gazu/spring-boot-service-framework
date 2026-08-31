@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.actuator.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
-import com.smbtech.serviceframework.starter.actuator.adapter.in.health.ServiceFrameworkHealthIndicator;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.health.autoconfigure.registry.HealthContributorRegistryAutoConfiguration;
@@ -30,7 +29,6 @@ class ActuatorHealthAutoConfigurationTest {
                     assertThat(context)
                             .hasSingleBean(FrameworkDiagnostics.class)
                             .hasSingleBean(HealthIndicator.class)
-                            .hasSingleBean(ServiceFrameworkHealthIndicator.class)
                             .hasSingleBean(HealthContributorRegistry.class)
                             .hasBean("serviceFrameworkHealthIndicator");
                     HealthIndicator indicator =

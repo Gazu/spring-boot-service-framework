@@ -2,7 +2,8 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.smbtech.serviceframework.starter.restclient.adapter.out.context.ThreadLocalRequestContextManager;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.RestClientRuntimeTestFixtures;
+import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextScope;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -54,8 +55,8 @@ class OAuth2AuthorizationContextAttributesMapperTest {
 
     @Test
     void mapsRequestContextJwtBearerClaimsAndLetsRequestClaimsOverrideThem() {
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         OAuth2AuthorizationContextAttributesMapper mapper =
                 new OAuth2AuthorizationContextAttributesMapper(requestContextManager);
         OAuth2AuthorizeRequest request =
@@ -87,8 +88,8 @@ class OAuth2AuthorizationContextAttributesMapperTest {
 
     @Test
     void ignoresRequestContextJwtBearerClaimsWhenDisabled() {
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         OAuth2AuthorizationContextAttributesMapper mapper =
                 new OAuth2AuthorizationContextAttributesMapper(requestContextManager, false);
         OAuth2AuthorizeRequest request =
@@ -113,8 +114,8 @@ class OAuth2AuthorizationContextAttributesMapperTest {
 
     @Test
     void sanitizesRequestContextJwtBearerClaimsWithConfiguredBlockedClaims() {
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         OAuth2AuthorizationContextAttributesMapper mapper =
                 new OAuth2AuthorizationContextAttributesMapper(
                         requestContextManager, true, java.util.Set.of("customer_id"));

@@ -1,4 +1,9 @@
 rootProject.name = 'spring-boot-service-framework-build-logic'
 
-include 'openapi-generator-plugin'
+include 'spring-boot-service-framework-openapi-gradle-plugin'
+project(':spring-boot-service-framework-openapi-gradle-plugin').projectDir = file('openapi-generator-plugin')
+
+include 'spring-boot-service-framework-openapi-templates'
+project(':spring-boot-service-framework-openapi-templates').projectDir = file('openapi-templates')
+
 include 'conventions'

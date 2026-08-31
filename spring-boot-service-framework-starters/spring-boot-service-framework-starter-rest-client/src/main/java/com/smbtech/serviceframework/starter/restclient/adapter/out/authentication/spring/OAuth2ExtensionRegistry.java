@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Provides OAuth2 extension registry behavior. */
-public final class OAuth2ExtensionRegistry {
+final class OAuth2ExtensionRegistry {
 
     private static final OAuth2ExtensionRegistry EMPTY =
             new OAuth2ExtensionRegistry(List.of(), List.of(), List.of(), null);

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 
 /** Provides open api mock endpoint behavior. */
-public final class OpenApiMockEndpoint {
+final class OpenApiMockEndpoint {
 
     private static final byte[] INVALID_STATUS_BODY =
             "{\"error\":\"undeclared_mock_status\"}".getBytes(StandardCharsets.UTF_8);

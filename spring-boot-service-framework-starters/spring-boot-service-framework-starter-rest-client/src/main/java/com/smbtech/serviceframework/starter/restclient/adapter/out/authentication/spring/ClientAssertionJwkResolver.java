@@ -7,7 +7,7 @@ import java.util.Objects;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 /** Resolves signing JWKs for Spring Security private_key_jwt client authentication. */
-public final class ClientAssertionJwkResolver {
+final class ClientAssertionJwkResolver {
 
     private final RestClientProperties properties;
     private final SigningJwkResolver signingJwkResolver;

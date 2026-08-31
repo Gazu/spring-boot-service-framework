@@ -3,18 +3,11 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
-import com.smbtech.serviceframework.httpclient.port.out.CredentialDefinitionSource;
-import com.smbtech.serviceframework.httpclient.port.out.CredentialProvider;
 import com.smbtech.serviceframework.httpclient.port.out.KeyStoreDefinitionSource;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialDefinitionSource;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesCredentialProvider;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.PropertiesKeyStoreDefinitionSource;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreManager;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.PrivateKeyLoader;
-import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialPropertiesMapper;
-import com.smbtech.serviceframework.starter.restclient.autoconfigure.CredentialResolver;
-import com.smbtech.serviceframework.starter.restclient.autoconfigure.KeyStorePropertiesMapper;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreRuntimeTestFixtures;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreRuntimeTestFixtures.Capabilities;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
+import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientPropertiesTestFixtures;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -876,20 +869,17 @@ class OAuth2RestClientConfigurationValidatorTest {
 
     private OAuth2RestClientConfigurationValidator contentValidator(
             RestClientProperties properties) {
-        CredentialDefinitionSource credentialDefinitionSource =
-                new PropertiesCredentialDefinitionSource(
-                        properties, new CredentialPropertiesMapper());
-        CredentialProvider credentialProvider =
-                new PropertiesCredentialProvider(credentialDefinitionSource);
-        CredentialResolver credentialResolver = new CredentialResolver(credentialProvider);
         KeyStoreDefinitionSource keyStoreDefinitionSource =
-                new PropertiesKeyStoreDefinitionSource(
-                        properties, new KeyStorePropertiesMapper(credentialResolver));
-        KeyStoreManager keyStoreManager =
-                new KeyStoreManager(keyStoreDefinitionSource, new DefaultResourceLoader());
+                RestClientPropertiesTestFixtures.keyStoreDefinitionSource(properties);
+        Capabilities capabilities =
+                KeyStoreRuntimeTestFixtures.capabilities(
+                        keyStoreDefinitionSource, new DefaultResourceLoader());
         SigningJwkResolver signingJwkResolver =
-                new SigningJwkResolver(new PrivateKeyLoader(keyStoreManager));
-        return new OAuth2RestClientConfigurationValidator(keyStoreManager, signingJwkResolver);
+                new SigningJwkResolver(capabilities.signingJwkResolver());
+        return new OAuth2RestClientConfigurationValidator(
+                capabilities.keyStoreValidator(),
+                capabilities.mtlsKeyStoreValidator(),
+                signingJwkResolver);
     }
 
     private Path createKeyStore(String fileName, String alias) throws Exception {

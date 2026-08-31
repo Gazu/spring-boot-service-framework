@@ -5,7 +5,6 @@ def javaLibraryModules = [
         'spring-boot-service-framework-http-client-core',
         'spring-boot-service-framework-mock-core',
         'spring-boot-service-framework-error-core',
-        'spring-boot-service-framework-openapi-generator',
         'spring-boot-service-framework-openapi-contract-testing'
 ]
 

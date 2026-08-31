@@ -7,10 +7,10 @@ import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientP
 import java.util.Objects;
 
 /** Provides passive, bounded diagnostics for the REST client starter. */
-public final class RestClientDiagnosticProbe implements DiagnosticProbe {
+final class RestClientDiagnosticProbe implements DiagnosticProbe {
 
     /** Stable diagnostics component name. */
-    public static final String COMPONENT_NAME = "rest-client";
+    static final String COMPONENT_NAME = "rest-client";
 
     private final RestClientProperties properties;
     private final RestClientRegistry registry;
@@ -21,7 +21,7 @@ public final class RestClientDiagnosticProbe implements DiagnosticProbe {
      * @param properties REST client configuration
      * @param registry REST client registry
      */
-    public RestClientDiagnosticProbe(RestClientProperties properties, RestClientRegistry registry) {
+    RestClientDiagnosticProbe(RestClientProperties properties, RestClientRegistry registry) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.registry = Objects.requireNonNull(registry, "registry");
     }

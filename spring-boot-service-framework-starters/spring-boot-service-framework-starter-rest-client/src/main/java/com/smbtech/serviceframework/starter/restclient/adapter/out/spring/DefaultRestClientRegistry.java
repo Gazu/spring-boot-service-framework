@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.web.client.RestClient;
 
 /** Provides default rest client registry behavior. */
-public final class DefaultRestClientRegistry implements RestClientRegistry {
+final class DefaultRestClientRegistry implements RestClientRegistry {
 
     private final HttpClientCatalog catalog;
     private final ConfiguredRestClientFactory factory;

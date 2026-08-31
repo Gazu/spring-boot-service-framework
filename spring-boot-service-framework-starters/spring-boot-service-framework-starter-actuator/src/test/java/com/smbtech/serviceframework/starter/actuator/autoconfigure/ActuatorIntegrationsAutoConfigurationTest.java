@@ -7,7 +7,6 @@ import com.smbtech.serviceframework.actuator.domain.FrameworkModuleInfo;
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
 import com.smbtech.serviceframework.actuator.port.out.DiagnosticProbe;
 import com.smbtech.serviceframework.actuator.port.out.FrameworkModuleInfoProvider;
-import com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientDiagnosticProbe;
 import com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties;
 import com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties;
 import com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties;
@@ -96,7 +95,7 @@ class ActuatorIntegrationsAutoConfigurationTest {
                 new DiagnosticProbe() {
                     @Override
                     public String componentName() {
-                        return RestClientDiagnosticProbe.COMPONENT_NAME;
+                        return "rest-client";
                     }
 
                     @Override

@@ -1,0 +1,156 @@
+plugins {
+    id 'com.smbtech.service-framework.java-library'
+    id 'application'
+}
+
+description = 'Build-time project generator for Spring Boot Service Framework applications'
+
+def initializrVersion = providers.gradleProperty('springInitializrVersion').get()
+def openApiGeneratorVersion = providers.gradleProperty('openApiGeneratorVersion').get()
+def frameworkVersion = providers.gradleProperty('frameworkVersion').get()
+def springBootVersion = providers.gradleProperty('springBootVersion').get()
+def jackson3Version = providers.gradleProperty('jackson3Version').get()
+def handlebarsVersion = providers.gradleProperty('handlebarsVersion').get()
+def archUnitVersion = providers.gradleProperty('archUnitVersion').get()
+
+dependencies {
+    implementation "io.spring.initializr:initializr-generator-spring:${initializrVersion}"
+    constraints {
+        implementation "org.springframework.boot:spring-boot:${springBootVersion}"
+        implementation "tools.jackson.core:jackson-core:${jackson3Version}"
+        implementation "tools.jackson.core:jackson-databind:${jackson3Version}"
+        implementation "com.github.jknack:handlebars:${handlebarsVersion}"
+    }
+    implementation("org.openapitools:openapi-generator:${openApiGeneratorVersion}") {
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+    }
+}
+
+application {
+    mainClass = 'com.smbtech.serviceframework.project.generator.ProjectGeneratorCli'
+}
+
+tasks.named('processResources') {
+    filesMatching('com/smbtech/serviceframework/project/generator/project-generator.properties') {
+        expand(
+                frameworkVersion: frameworkVersion,
+                springBootVersion: springBootVersion,
+                archUnitVersion: archUnitVersion
+        )
+    }
+}
+
+tasks.register('generateHexagonalProject', JavaExec) {
+    group = 'project generation'
+    description = 'Generates a hexagonal Spring Boot project from -Pspec or -PapiJar.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = application.mainClass
+
+    doFirst {
+        def sourceArguments = []
+        if (providers.gradleProperty('spec').isPresent()) {
+            sourceArguments << "--spec=${rootProject.file(providers.gradleProperty('spec').get()).absolutePath}"
+        }
+        if (providers.gradleProperty('apiJar').isPresent()) {
+            sourceArguments << "--api-jar=${rootProject.file(providers.gradleProperty('apiJar').get()).absolutePath}"
+        }
+        if (sourceArguments.size() != 1) {
+            throw new GradleException('Provide exactly one of -Pspec=<file> or -PapiJar=<file>.')
+        }
+        if (!providers.gradleProperty('output').isPresent()) {
+            throw new GradleException('Provide -Poutput=<directory>.')
+        }
+        def taskArguments = sourceArguments + [
+                "--output=${rootProject.file(providers.gradleProperty('output').get()).absolutePath}"
+        ]
+        [
+                group              : 'group',
+                artifact           : 'artifact',
+                packageName        : 'package',
+                applicationName    : 'application-name',
+                projectVersion     : 'project-version',
+                frameworkVersion   : 'framework-version',
+                springBootVersion  : 'spring-boot-version',
+                contractGroup      : 'contract-group',
+                contractArtifact   : 'contract-artifact',
+                contractVersion    : 'contract-version',
+                contractApiPackage : 'contract-api-package',
+                contractRepository : 'contract-repository'
+        ].each { propertyName, argumentName ->
+            if (providers.gradleProperty(propertyName).isPresent()) {
+                def value = providers.gradleProperty(propertyName).get()
+                if (propertyName == 'contractRepository' && !value.contains('://')) {
+                    value = rootProject.file(value).toURI().toString()
+                }
+                taskArguments << "--${argumentName}=${value}"
+            }
+        }
+        if (providers.gradleProperty('force').map(String::toBoolean).getOrElse(false)) {
+            taskArguments << '--force'
+        }
+        setArgs(taskArguments)
+    }
+}
+
+def scaffoldRepository = layout.buildDirectory.dir('scaffolding/repository')
+def scaffoldFixture = layout.buildDirectory.dir('scaffolding/generated/warehouse-inventory-service')
+
+tasks.register('prepareScaffoldingTestRepository', Sync) {
+    group = 'verification'
+    description = 'Assembles a single Maven repository for compiling a generated project.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    rootProject.allprojects.each { candidate ->
+        from(candidate.layout.buildDirectory.dir('repository'))
+    }
+    from(rootProject.layout.buildDirectory.dir('repository/openapi'))
+    into(scaffoldRepository)
+    mustRunAfter project.tasks.named('clean')
+}
+
+tasks.register('generateScaffoldingCompatibilityFixture', JavaExec) {
+    group = 'verification'
+    description = 'Generates the project used by the scaffolding compatibility check.'
+    dependsOn tasks.named('classes'), tasks.named('prepareScaffoldingTestRepository')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = application.mainClass
+    inputs.file(rootProject.file('docs/openapi/warehouse-inventory-catalog.yaml'))
+    outputs.dir(scaffoldFixture)
+    mustRunAfter project.tasks.named('clean')
+
+    doFirst {
+        setArgs([
+                "--spec=${rootProject.file('docs/openapi/warehouse-inventory-catalog.yaml').absolutePath}",
+                "--output=${scaffoldFixture.get().asFile.absolutePath}",
+                "--contract-repository=${scaffoldRepository.get().asFile.toURI()}",
+                '--force'
+        ])
+    }
+}
+
+tasks.register('scaffoldingCompatibilityCheck', GradleBuild) {
+    group = 'verification'
+    description = 'Builds a generated Spring Boot project and runs its ArchUnit rules.'
+    dependsOn project.tasks.named('generateScaffoldingCompatibilityFixture')
+    dir = scaffoldFixture.get().asFile
+    tasks = ['clean', 'test']
+    startParameter.projectCacheDir = rootProject.file('.gradle/scaffolding-project-cache')
+    mustRunAfter project.tasks.named('clean')
+
+    doLast {
+        project.delete(
+                new File(scaffoldFixture.get().asFile, '.gradle'),
+                new File(scaffoldFixture.get().asFile, 'build')
+        )
+    }
+}
+
+publishing {
+    publications {
+        named('mavenJava', MavenPublication) {
+            pom {
+                name = 'Spring Boot Service Framework - Project Generator'
+            }
+        }
+    }
+}

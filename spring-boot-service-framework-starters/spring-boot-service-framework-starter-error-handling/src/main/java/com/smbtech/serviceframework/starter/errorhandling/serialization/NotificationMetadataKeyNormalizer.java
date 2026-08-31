@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Recursively normalizes notification metadata map keys to snake case without changing scalar
  * values.
  */
-public final class NotificationMetadataKeyNormalizer {
+final class NotificationMetadataKeyNormalizer {
 
     private static final Pattern ACRONYM_BOUNDARY = Pattern.compile("([A-Z]+)([A-Z][a-z])");
     private static final Pattern WORD_BOUNDARY = Pattern.compile("([a-z0-9])([A-Z])");

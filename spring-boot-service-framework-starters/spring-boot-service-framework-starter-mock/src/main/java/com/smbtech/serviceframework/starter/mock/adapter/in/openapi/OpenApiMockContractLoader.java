@@ -21,7 +21,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.dataformat.yaml.YAMLFactory;
 
 /** Provides open api mock contract loader behavior. */
-public final class OpenApiMockContractLoader {
+final class OpenApiMockContractLoader {
 
     private static final Set<String> HTTP_METHODS =
             Set.of("get", "post", "put", "patch", "delete", "head", "options", "trace");
@@ -38,7 +38,7 @@ public final class OpenApiMockContractLoader {
      * @param resourceLoader resource loader value
      * @param objectMapper object mapper value
      */
-    public OpenApiMockContractLoader(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
+    OpenApiMockContractLoader(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
         this.resourceLoader = Objects.requireNonNull(resourceLoader, "resourceLoader");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.yamlMapper = new ObjectMapper(new YAMLFactory());

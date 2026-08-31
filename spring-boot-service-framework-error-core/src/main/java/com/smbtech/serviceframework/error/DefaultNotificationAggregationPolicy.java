@@ -8,10 +8,10 @@ import java.util.Objects;
  * Uses the first notification as primary and converts notifications associated with fields into
  * ordered validation violations.
  */
-public final class DefaultNotificationAggregationPolicy implements NotificationAggregationPolicy {
+final class DefaultNotificationAggregationPolicy implements NotificationAggregationPolicy {
 
     /** Creates the default aggregation policy. */
-    public DefaultNotificationAggregationPolicy() {}
+    DefaultNotificationAggregationPolicy() {}
 
     @Override
     public ResolvedError aggregate(

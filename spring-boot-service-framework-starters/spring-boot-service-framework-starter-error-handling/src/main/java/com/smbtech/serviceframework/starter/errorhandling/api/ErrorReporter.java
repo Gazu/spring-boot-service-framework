@@ -2,6 +2,7 @@ package com.smbtech.serviceframework.starter.errorhandling.api;
 
 import com.smbtech.serviceframework.error.ResolvedError;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /** Reports resolved request failures without changing their HTTP response. */
 @FunctionalInterface
@@ -50,5 +51,21 @@ public interface ErrorReporter {
      */
     static ErrorReporter noop() {
         return (cause, resolvedError, request) -> {};
+    }
+
+    /**
+     * Creates an ordered reporter composition.
+     *
+     * @param reporters reporters to invoke
+     * @return no-op, single, or composite reporter
+     */
+    static ErrorReporter composite(List<? extends ErrorReporter> reporters) {
+        if (reporters == null || reporters.isEmpty()) {
+            return noop();
+        }
+        if (reporters.size() == 1) {
+            return reporters.getFirst();
+        }
+        return new CompositeErrorReporter(reporters);
     }
 }

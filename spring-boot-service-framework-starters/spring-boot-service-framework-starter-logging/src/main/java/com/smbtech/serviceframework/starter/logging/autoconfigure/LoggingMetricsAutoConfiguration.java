@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.logging.autoconfigure;
 
-import com.smbtech.serviceframework.starter.logging.adapter.in.metrics.AsyncLoggingMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import org.springframework.boot.autoconfigure.AutoConfiguration;

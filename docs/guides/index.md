@@ -14,10 +14,12 @@ detail.
 | Add small OAuth2 custom behavior without replacing the full token client | [Customize OAuth2](customize-oauth2.md) |
 | Replace framework defaults with application-provided beans | [Replace Default Beans](replace-default-beans.md) |
 | Replace copied `shared/exception` classes and handlers | [Migrate From shared/exception](migrate-shared-exception.md) |
-| Update renamed framework types, packages, and properties | [Migrate Public Names And Properties](migrate-public-names-and-properties.md) |
+| Apply pre-1.0 source, binary, dependency, and configuration changes | [Pre-1.0 Migration Guide](migrate-public-names-and-properties.md) |
 | Generate OpenAPI models, server API, and REST client artifacts | [Generate OpenAPI Contract Artifacts](openapi-generated-artifacts.md) |
 | Detect breaking OpenAPI changes and enforce SemVer | [Check OpenAPI Breaking Changes](check-openapi-breaking-changes.md) |
 | Test a Spring MVC API against its OpenAPI contract | [OpenAPI Contract Testing](openapi-contract-testing.md) |
+| Run and inspect the repository OpenAPI fixtures | [OpenAPI Examples](../openapi/examples.md) |
+| Diagnose an OpenAPI build or compatibility failure | [OpenAPI Troubleshooting](../openapi/troubleshooting.md) |
 
 ## Canonical References
 
@@ -28,4 +30,5 @@ detail.
 - [Error Handling Extension Points](../error-handling-extension-points.md)
 - [Error Handling Property Reference](../error-handling/property-reference.md)
 - [OpenAPI Code Generation](../openapi-codegen.md)
+- [OpenAPI Portal](../openapi/index.md)
 - [REST client consumer example](../../examples/rest-client-consumer/README.md)
