@@ -13,7 +13,7 @@ diagnostic endpoint, and metrics integration through Spring Boot Actuator.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-actuator'
 }
@@ -24,6 +24,11 @@ dependencies {
 The starter exposes the neutral domain and extension ports from
 `spring-boot-service-framework-actuator-core` and registers
 `ActuatorAutoConfiguration`.
+
+Concrete endpoint, health, info, metrics, guard, and optional-integration
+adapters are internal. Applications replace behavior through
+`FrameworkDiagnostics`, `DiagnosticProbe`, `FrameworkModuleInfoProvider`, or
+the documented bean names.
 
 The base auto-configuration:
 

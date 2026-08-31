@@ -119,8 +119,8 @@ smbtech:
       production-profiles: [prod, production]
       status-override-enabled: false
       contracts:
-        pets:
-          location: classpath:openapi/pets.yaml
+        warehouse-inventory:
+          location: classpath:META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml
 ```
 
 `allow-in-production` should only be enabled for an explicitly approved,
@@ -129,6 +129,11 @@ unless `status-override-enabled` is also enabled.
 
 OpenAPI mock contracts accept explicit OpenAPI 3.0 and 3.1 declarations.
 Swagger 2 and unsupported OpenAPI versions fail contract loading.
+
+Generated models JARs contain this collision-free versioned resource. Add the
+models artifact as a runtime dependency to drive the mock server from the same
+contract that generated the DTOs. Run `smbtechOpenApiMockContractCheck` to list
+the classpath location for every configured contract.
 
 ## 5. Mock response file format
 
@@ -196,11 +201,9 @@ Use `response(...)` when the controller wants custom fallback logic. Use
 
 ## 7. RestClient usage
 
-The starter auto-configures
-`com.smbtech.serviceframework.starter.mock.adapter.out.restclient.MockRestClientInterceptor`.
-It adapts outbound Spring `RestClient` requests to `MockRequest`. This concrete
-adapter is usable for manual wiring but is not a supported extension contract;
-the `adapter.out` package remains framework implementation.
+The starter auto-configures a `ClientHttpRequestInterceptor` bean named
+`mockRestClientInterceptor`. It adapts outbound Spring `RestClient` requests to
+`MockRequest`. Its concrete class is internal.
 
 Mock key resolution:
 
@@ -216,7 +219,7 @@ not, it executes the real HTTP request.
 @Bean
 RestClient paymentsRestClient(
         RestClient.Builder builder,
-        MockRestClientInterceptor mockInterceptor
+        @Qualifier("mockRestClientInterceptor") ClientHttpRequestInterceptor mockInterceptor
 ) {
     return builder
             .baseUrl("https://payments.example.test")
@@ -232,7 +235,9 @@ Use the existing customizer hook:
 
 ```java
 @Bean
-RestClientBuilderCustomizer mockRestClientCustomizer(MockRestClientInterceptor mockInterceptor) {
+RestClientBuilderCustomizer mockRestClientCustomizer(
+        @Qualifier("mockRestClientInterceptor") ClientHttpRequestInterceptor mockInterceptor
+) {
     return (definition, builder) -> builder.requestInterceptor(mockInterceptor);
 }
 ```
@@ -303,9 +308,9 @@ For framework-neutral integrations, depend on the core `MockResponder` contract
 instead.
 
 Adding `spring-boot-service-framework-starter-mock` does not automatically
-replace outbound HTTP calls. Outbound mocks are opt-in: add
-`MockRestClientInterceptor` manually or through the REST client starter
-customizer hook.
+replace outbound HTTP calls. Outbound mocks are opt-in: inject the
+`mockRestClientInterceptor` bean through `ClientHttpRequestInterceptor` and add
+it manually or through the REST client starter customizer hook.
 
 ## 11. Planned extensions
 

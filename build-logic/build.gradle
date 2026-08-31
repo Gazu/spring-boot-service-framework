@@ -2,12 +2,274 @@ plugins {
     id 'base'
 }
 
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.plugins.signing.SigningExtension
+
+def frameworkProperties = new Properties()
+rootProject.file('../gradle.properties').withInputStream { frameworkProperties.load(it) }
+def frameworkVersion = frameworkProperties.getProperty('frameworkVersion')
+def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
+def privateRepositoryUsername = providers.gradleProperty('privateMavenUsername')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
+def privateRepositoryPassword = providers.gradleProperty('privateMavenPassword')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
+def signingKey = providers.gradleProperty('signingKey')
+        .orElse(providers.environmentVariable('SIGNING_KEY'))
+def signingPassword = providers.gradleProperty('signingPassword')
+        .orElse(providers.environmentVariable('SIGNING_PASSWORD'))
+def releaseBuild = providers.gradleProperty('releaseBuild')
+        .map { it.toBoolean() }
+        .orElse(false)
+
 allprojects {
-    group = 'com.smbtech.serviceframework.buildlogic'
-version = '0.4.0'
+    group = 'com.smbtech'
+    version = frameworkVersion
 
     repositories {
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+tasks.register('validateReleaseTag') {
+    group = 'verification'
+    description = 'Validates that build-logic is published from its matching signed release tag.'
+
+    onlyIf { releaseBuild.get() }
+
+    doLast {
+        if (!signingKey.isPresent()) {
+            throw new GradleException('Release builds require SIGNING_KEY and SIGNING_PASSWORD.')
+        }
+
+        def expectedTag = "v${frameworkVersion}"
+        def actualTag = providers.environmentVariable('GITHUB_REF_NAME').orNull
+        if (!actualTag) {
+            actualTag = providers.exec {
+                commandLine 'git', 'describe', '--tags', '--exact-match', 'HEAD'
+                ignoreExitValue = true
+            }.standardOutput.asText.get().trim()
+        }
+        if (actualTag != expectedTag) {
+            throw new GradleException(
+                    "Release version ${frameworkVersion} must be built from tag ${expectedTag}; " +
+                            "found ${actualTag ?: 'no tag'}."
+            )
+        }
+    }
+}
+
+subprojects { publishedProject ->
+    publishedProject.pluginManager.withPlugin('maven-publish') {
+        publishedProject.pluginManager.apply('signing')
+
+        def publishing = publishedProject.extensions.getByType(PublishingExtension)
+        publishing.publications.withType(MavenPublication).configureEach {
+            pom {
+                url = projectUrl
+                inceptionYear = '2025'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'Gazu'
+                        name = 'Gazu'
+                        url = 'https://github.com/Gazu'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/Gazu/spring-boot-service-framework.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/Gazu/spring-boot-service-framework.git'
+                    url = projectUrl
+                    tag = "v${frameworkVersion}"
+                }
+                issueManagement {
+                    system = 'GitHub Issues'
+                    url = "${projectUrl}/issues"
+                }
+            }
+        }
+
+        if (privateRepositoryUrl.isPresent()) {
+            publishing.repositories.maven {
+                name = 'privateRegistry'
+                url = publishedProject.uri(privateRepositoryUrl.get())
+                credentials {
+                    username = privateRepositoryUsername.getOrElse('')
+                    password = privateRepositoryPassword.getOrElse('')
+                }
+            }
+        }
+
+        def signing = publishedProject.extensions.getByType(SigningExtension)
+        signing.setRequired(releaseBuild.get())
+        if (signingKey.isPresent()) {
+            signing.useInMemoryPgpKeys(signingKey.get(), signingPassword.getOrElse(''))
+        }
+        signing.sign(publishing.publications)
+
+        publishedProject.tasks.withType(PublishToMavenRepository).configureEach { publishTask ->
+            def privatePublication = publishTask.name.endsWith(
+                    'ToPrivateRegistryRepository'
+            )
+            if (privatePublication) {
+                dependsOn rootProject.tasks.named('validateReleaseTag')
+            }
+            doFirst {
+                if (privatePublication && !releaseBuild.get()) {
+                    throw new GradleException('Remote publication requires -PreleaseBuild=true.')
+                }
+                if (privatePublication && !signingKey.isPresent()) {
+                    throw new GradleException(
+                            'Remote publication requires SIGNING_KEY and SIGNING_PASSWORD.'
+                    )
+                }
+            }
+        }
+    }
+}
+
+def releaseArtifactReport = layout.buildDirectory.file('reports/release-artifacts.txt')
+def releaseArtifactCoordinates = providers.provider {
+    subprojects.collectMany { candidate ->
+        def publishing = candidate.extensions.findByType(PublishingExtension)
+        if (publishing == null) {
+            return []
+        }
+        publishing.publications.withType(MavenPublication).findResults { publication ->
+            def releaseGroup = publication.groupId == 'com.smbtech' ||
+                    publication.groupId == 'com.smbtech.service-framework.openapi-generator'
+            releaseGroup
+                    ? "${publication.groupId}:${publication.artifactId}:${publication.version}"
+                    : null
+        }
+    }.toSorted()
+}
+
+tasks.register('writeReleaseArtifactCoordinates') {
+    group = 'verification'
+    description = 'Writes the Maven coordinates published by the release build logic modules.'
+    inputs.property('releaseArtifactCoordinates', releaseArtifactCoordinates)
+    outputs.file(releaseArtifactReport)
+
+    doLast {
+        def reportFile = releaseArtifactReport.get().asFile
+        reportFile.parentFile.mkdirs()
+        reportFile.setText(releaseArtifactCoordinates.get().join('\n') + '\n', 'UTF-8')
+    }
+}
+
+tasks.register('buildLogicPublicationCheck') {
+    group = 'verification'
+    description = 'Validates the build-logic publications included in a framework release.'
+    dependsOn tasks.named('writeReleaseArtifactCoordinates')
+
+    doLast {
+        def expectedCoordinates = [
+                "com.smbtech:spring-boot-service-framework-openapi-gradle-plugin:${frameworkVersion}",
+                "com.smbtech:spring-boot-service-framework-openapi-templates:${frameworkVersion}",
+                "com.smbtech.service-framework.openapi-generator:" +
+                        "com.smbtech.service-framework.openapi-generator.gradle.plugin:" +
+                        frameworkVersion
+        ].toSorted()
+        def actualCoordinates = releaseArtifactCoordinates.get()
+        def failures = []
+
+        if (actualCoordinates != expectedCoordinates) {
+            failures.add(
+                    'unexpected build-logic publication set:\nexpected: ' +
+                            expectedCoordinates.join('\n') +
+                            '\nactual: ' + actualCoordinates.join('\n')
+            )
+        }
+
+        subprojects.each { candidate ->
+            def publishing = candidate.extensions.findByType(PublishingExtension)
+            if (publishing == null) {
+                return
+            }
+            if (candidate.extensions.findByType(SigningExtension) == null) {
+                failures.add("${candidate.path}: signing is not configured")
+            }
+            if (privateRepositoryUrl.isPresent() &&
+                    publishing.repositories.findByName('privateRegistry') == null) {
+                failures.add("${candidate.path}: privateRegistry is not configured")
+            }
+            publishing.publications.withType(MavenPublication).each { publication ->
+                def pom = publication.pom
+                if (!pom.name.isPresent() || !pom.description.isPresent()) {
+                    failures.add(
+                            "${candidate.path}:${publication.name}: " +
+                                    'POM name and description are required'
+                    )
+                }
+                if (pom.url.orNull != projectUrl || pom.scm.url.orNull != projectUrl) {
+                    failures.add(
+                            "${candidate.path}:${publication.name}: " +
+                                    'canonical project and SCM URLs are required'
+                    )
+                }
+                if (pom.licenses.size() != 1 || pom.developers.size() != 1) {
+                    failures.add(
+                            "${candidate.path}:${publication.name}: " +
+                                    'exactly one POM license and developer are required'
+                    )
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Build-logic publication validation failed:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('publishReleaseArtifactsToLocalRepository') {
+    group = 'publishing'
+    description = 'Publishes every build-logic release artifact to its local build repository.'
+    dependsOn(
+            ':spring-boot-service-framework-openapi-gradle-plugin:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-openapi-templates:publishAllPublicationsToLocalBuildRepository'
+    )
+}
+
+tasks.register('publishReleaseArtifactsToMavenLocal') {
+    group = 'publishing'
+    description = 'Publishes every build-logic release artifact to Maven local.'
+    dependsOn(
+            ':spring-boot-service-framework-openapi-gradle-plugin:publishToMavenLocal',
+            ':spring-boot-service-framework-openapi-templates:publishToMavenLocal'
+    )
+}
+
+tasks.register('publishReleaseArtifacts') {
+    group = 'publishing'
+    description = 'Publishes every signed build-logic release artifact to the private registry.'
+    dependsOn tasks.named('buildLogicPublicationCheck')
+
+    if (privateRepositoryUrl.isPresent()) {
+        dependsOn(
+                ':spring-boot-service-framework-openapi-gradle-plugin:publishAllPublicationsToPrivateRegistryRepository',
+                ':spring-boot-service-framework-openapi-templates:publishAllPublicationsToPrivateRegistryRepository'
+        )
+    }
+
+    doFirst {
+        if (!privateRepositoryUrl.isPresent()) {
+            throw new GradleException(
+                    'Remote build-logic publication requires PRIVATE_MAVEN_URL or -PprivateMavenUrl.'
+            )
+        }
     }
 }

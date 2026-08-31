@@ -35,7 +35,9 @@ The following package segments are implementation by default:
 | Segment | Ownership |
 |---|---|
 | `adapter` | Technology-specific inbound and outbound integration. |
+| `application` | Framework use cases and orchestration implementations. |
 | `autoconfigure` | Spring Boot conditions, configuration binding, and bean assembly. |
+| `service` | Default service implementations behind public ports. |
 | `serialization` | Framework-owned wire serialization implementation. |
 | `internal` | Explicit non-consumer implementation. |
 | build logic | Gradle plugin implementation, task classes, and repository build orchestration. |
@@ -51,6 +53,25 @@ source-compatibility guarantees applied to supported API. They are tracked as
 inventory. Their reviewed names are frozen separately in
 `gradle/compatibility/public-internal-types.txt` so the accidental surface can
 shrink but cannot grow unnoticed.
+
+Every top-level public type also has one mutually exclusive classification in
+`gradle/compatibility/public-type-classification.txt`:
+
+- `SUPPORTED_API`;
+- `SUPPORTED_EXTENSION_POINT`;
+- `TECHNICAL_INFRASTRUCTURE`;
+- `INTERNAL_IMPLEMENTATION`.
+
+An explicit technical-infrastructure classification takes precedence when a
+framework entry point must share a package with supported contracts. Any type
+addition, removal, or reclassification requires regenerating and reviewing
+this baseline. Every technical entry has a reason in the build allowlist;
+unjustified entries fail `validateTechnicalInfrastructureAllowlist`.
+
+The reviewed internal baseline is monotonic: its generator accepts removals but
+rejects additions. A new implementation must remain package-private or be added
+to the technical-infrastructure allowlist with a concrete Spring, Gradle,
+Logback, AOT, reflection, command-line, or cross-artifact requirement.
 
 ## Nullability Contract
 
@@ -72,9 +93,7 @@ These existing packages are supported even though they do not follow the
 | `spring-boot-service-framework-commons` | `com.smbtech.serviceframework.commons.notification` | Shared notification response and exception contract. |
 | `spring-boot-service-framework-http-client-core` | `com.smbtech.serviceframework.httpclient.exception` | Exceptions that consumers inspect or catch. |
 | `spring-boot-service-framework-mock-core` | `com.smbtech.serviceframework.mock.exception` | Mock failures exposed by core ports. |
-| `spring-boot-service-framework-error-core` | `com.smbtech.serviceframework.error` | Existing error definitions, policies, resolution pipeline, and service exception API. |
 | `spring-boot-service-framework-error-core` | `com.smbtech.serviceframework.error.metadata` | Stable structured error metadata contract. |
-| `spring-boot-service-framework-openapi-generator` | `com.smbtech.serviceframework.openapi.generator` | Existing reusable build-time generator API. |
 | `spring-boot-service-framework-openapi-contract-testing` | `com.smbtech.serviceframework.openapi.contract` | Existing test-scope OpenAPI contract API. |
 
 New capabilities must use a convention package instead of adding another
@@ -88,6 +107,7 @@ Only these individual types are supported outside convention packages:
 | Artifact | Supported type exception | Reason |
 |---|---|---|
 | `spring-boot-service-framework-starter-logging` | `com.smbtech.serviceframework.starter.logging.StructuredLoggers` | Consumer-facing static facade for structured logger lookup. |
+| `spring-boot-service-framework-error-core` | `ErrorDefinition`, `ErrorCategory`, `ErrorExposure`, `FieldViolation`, `NotificationAggregationPolicy`, `NotificationSanitizer`, `ResolvedError`, `ServiceException`, and `ThrowableErrorResolver` | Framework-neutral models, policies, resolver extension point, and service exception API. |
 | OpenAPI Gradle plugin | `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiExtension` | Public `smbtechOpenApi` DSL model. |
 | OpenAPI Gradle plugin | `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiSpec` | Public named-spec DSL model. |
 
@@ -105,6 +125,11 @@ must discover or bind them. They remain framework infrastructure:
   auto-configuration class;
 - bean names and concrete default classes are not contracts unless documented;
 - auto-configuration must back off for supported replacement points.
+
+Replaceable `@Bean` methods should return supported interfaces or explicitly
+reviewed external framework contracts. Existing concrete return types are
+frozen in `gradle/compatibility/concrete-replaceable-beans.txt`; that baseline
+may only shrink.
 
 An auto-configuration or properties type becomes supported only if it is added
 as an explicit type exception. No current auto-configuration type has that
@@ -153,10 +178,14 @@ For every new or modified public type:
 5. Review any addition under `Public Internal Types To Review`; prefer reducing
    visibility and regenerate `generatePublicInternalTypeBaseline` only after
    intentional review.
-6. Run `./gradlew validatePublicApiInventory`,
+6. Regenerate `generatePublicTypeClassificationBaseline` only after reviewing
+   every added, removed, or reclassified public type.
+7. Run `generateConcreteReplaceableBeanBaseline` only after replacing concrete
+   bean return types with supported contracts.
+8. Run `./gradlew validatePublicApiInventory`,
    `./gradlew validatePublicApiNullability`, and
    `./gradlew binaryCompatibilityCheck`.
-7. Run `./gradlew compatibilityCheck`.
+9. Run `./gradlew compatibilityCheck`.
 
 The inventory validates that documented package/type exceptions and public
 infrastructure declarations still resolve to real source types. Any drift must

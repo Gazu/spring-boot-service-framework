@@ -21,7 +21,7 @@ or custom clients that should not depend on Spring, Jackson, Servlet, or
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-mock-core'
 }
@@ -35,8 +35,8 @@ dependencies {
 - Outbound ports: `MockDefinitionSource` and `MockResponseSource`.
 - Public exception: `MockException`.
 
-`DefaultMockCatalog` and `DefaultMockResponder` are framework implementations,
-not supported extension points. See
+Create the default implementations with `MockCatalog.from(...)` and
+`MockResponder.from(...)`. Their concrete types are internal. See
 [Public API Boundaries](../docs/public-api-boundaries.md).
 
 ## What this module does not do

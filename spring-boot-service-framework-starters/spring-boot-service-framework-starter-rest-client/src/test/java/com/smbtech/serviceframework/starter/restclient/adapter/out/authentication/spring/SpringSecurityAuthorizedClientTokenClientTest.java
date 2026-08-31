@@ -3,9 +3,9 @@ package com.smbtech.serviceframework.starter.restclient.adapter.out.authenticati
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.httpclient.domain.AccessToken;
-import com.smbtech.serviceframework.httpclient.service.ScopeValidator;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.context.ThreadLocalRequestContextManager;
+import com.smbtech.serviceframework.starter.restclient.adapter.out.spring.RestClientRuntimeTestFixtures;
 import com.smbtech.serviceframework.starter.restclient.api.JwtBearerTokenRequest;
+import com.smbtech.serviceframework.starter.restclient.api.RequestContextManager;
 import com.smbtech.serviceframework.starter.restclient.api.RequestContextScope;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.AccessTokenCacheKeyResolver;
 import com.smbtech.serviceframework.starter.restclient.api.oauth2.JwtBearerClaimsContributor;
@@ -66,8 +66,8 @@ class SpringSecurityAuthorizedClientTokenClientTest {
     @Test
     void jwtBearerMergesRequestContextClaimsWithExplicitClaims() {
         ClientRegistration registration = jwtBearerRegistration();
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         AtomicReference<OAuth2AuthorizeRequest> capturedRequest = new AtomicReference<>();
         OAuth2AuthorizedClientManager manager =
                 request -> {
@@ -240,8 +240,8 @@ class SpringSecurityAuthorizedClientTokenClientTest {
     @Test
     void jwtBearerIgnoresRequestContextClaimsWhenDisabled() {
         ClientRegistration registration = jwtBearerRegistration();
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         AtomicReference<OAuth2AuthorizeRequest> capturedRequest = new AtomicReference<>();
         OAuth2AuthorizedClientManager manager =
                 request -> {
@@ -279,8 +279,8 @@ class SpringSecurityAuthorizedClientTokenClientTest {
     @Test
     void jwtBearerSanitizesContextAndExplicitClaimsWithConfiguredBlockedClaims() {
         ClientRegistration registration = jwtBearerRegistration();
-        ThreadLocalRequestContextManager requestContextManager =
-                new ThreadLocalRequestContextManager();
+        RequestContextManager requestContextManager =
+                RestClientRuntimeTestFixtures.requestContextManager();
         AtomicReference<OAuth2AuthorizeRequest> capturedRequest = new AtomicReference<>();
         OAuth2AuthorizedClientManager manager =
                 request -> {

@@ -63,7 +63,9 @@ flowchart LR
     ActuatorCore["spring-boot-service-framework-actuator-core"]
     HttpCore["spring-boot-service-framework-http-client-core"]
     MockCore["spring-boot-service-framework-mock-core"]
-    OpenApiGenerator["spring-boot-service-framework-openapi-generator"]
+    OpenApiPlugin["spring-boot-service-framework-openapi-gradle-plugin"]
+    OpenApiTemplates["spring-boot-service-framework-openapi-templates"]
+    ProjectGenerator["spring-boot-service-framework-project-generator"]
     ContractTesting["spring-boot-service-framework-openapi-contract-testing"]
     Commons["spring-boot-service-framework-commons"]
 
@@ -76,7 +78,9 @@ flowchart LR
     StarterActuator --> ActuatorCore
     StarterRest --> HttpCore
     StarterMock --> MockCore
-    ContractBuild --> OpenApiGenerator
+    ContractBuild --> OpenApiPlugin
+    OpenApiPlugin --> OpenApiTemplates
+    ProjectGenerator --> ContractBuild
     Service --> ContractTesting
 ```
 
@@ -96,14 +100,16 @@ Logback, Servlet, Jackson, or Apache HttpClient APIs.
 | `spring-boot-service-framework-http-client-core` | HTTP client domain, policies, token definitions, ports, notifications, and inspectable downstream exceptions without Spring dependencies. | [spring-boot-service-framework-http-client-core/README.md](spring-boot-service-framework-http-client-core/README.md) |
 | `spring-boot-service-framework-mock-core` | Framework-neutral mock domain and exceptions, intended to evolve into a reusable mock responder core. | [spring-boot-service-framework-mock-core/README.md](spring-boot-service-framework-mock-core/README.md) |
 | `spring-boot-service-framework-error-core` | Framework-neutral error definitions, service exceptions, resolution policies, aggregation, and sanitization. | [spring-boot-service-framework-error-core/README.md](spring-boot-service-framework-error-core/README.md) |
-| `spring-boot-service-framework-openapi-generator` | Build-time OpenAPI contract artifact generator boundary for generated models, server API, and REST client artifacts. | [spring-boot-service-framework-openapi-generator/README.md](spring-boot-service-framework-openapi-generator/README.md) |
 | `spring-boot-service-framework-openapi-contract-testing` | Test-scope OpenAPI verification for Spring MVC status, media type, and JSON response contracts. | [spring-boot-service-framework-openapi-contract-testing/README.md](spring-boot-service-framework-openapi-contract-testing/README.md) |
+| `spring-boot-service-framework-project-generator` | Build-time boundary for creating Spring Boot and hexagonal project structures from OpenAPI contracts. | [spring-boot-service-framework-project-generator/README.md](spring-boot-service-framework-project-generator/README.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator` | Spring Boot health, info, diagnostic endpoint, bounded metrics, and passive optional-starter integrations for neutral diagnostics. | [spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md](spring-boot-service-framework-starters/spring-boot-service-framework-starter-actuator/README.md), [Actuator Architecture Contract](docs/actuator.md), [Actuator Property Reference](docs/actuator/property-reference.md), [Actuator Compatibility](docs/actuator/compatibility.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging` | Spring Boot starter for structured JSON logging, MDC correlation, servlet transaction filter, and Logback output. | [spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md](spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging/README.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client` | Spring Boot starter for configured `RestClient` beans, API client proxies, authentication, SSL, audit, observability, and optional resilience. | [docs/rest-client.md](docs/rest-client.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock` | Spring Boot starter for configured mock response loading from classpath or file resources. | [docs/mock.md](docs/mock.md) |
 | `spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling` | Spring Boot starter for safe `Notification` responses across MVC, validation, downstream clients, and security. | [spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md](spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md) |
 | `build-logic:conventions` | Internal Gradle conventions for Java libraries and Spring Boot starters. | [build-logic/conventions/README.md](build-logic/conventions/README.md) |
+| `build-logic:spring-boot-service-framework-openapi-gradle-plugin` | Public Gradle DSL and orchestration boundary for contract generation and publication. | [build-logic/openapi-generator-plugin/README.md](build-logic/openapi-generator-plugin/README.md) |
+| `build-logic:spring-boot-service-framework-openapi-templates` | Versioned OpenAPI Generator template bundle. | [build-logic/openapi-templates/README.md](build-logic/openapi-templates/README.md) |
 
 ---
 
@@ -119,9 +125,11 @@ Logback, Servlet, Jackson, or Apache HttpClient APIs.
 | Mock responses for controllers or outbound `RestClient` calls | `spring-boot-service-framework-starter-mock` | [Mock guide](docs/mock.md) |
 | Safe MVC, validation, downstream, and security errors | `spring-boot-service-framework-starter-error-handling` | [Error Handling Guide](docs/error-handling.md) |
 | Framework-neutral mock responder contracts | `spring-boot-service-framework-mock-core` | [Mock core README](spring-boot-service-framework-mock-core/README.md) |
-| OpenAPI contract artifact generation | `spring-boot-service-framework-openapi-generator` | [OpenAPI generator README](spring-boot-service-framework-openapi-generator/README.md) |
-| OpenAPI breaking change detection and SemVer enforcement | `spring-boot-service-framework-openapi-generator` | [OpenAPI Breaking Change Detection](docs/openapi-breaking-changes.md) |
+| OpenAPI contract artifact generation | `spring-boot-service-framework-openapi-gradle-plugin` | [OpenAPI generator plugin README](build-logic/openapi-generator-plugin/README.md) |
+| OpenAPI breaking change detection and SemVer enforcement | `spring-boot-service-framework-openapi-gradle-plugin` | [OpenAPI Contract Versioning](docs/openapi/versioning.md) |
+| OpenAPI build-time validation | `spring-boot-service-framework-openapi-gradle-plugin` | [OpenAPI Validation](docs/openapi/validation.md) |
 | OpenAPI contract testing for Spring MVC controllers | `spring-boot-service-framework-openapi-contract-testing` | [OpenAPI Contract Testing](docs/openapi-contract-testing.md) |
+| Generate a Spring Boot hexagonal project from a contract | `spring-boot-service-framework-project-generator` | [Project generator README](spring-boot-service-framework-project-generator/README.md) |
 | Shared notifications and notifying exceptions | `spring-boot-service-framework-commons` | [Commons README](spring-boot-service-framework-commons/README.md) |
 | Reusable MVC and security error responses | `spring-boot-service-framework-starter-error-handling` | [Error handling example](examples/error-handling-consumer/README.md) |
 | Standalone consumer smoke tests | `examples/*` | [Actuator example](examples/actuator-consumer/README.md), [Error handling example](examples/error-handling-consumer/README.md), [Logging example](examples/logging-consumer/README.md), [REST client example](examples/rest-client-consumer/README.md) |
@@ -165,7 +173,7 @@ repositories {
 
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
@@ -206,7 +214,7 @@ includeBuild('../spring-boot-service-framework')
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
 }
@@ -240,7 +248,7 @@ final class ProjectService {
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
 }
@@ -320,20 +328,35 @@ Resilience is disabled by default.
 
 ## Verification
 
+Every change to `main` must use a pull request. GitHub Actions requires the
+stable `Policy`, `Quality`, and `Security` checks, one approving review, resolved
+conversations, and a branch current with `main`. The canonical local equivalent
+for the non-publishing quality gate is:
+
+```bash
+./gradlew clean pullRequestGate \
+  --no-daemon \
+  --stacktrace \
+  --console=plain
+```
+
+See [Quality Pipeline](docs/quality-pipeline.md) for security thresholds,
+published evidence, branch protection, and troubleshooting links.
+
 ```bash
 ./gradlew clean check
 ./gradlew codeQualityCheck
 ./gradlew documentationCheck
 ./gradlew baseline
 ./gradlew sonar
-./gradlew openApiBreakingChangeCheck
-./gradlew openApiCompatibilityCheck
+./gradlew smbtechOpenApiCompatibilityCheck
 ./gradlew moduleCompatibilityCheck
 ./gradlew platformCompatibilityCheck
 ./gradlew actuatorContractCheck
 ./gradlew actuatorCompatibilityCheck
 ./gradlew consumerSmoke
 ./gradlew compatibilityCheck
+./gradlew pullRequestGate
 ```
 
 `codeQualityCheck` validates formatting, public API Javadocs, public package
@@ -341,23 +364,18 @@ documentation, prohibited legacy identifiers, and commented-out Java code.
 
 `documentationCheck` validates Markdown structure, relative links and anchors,
 canonical documentation coverage, changelog/release docs, framework version
-references, OpenAPI name normalization and `info.title`/`info.version`,
-OpenAPI spec version catalog, OpenAPI breaking change detection, generated
-OpenAPI metadata, models JARs, server API JARs, client JARs, advanced OpenAPI model generation, OpenAPI artifact
-separation, reproducible OpenAPI generation, generated OpenAPI compilation
-tests, generated property references, and example documentation/configuration
+references, OpenAPI configuration and contract validation, generated property
+references, and example documentation/configuration
 for accidentally committed secrets or encoded keystore material.
 
-`openApiCompatibilityCheck` validates the generated OpenAPI artifact contract,
-including spec naming, metadata, version catalog entries, breaking change
-detection, JAR contents, advanced model generation, artifact separation, reproducibility, consumer-style
-compilation, reusable generator module checks, build-logic checks, and local
-Maven publication.
+`smbtechOpenApiCompatibilityCheck` is the plugin-native gate for OpenAPI Diff,
+SemVer, reproducibility, migration, generated consumers, and mock contracts.
+The repository-level compatibility command includes it.
 
 `moduleCompatibilityCheck` validates the reviewed public API, extension points,
 configuration properties, auto-configuration imports, plugin ids, and module
-behavior for Commons, Logging, HTTP Client, Mock, OpenAPI Generator, Contract
-Testing, Actuator, and the OpenAPI Gradle plugin.
+behavior for Commons, Logging, HTTP Client, Mock, Contract Testing, Actuator,
+Project Generator, and the OpenAPI Gradle plugin.
 
 `platformCompatibilityCheck` validates the managed framework constraints, the
 imported Spring Boot BOM, published Maven metadata, and the committed platform
@@ -391,12 +409,14 @@ Run the focused error handling API and consumer compatibility contract with:
 ./gradlew errorHandlingCompatibilityCheck
 ```
 
-The root `check` task includes compatibility and supply-chain verification so
-the catalog-managed Jenkins pipeline exercises the complete framework quality
-contract. `releaseGate` additionally provides the explicit pre-publication
-lifecycle. These tasks enforce a 50% minimum line coverage per published module,
-validate Maven POM metadata and reproducible archives, and generate aggregate
-CycloneDX JSON and XML SBOMs under `build/reports`. Run
+The root `check` task includes compatibility and supply-chain verification.
+`pullRequestGate` is the GitHub Actions merge gate, while `releaseGate` provides
+the explicit pre-publication lifecycle. `releaseCandidate` creates an unsigned,
+verified bundle and candidate report without publishing remotely. These tasks
+enforce a 50% minimum line
+coverage per published module, validate Maven POM metadata and reproducible
+archives, and generate aggregate CycloneDX JSON and XML SBOMs under
+`build/reports`. Run
 `./gradlew dependencyTrackSbom` to generate and validate the production-only
 SBOM used by Dependency-Track.
 
@@ -435,21 +455,36 @@ canonical process is the tag-triggered workflow documented in
 | [CHANGELOG.md](CHANGELOG.md) | Release history and notable project changes. |
 | [PROVENANCE.md](PROVENANCE.md) | Source provenance and publication constraints. |
 | [docs/documentation-architecture.md](docs/documentation-architecture.md) | Documentation ownership rules, canonical sources, and anti-duplication policy. |
+| [docs/adr/README.md](docs/adr/README.md) | Accepted cross-module architecture decisions. |
 | [docs/code-conventions.md](docs/code-conventions.md) | Java naming, acronym, package, Javadoc, exception, default implementation, and auto-configuration conventions. |
 | [docs/public-api-boundaries.md](docs/public-api-boundaries.md) | Supported package convention, implementation boundaries, and documented package/type exceptions. |
 | [docs/module-readme-convention.md](docs/module-readme-convention.md) | Required structure and validation rules for module READMEs. |
 | [docs/public-api-inventory.md](docs/public-api-inventory.md) | Generated artifact catalog of public packages, extension points, properties, exceptions, and public internal types. |
+| [docs/pre-1.0-api-policy.md](docs/pre-1.0-api-policy.md) | Pre-1.0 source, binary, nullability, and compatibility policy. |
 | [docs/compatibility.md](docs/compatibility.md) | Supported versions and compatibility policy. |
 | [docs/releasing.md](docs/releasing.md) | Release checklist, versioning, tagging, and private publication process. |
+| [docs/openapi/index.md](docs/openapi/index.md) | Goal-oriented portal for all OpenAPI generation, publication, testing, mock, and scaffolding documentation. |
+| [docs/openapi/scaffolding.md](docs/openapi/scaffolding.md) | Inputs, defaults, generated structure, hexagonal boundaries, and safety rules for one-time service scaffolding. |
+| [docs/openapi/getting-started.md](docs/openapi/getting-started.md) | Minimal end-to-end path from an OpenAPI document to locally published server and client contracts. |
+| [docs/openapi/generation.md](docs/openapi/generation.md) | Canonical models, server API, client, package, dependency, metadata, and generated-output contract. |
+| [docs/openapi/plugin-reference.md](docs/openapi/plugin-reference.md) | Canonical OpenAPI Gradle plugin DSL, defaults, validation rules, tasks, and build wiring. |
+| [docs/openapi/publishing.md](docs/openapi/publishing.md) | OpenAPI local and remote Maven publication, credentials, CI sequencing, and immutable release rules. |
+| [docs/openapi/versioning.md](docs/openapi/versioning.md) | OpenAPI contract identity, immutable baselines, structural comparison, and SemVer policy. |
+| [docs/openapi/validation.md](docs/openapi/validation.md) | OpenAPI configuration, document, coordinate, compatibility, and CI validation contract. |
+| [docs/openapi/examples.md](docs/openapi/examples.md) | Executable repository contracts, commands, expected artifacts, and report evidence. |
+| [docs/openapi/troubleshooting.md](docs/openapi/troubleshooting.md) | OpenAPI task isolation, diagnostics, reports, and focused recovery steps. |
+| [docs/openapi-behavior-inventory.md](docs/openapi-behavior-inventory.md) | Frozen inventory of the current OpenAPI Gradle API, generated artifacts, metadata, tasks, publication, and toolchain. |
 | [docs/openapi-codegen.md](docs/openapi-codegen.md) | OpenAPI code generation coordinate convention and planned artifact layout. |
-| [docs/openapi-breaking-changes.md](docs/openapi-breaking-changes.md) | OpenAPI baseline snapshots, structural change classification, and SemVer enforcement. |
-| [docs/openapi-evolution.md](docs/openapi-evolution.md) | OpenAPI generator post-split evolution roadmap, ownership stages, and compatibility rules. |
+| [docs/openapi/documentation-architecture.md](docs/openapi/documentation-architecture.md) | OpenAPI documentation layers, canonical ownership, duplication policy, and change rules. |
+| [gradle/compatibility/contracts/openApiDocumentation.txt](gradle/compatibility/contracts/openApiDocumentation.txt) | Reviewed OpenAPI documentation paths, validation tasks, evidence, and rollout contract. |
 | [docs/openapi-contract-testing.md](docs/openapi-contract-testing.md) | Executable Spring MVC response verification against OpenAPI contracts. |
 | [docs/guides/openapi-generated-artifacts.md](docs/guides/openapi-generated-artifacts.md) | Copy-oriented OpenAPI generation, validation, publication, and consumption workflow. |
-| [gradle/documentation-checks.gradle](gradle/documentation-checks.gradle) | Repository documentation, example safety, and documentation aggregate validation tasks. |
+| [gradle/documentation-checks.gradle](gradle/documentation-checks.gradle) | Repository documentation, example safety, OpenAPI command verification, and aggregate validation tasks. |
 | [gradle/public-api-inventory.gradle](gradle/public-api-inventory.gradle) | Public boundary inventory, package classification, drift detection, and marker validation tasks. |
 | [gradle/lifecycle.gradle](gradle/lifecycle.gradle) | Root lifecycle tasks such as `baseline`, `publishLocalArtifacts`, `consumerSmoke`, `errorHandlingCompatibilityCheck`, and `compatibilityCheck`. |
 | [build-logic/openapi-generator-plugin/README.md](build-logic/openapi-generator-plugin/README.md) | OpenAPI Gradle plugin, DSL, generation tasks, task wiring, and publication wiring. |
+| [build-logic/openapi-templates/README.md](build-logic/openapi-templates/README.md) | Versioned OpenAPI Generator template bundle boundary. |
+| [spring-boot-service-framework-project-generator/README.md](spring-boot-service-framework-project-generator/README.md) | OpenAPI-driven Spring Boot and hexagonal project scaffolding boundary. |
 | [build-logic/conventions/README.md](build-logic/conventions/README.md) | Java library and Spring Boot starter build conventions. |
 | [docs/logging.md](docs/logging.md) | Structured logging, MDC, transaction id propagation, configuration, and logging core boundaries. |
 | [docs/logging/compatibility.md](docs/logging/compatibility.md) | Supported logging API, properties, runtime names, Logback fragments, and compatibility rules. |
@@ -462,7 +497,7 @@ canonical process is the tag-triggered workflow documented in
 | [docs/error-handling/property-reference.md](docs/error-handling/property-reference.md) | Generated error handling configuration reference. |
 | [docs/error-handling-extension-points.md](docs/error-handling-extension-points.md) | Public error handling policies, customizers, reporters, serializers, and replacement points. |
 | [docs/guides/migrate-shared-exception.md](docs/guides/migrate-shared-exception.md) | Migration from copied `shared/exception` classes and handlers. |
-| [docs/guides/migrate-public-names-and-properties.md](docs/guides/migrate-public-names-and-properties.md) | Migration for renamed Java types, packages, and configuration properties. |
+| [docs/guides/migrate-public-names-and-properties.md](docs/guides/migrate-public-names-and-properties.md) | Pre-1.0 source, binary, dependency, and configuration migration guide. |
 | [docs/mock.md](docs/mock.md) | Mock core and starter usage guide. |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Troubleshooting catalog for Gradle, REST client, OAuth2, SSL, cache, diagnostics, mock, and logging issues. |
 | [examples/logging-consumer/README.md](examples/logging-consumer/README.md) | Standalone logging starter consumer. |
@@ -482,6 +517,6 @@ diagnostics, error handling, mock, and logging issues.
 
 ## Current status
 
-The framework is in `0.4.0`. APIs can still evolve before `1.0.0`.
+The framework is in `0.5.0`. APIs can still evolve before `1.0.0`.
 Private publication should happen only after ownership and provenance have been
 confirmed for all included components.

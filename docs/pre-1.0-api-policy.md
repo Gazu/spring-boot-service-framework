@@ -17,6 +17,17 @@ technically public implementation classes. New entries fail the build. Reducing
 visibility is encouraged and requires regenerating the file so the reduction
 is visible during review.
 
+The reviewed file `gradle/compatibility/public-type-classification.txt` freezes
+the classification of every top-level public type as supported API, supported
+extension point, technical infrastructure, or internal implementation. The
+build fails when a type is added, removed, or reclassified without updating the
+baseline explicitly.
+
+The reviewed file `gradle/compatibility/concrete-replaceable-beans.txt` freezes
+legacy `@ConditionalOnMissingBean` methods that expose concrete return types.
+New entries are prohibited; the baseline is regenerated only after one or more
+concrete returns have been replaced by supported contracts.
+
 ## Nullability
 
 Supported packages use JSpecify `@NullMarked`. A type is non-null unless a
@@ -41,8 +52,15 @@ Run:
 
 Approved pre-1.0 incompatibilities live in
 `gradle/compatibility/binary-breaking-changes.txt`. Every entry must identify a
-single japicmp member, have release notes, and be removed when the baseline
-advances beyond the affected release.
+single japicmp member, have release notes, and have a consumer replacement in
+the [Pre-1.0 Migration Guide](guides/migrate-public-names-and-properties.md).
+Entries must be removed when the baseline advances beyond the affected
+release.
+
+Visibility reductions for unsupported implementation types do not require a
+binary exception. When consumers may have imported such a type directly, the
+migration guide must still document the supported replacement or state that no
+replacement exists.
 
 ## JWT Bearer Extension Contract
 
@@ -57,10 +75,14 @@ implementations must implement the complete request method.
 2. Run `generatePublicApiInventory` and review the source surface.
 3. Run `generatePublicInternalTypeBaseline` only when technical visibility was
    intentionally reduced or reviewed.
-4. Run `binaryCompatibilityCheck` against the latest released tag.
-5. Document every incompatible change in `CHANGELOG.md` and the migration guide.
-6. Add the narrowest possible binary exception only during `0.x`.
-7. Run `clean releaseGate` before publishing.
+4. Run `generatePublicTypeClassificationBaseline` only after reviewing every
+   public type classification change.
+5. Run `generateConcreteReplaceableBeanBaseline` only to record a reduction.
+6. Run `binaryCompatibilityCheck` against the latest released tag.
+7. Document every incompatible change in `CHANGELOG.md` and the
+   [Pre-1.0 Migration Guide](guides/migrate-public-names-and-properties.md).
+8. Add the narrowest possible binary exception only during `0.x`.
+9. Run `clean releaseGate` before publishing.
 
 After `1.0.0`, supported binary breaks require a major framework version and
 must not be handled by adding a routine allowlist entry.

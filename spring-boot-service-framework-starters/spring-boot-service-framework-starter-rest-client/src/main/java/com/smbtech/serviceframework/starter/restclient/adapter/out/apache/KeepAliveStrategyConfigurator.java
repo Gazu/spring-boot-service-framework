@@ -4,7 +4,7 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import org.apache.hc.client5.http.ConnectionKeepAliveStrategy;
 
 /** Provides keep alive strategy configurator behavior. */
-public final class KeepAliveStrategyConfigurator {
+final class KeepAliveStrategyConfigurator {
     /** Creates a keep alive strategy configurator instance. */
     public KeepAliveStrategyConfigurator() {}
 

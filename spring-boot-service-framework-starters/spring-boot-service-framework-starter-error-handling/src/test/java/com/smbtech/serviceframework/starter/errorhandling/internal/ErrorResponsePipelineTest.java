@@ -1,5 +1,6 @@
 package com.smbtech.serviceframework.starter.errorhandling.internal;
 
+import static com.smbtech.serviceframework.starter.errorhandling.internal.ErrorHandlingWebTestFixtures.responseFactory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
@@ -8,9 +9,7 @@ import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ErrorCategory;
 import com.smbtech.serviceframework.error.ErrorExposure;
 import com.smbtech.serviceframework.error.ResolvedError;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.DefaultNotificationResponseFactory;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.FinalNotificationResponseSanitizer;
-import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
+import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,12 +40,12 @@ class ErrorResponsePipelineTest {
                 new ErrorResponsePipeline(
                         error -> {
                             stages.add("response-factory");
-                            return new DefaultNotificationResponseFactory().create(error);
+                            return responseFactory().create(error);
                         },
                         (cause, error, request) -> stages.add("reporter"),
                         (error, statusCode) -> stages.add("metrics"),
                         customizers,
-                        new FinalNotificationResponseSanitizer());
+                        responseFactory());
 
         PreparedErrorResponse prepared =
                 pipeline.prepare(
@@ -71,7 +70,7 @@ class ErrorResponsePipelineTest {
     void isolatesReporterAndMetricsFailures() {
         ErrorResponsePipeline pipeline =
                 new ErrorResponsePipeline(
-                        new DefaultNotificationResponseFactory(),
+                        responseFactory(),
                         (cause, error, request) -> {
                             throw new IllegalStateException("reporting failed");
                         },
@@ -79,7 +78,7 @@ class ErrorResponsePipelineTest {
                             throw new IllegalStateException("metrics failed");
                         },
                         new ErrorCustomizationPipeline(List.of(), List.of()),
-                        new FinalNotificationResponseSanitizer());
+                        responseFactory());
         PreparedErrorResponse prepared =
                 pipeline.prepare(
                         new IllegalStateException("failure"),
@@ -94,8 +93,7 @@ class ErrorResponsePipelineTest {
     void rejectsMissingCollaboratorsAndInputs() {
         ErrorCustomizationPipeline customizers =
                 new ErrorCustomizationPipeline(List.of(), List.of());
-        FinalNotificationResponseSanitizer sanitizer = new FinalNotificationResponseSanitizer();
-        DefaultNotificationResponseFactory factory = new DefaultNotificationResponseFactory();
+        NotificationResponseFactory factory = responseFactory();
 
         assertThatNullPointerException()
                 .isThrownBy(
@@ -105,14 +103,23 @@ class ErrorResponsePipelineTest {
                                         (cause, error, request) -> {},
                                         (error, status) -> {},
                                         customizers,
-                                        sanitizer));
+                                        factory));
         ErrorResponsePipeline pipeline =
                 new ErrorResponsePipeline(
                         factory,
                         (cause, error, request) -> {},
                         (error, status) -> {},
                         customizers,
-                        sanitizer);
+                        factory);
+        assertThatNullPointerException()
+                .isThrownBy(
+                        () ->
+                                new ErrorResponsePipeline(
+                                        factory,
+                                        (cause, error, request) -> {},
+                                        (error, status) -> {},
+                                        customizers,
+                                        null));
         assertThatNullPointerException()
                 .isThrownBy(
                         () ->

@@ -4,7 +4,7 @@
 
 | Component | Supported version | Policy |
 |---|---:|---|
-| Framework platform | 0.4.0 | Import `com.smbtech:spring-boot-service-framework-platform` and omit versions from managed modules |
+| Framework platform | 0.5.0 | Import `com.smbtech:spring-boot-service-framework-platform` and omit versions from managed modules |
 | Java | 21 | Framework toolchain and bytecode target |
 | Gradle | Wrapper-provided Gradle, currently 9.3.1 in generated reports | Use the repository wrapper when available |
 | Spring Boot | 4.1.0 | Controlled by `springBootVersion` in the root `gradle.properties` |
@@ -13,6 +13,9 @@
 | SLF4J | 2.0.x | Managed by Spring Boot in the logging starter |
 | Logback | 1.5.x | Managed by Spring Boot in the logging starter |
 | Apache HttpClient | 5.x | Managed by Spring Boot in `spring-boot-service-framework-starter-rest-client` |
+| OpenAPI Generator | 7.24.0 | Pinned by `openApiGeneratorVersion`; generated public output is reviewed before upgrades |
+| OpenAPI Diff | 2.1.7 | Pinned by `openApiDiffVersion`; adoption occurs during the compatibility migration |
+| Spring Initializr | 0.24.0 | Pinned by `springInitializrVersion`; used only by the build-time project generator |
 
 `spring-boot-service-framework-logging-core` depends only on the JDK. The Spring Boot, SLF4J,
 and Logback matrix applies to the starter and its adapters.
@@ -37,6 +40,14 @@ Apache HttpClient, Micrometer, and auto-configuration are implemented in
 - `gradle/compatibility/public-internal-types.txt` prevents technically public
   implementation types from growing silently. It is an implementation review
   baseline, not a compatibility promise for those classes.
+- `gradle/compatibility/public-type-classification.txt` assigns every top-level
+  public type exactly one reviewed category. Additions, removals, and category
+  changes fail `validatePublicTypeClassificationBaseline` until the baseline is
+  intentionally regenerated.
+- `gradle/compatibility/concrete-replaceable-beans.txt` records existing
+  replaceable beans whose declared return type is concrete. New entries fail
+  `validateConcreteReplaceableBeans`; the baseline can only decrease as bean
+  methods move to supported interfaces or reviewed external contracts.
 - Supported consumer packages and documented exceptions are defined by
   [Public API Boundaries](public-api-boundaries.md). A Java `public` modifier on
   an adapter, auto-configuration, serializer, internal class, or build-logic
@@ -91,14 +102,14 @@ Apache HttpClient, Micrometer, and auto-configuration are implemented in
   [Logging Compatibility](logging/compatibility.md).
 - Properties under `smbtech.rest-clients` are part of the REST Client starter
   contract.
-- The unreleased `token-request-id` rename is an explicit configuration break:
+- The `token-request-id` rename in `0.5.0` is an explicit configuration break:
   `credential-token-requestor-id` is not an alias. Consumers must update their
   configuration before upgrading to the release that contains this change. The
   complete property and environment-variable migration is documented in
   [Migrate Public Names And Properties](guides/migrate-public-names-and-properties.md).
   The corresponding `HttpClientDefinition` record accessor is now
   `tokenRequestId()`.
-- The unreleased HTTP client exception cleanup is an explicit source break:
+- The HTTP client exception cleanup in `0.5.0` is an explicit source break:
   `AuthenticationException` is now `HttpClientAuthenticationException`, and the
   unused `MockRestClientException` type has been removed without aliases.
 - The supported mock facade moved from
@@ -140,8 +151,8 @@ Apache HttpClient, Micrometer, and auto-configuration are implemented in
   running `compatibilityCheck` successfully.
 - Runtime modules use Jackson 3. Public APIs exposing `ObjectMapper`, `JsonNode`,
   `TypeReference`, generators, or serialization contexts use `tools.jackson`.
-  This replaces the Jackson 2 signatures used before the unreleased Boot 4
-  native alignment and is an explicit source incompatibility.
+  This replaces the Jackson 2 signatures used before the `0.5.0` Boot 4 native
+  alignment and is an explicit source incompatibility.
 - `nativeAotCheck` runs `processAot` for every standalone consumer and is part
   of `releaseGate`. Native executables can be built with `nativeCompile` when a
   compatible GraalVM installation is available.
@@ -155,20 +166,16 @@ Apache HttpClient, Micrometer, and auto-configuration are implemented in
 - `spring-boot-service-framework-openapi-contract-testing` is a test-scope
   Spring MVC module. Its public loader, test-case, tester, result, and violation
   types are covered by the module tests and root `baseline` task.
-- `openApiCompatibilityCheck` validates the generated OpenAPI artifact
-  contract: name normalization, spec metadata, spec version catalog, models JAR,
-  server API JAR, client JAR, breaking change detection and SemVer policy,
-  advanced model generation, artifact separation,
-  reproducible generation, consumer-style compilation, local Maven publication
-  layout, reusable generator module compatibility, Gradle build-logic checks,
-  and public OpenAPI Gradle task name compatibility.
+- `smbtechOpenApiCompatibilityCheck` is the public plugin-native gate for
+  OpenAPI Diff/SemVer validation, reproducible archives, generated consumer
+  boundaries, migration reporting, and mock-server contract adoption.
+- `openApiDocumentationCompatibilityCheck` protects canonical OpenAPI document
+  paths, validation tasks, quality evidence, and pull request/release rollout
+  against `gradle/compatibility/contracts/openApiDocumentation.txt`.
 - `documentationCheck` validates the public API inventory, Markdown structure,
   relative links and anchors,
   canonical documentation coverage, changelog/release docs, framework version
-  references, OpenAPI name normalization and `info.title`/`info.version`,
-  OpenAPI spec version catalog, generated OpenAPI metadata, models JARs, server
-  API JARs, client JARs, breaking change detection, advanced OpenAPI model generation, reproducible OpenAPI
-  generation, generated OpenAPI compilation tests, generated property
+  references, OpenAPI configuration and contract validation, generated property
   references, and example documentation/configuration for accidentally committed
   secrets or encoded keystore material. It is part of the root `check`, `baseline`, and
   `compatibilityCheck` flows.
@@ -237,17 +244,17 @@ enabled yet; create proxies explicitly through `ApiClientFactory`.
 Generated OpenAPI client JARs expose Spring HTTP interfaces annotated with
 `@HttpApiClient` and Spring exchange annotations. They are compile-time contract
 artifacts and do not embed generated model classes or server API classes.
-Generated OpenAPI artifacts are Maven-published under `com.smbtech.openapi`
+Generated OpenAPI artifacts are Maven-published under `com.smbtech.contracts`
 from the root project, using `info.version` as the artifact version.
-OpenAPI spec content for a given `info.title` and `info.version` must match
-`docs/openapi/spec-versions.properties`; changing the contract requires a new
-spec version and catalog update.
+OpenAPI spec content for a given `info.title` and `info.version` must match its
+immutable versioned baseline; changing the contract requires a new spec version
+and baseline snapshot.
 Generated OpenAPI JARs must use stable entry ordering and fixed entry
 modification times so repeated generation from the same inputs produces the same
 artifact hash.
-Generated OpenAPI `models`, `api`, and `client` artifacts must compile together
+Generated OpenAPI `models`, `server-api`, and `client` artifacts must compile together
 from a consumer-style source set before they are considered valid.
-Generated OpenAPI artifacts must also pass `openApiCompatibilityCheck` before a
+Generated OpenAPI artifacts must also pass `smbtechOpenApiCompatibilityCheck` before a
 release can be considered compatible with generated contract consumers.
 Spring MVC implementations can be checked at test time with
 `OpenApiMvcContractTester`; this verification does not change application

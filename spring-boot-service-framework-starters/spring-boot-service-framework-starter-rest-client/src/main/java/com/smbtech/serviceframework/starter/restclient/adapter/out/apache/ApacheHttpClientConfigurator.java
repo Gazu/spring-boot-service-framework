@@ -8,7 +8,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 
 /** Provides apache HTTP client configurator behavior. */
-public final class ApacheHttpClientConfigurator {
+final class ApacheHttpClientConfigurator {
 
     private final HttpClientConnectionManagerConfigurator connectionManagerConfigurator;
     private final ConnectionReuseStrategyConfigurator connectionReuseStrategyConfigurator;

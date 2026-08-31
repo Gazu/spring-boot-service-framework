@@ -7,11 +7,11 @@ def baselineTag = "v${baselineVersion}"
 
 def binaryModules = [
         [path: ':spring-boot-service-framework-commons', directory: 'spring-boot-service-framework-commons', artifact: 'spring-boot-service-framework-commons'],
+        [path: ':spring-boot-service-framework-actuator-core', directory: 'spring-boot-service-framework-actuator-core', artifact: 'spring-boot-service-framework-actuator-core'],
         [path: ':spring-boot-service-framework-logging-core', directory: 'spring-boot-service-framework-logging-core', artifact: 'spring-boot-service-framework-logging-core'],
         [path: ':spring-boot-service-framework-http-client-core', directory: 'spring-boot-service-framework-http-client-core', artifact: 'spring-boot-service-framework-http-client-core'],
         [path: ':spring-boot-service-framework-mock-core', directory: 'spring-boot-service-framework-mock-core', artifact: 'spring-boot-service-framework-mock-core'],
         [path: ':spring-boot-service-framework-error-core', directory: 'spring-boot-service-framework-error-core', artifact: 'spring-boot-service-framework-error-core'],
-        [path: ':spring-boot-service-framework-openapi-generator', directory: 'spring-boot-service-framework-openapi-generator', artifact: 'spring-boot-service-framework-openapi-generator'],
         [path: ':spring-boot-service-framework-openapi-contract-testing', directory: 'spring-boot-service-framework-openapi-contract-testing', artifact: 'spring-boot-service-framework-openapi-contract-testing'],
         [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-logging', artifact: 'spring-boot-service-framework-starter-logging'],
         [path: ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client', directory: 'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client', artifact: 'spring-boot-service-framework-starter-rest-client'],
@@ -32,6 +32,8 @@ dependencies {
 def baselineRoot = layout.buildDirectory.dir("binary-compatibility/${baselineVersion}")
 def baselineArchive = baselineRoot.map { it.file('source.tar') }
 def baselineSource = baselineRoot.map { it.dir('source') }
+def currentVerificationMetadata = layout.projectDirectory.file(
+        'gradle/verification-metadata.xml')
 def baselineJar = { module ->
     baselineSource.map {
         it.file("${module.directory}/build/libs/${module.artifact}-${baselineVersion}.jar")
@@ -63,8 +65,18 @@ def unpackBaseline = tasks.register('unpackBinaryCompatibilityBaseline', Sync) {
     group = 'verification'
     description = 'Unpacks the released source baseline into the build directory.'
     dependsOn archiveBaseline
+    inputs.file(currentVerificationMetadata)
     from baselineArchive.map { tarTree(it) }
     into baselineSource
+
+    doLast {
+        def destination = baselineSource.get().file(
+                'gradle/verification-metadata.xml').asFile.toPath()
+        java.nio.file.Files.copy(
+                currentVerificationMetadata.asFile.toPath(),
+                destination,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
 }
 
 def baselineJarTasks = binaryModules.collect { "${it.path}:jar" }

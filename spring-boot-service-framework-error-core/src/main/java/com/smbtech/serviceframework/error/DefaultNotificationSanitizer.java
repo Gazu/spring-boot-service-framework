@@ -1,7 +1,6 @@
 package com.smbtech.serviceframework.error;
 
 import com.smbtech.serviceframework.commons.notification.Notification;
-import com.smbtech.serviceframework.error.metadata.StandardErrorMetadataKeys;
 import java.lang.reflect.Array;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
@@ -22,29 +21,14 @@ import java.util.regex.Pattern;
  * Applies a metadata allowlist and recursively redacts sensitive values from response
  * notifications.
  */
-public final class DefaultNotificationSanitizer implements NotificationSanitizer {
+final class DefaultNotificationSanitizer implements NotificationSanitizer {
 
     /** Value used in place of sensitive content. */
-    public static final String REDACTED_VALUE = "<redacted>";
+    static final String REDACTED_VALUE = NotificationSanitizer.REDACTED_VALUE;
 
     /** Default metadata keys that may be included in responses. */
-    public static final Set<String> DEFAULT_METADATA_ALLOWLIST =
-            Set.of(
-                    StandardErrorMetadataKeys.SCHEMA_VERSION,
-                    StandardErrorMetadataKeys.CATEGORY,
-                    "correlationId",
-                    "path",
-                    StandardErrorMetadataKeys.RETRYABLE,
-                    StandardErrorMetadataKeys.REQUEST,
-                    StandardErrorMetadataKeys.VALIDATION,
-                    StandardErrorMetadataKeys.VIOLATIONS,
-                    StandardErrorMetadataKeys.SECURITY,
-                    StandardErrorMetadataKeys.OAUTH2,
-                    StandardErrorMetadataKeys.RESOURCE,
-                    StandardErrorMetadataKeys.CONFLICT,
-                    StandardErrorMetadataKeys.DEPENDENCY,
-                    StandardErrorMetadataKeys.RATE_LIMIT,
-                    StandardErrorMetadataKeys.HTTP);
+    static final Set<String> DEFAULT_METADATA_ALLOWLIST =
+            NotificationSanitizer.DEFAULT_METADATA_ALLOWLIST;
 
     private static final int MAX_DEPTH = 10;
     private static final Pattern AUTHORIZATION_PATTERN =
@@ -82,7 +66,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
     private final Set<String> normalizedMetadataAllowlist;
 
     /** Creates a sanitizer with the default response metadata allowlist. */
-    public DefaultNotificationSanitizer() {
+    DefaultNotificationSanitizer() {
         this(DEFAULT_METADATA_ALLOWLIST);
     }
 
@@ -91,7 +75,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
      *
      * @param metadataAllowlist metadata keys allowed in response notifications
      */
-    public DefaultNotificationSanitizer(Set<String> metadataAllowlist) {
+    DefaultNotificationSanitizer(Set<String> metadataAllowlist) {
         this.metadataAllowlist = immutableAllowlist(metadataAllowlist);
         this.normalizedMetadataAllowlist =
                 this.metadataAllowlist.stream()
@@ -144,7 +128,7 @@ public final class DefaultNotificationSanitizer implements NotificationSanitizer
      * @param value source text
      * @return sanitized text
      */
-    public String sanitizeText(String value) {
+    static String sanitizeText(String value) {
         if (value == null || value.isBlank()) {
             return Objects.requireNonNullElse(value, "");
         }

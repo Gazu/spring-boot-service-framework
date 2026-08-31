@@ -18,8 +18,7 @@ import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 /** Provides open api mock server registrar behavior. */
-public final class OpenApiMockServerRegistrar
-        implements SmartInitializingSingleton, DisposableBean {
+final class OpenApiMockServerRegistrar implements SmartInitializingSingleton, DisposableBean {
 
     private static final Log LOGGER = LogFactory.getLog(OpenApiMockServerRegistrar.class);
     private static final Method HANDLER_METHOD = handlerMethod();
@@ -37,7 +36,7 @@ public final class OpenApiMockServerRegistrar
      * @param contractLoader contract loader value
      * @param handlerMapping handler mapping value
      */
-    public OpenApiMockServerRegistrar(
+    OpenApiMockServerRegistrar(
             MockProperties.OpenApi properties,
             OpenApiMockContractLoader contractLoader,
             RequestMappingHandlerMapping handlerMapping) {
@@ -52,7 +51,7 @@ public final class OpenApiMockServerRegistrar
      * @param handlerMapping handler mapping value
      * @param environment current Spring environment
      */
-    public OpenApiMockServerRegistrar(
+    OpenApiMockServerRegistrar(
             MockProperties.OpenApi properties,
             OpenApiMockContractLoader contractLoader,
             RequestMappingHandlerMapping handlerMapping,

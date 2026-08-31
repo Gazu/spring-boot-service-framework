@@ -21,6 +21,7 @@ starter, and Spring Boot versions remain aligned.
 | Properties | Every property in the [Actuator Property Reference](property-reference.md), including its type and default, is reviewed for compatibility. |
 | Auto-configuration | The six entries in `AutoConfiguration.imports` are protected by the generated module contract. |
 | Runtime names | Health, info, endpoint, bean, metric, and status names listed below are stable integration contracts. |
+| Concrete adapters | Endpoint, health, info, metrics, guard, and optional-integration implementations are internal. Replace their documented interfaces or bean names. |
 | Management ownership | Spring Boot `management.*` and the consuming application continue to own access, exposure, security, health groups, and detail visibility. |
 | Consumer behavior | The standalone published-artifact application is exercised by `actuatorConsumerSmoke`, including HTTP security and Spring AOT. |
 

@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Provides slf4j http exchange audit sink behavior. */
-public final class Slf4jHttpExchangeAuditSink implements HttpExchangeAuditSink {
+final class Slf4jHttpExchangeAuditSink implements HttpExchangeAuditSink {
     /** Creates a slf4j http exchange audit sink instance. */
     public Slf4jHttpExchangeAuditSink() {}
 

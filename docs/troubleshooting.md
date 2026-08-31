@@ -25,35 +25,32 @@ For a full compatibility pass:
 ./gradlew compatibilityCheck
 ```
 
+## Pull Request CI
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Pull Request / Policy` fails | The PR title or a non-merge commit does not follow English Conventional Commits, or the workflow no longer matches the versioned contract. | Fix the title and commit subjects, then run `./gradlew validatePullRequestCiContract`. |
+| `Pull Request / Quality` fails | Compilation, tests, coverage, formatting, documentation, compatibility, consumers, AOT, or supply-chain validation failed. | Download the Quality artifact, inspect JUnit and JaCoCo XML, then reproduce with `./gradlew clean pullRequestGate --stacktrace`. |
+| `Pull Request / Security` fails | Gitleaks found a potential secret, or Trivy found a blocking vulnerability or misconfiguration. | Download the redacted Security artifact, review its SARIF and summary, remediate the finding, and regenerate the SBOM when dependencies changed. |
+| A required check remains missing | The branch does not contain `.github/workflows/pull-request.yml`, the PR targets another branch, or the workflow was skipped or cancelled. | Rebase onto current `main`, confirm the workflow file and target branch, then rerun failed jobs from GitHub Actions. |
+| GitHub reports that the branch is out of date | Strict status checks require testing the current merge result with `main`. | Rebase the branch on `main` and push the updated commits. Previous approvals may be dismissed. |
+| Approval is present but merge remains blocked | The approval became stale, a conversation is unresolved, or the last pusher supplied the final approval. | Resolve conversations and request a fresh approval from someone other than the last pusher. |
+| GitHub rejects a merge commit | Protected `main` requires linear history. | Use squash merge or rebase merge. |
+| A workflow artifact is missing | The producing step failed before creating evidence, or the seven-day retention period expired. | Reproduce locally or rerun the workflow. Artifacts intentionally exclude compiled binaries and local Maven repositories. |
+| Live branch settings differ from the contract | A maintainer changed branch protection or repository merge settings outside the reviewed rollout. | Run `./gradlew verifyPullRequestBranchProtection`, review the reported difference, and restore GitHub settings or update the contract through a pull request. |
+
 ## Gradle And Publication
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Gradle cannot resolve a framework artifact | Artifacts were not published to Maven local or the module-local repositories. | Run `./gradlew publishToMavenLocal` for Maven local consumption, or `./gradlew publishLocalArtifacts` for standalone examples. |
-| Gradle cannot resolve a generated OpenAPI artifact | The root OpenAPI local build repository was not published or was not declared in the consumer build. | Run `./gradlew publishOpenApiArtifactsToLocalBuildRepository`, then add `build/repository/openapi` as a Maven repository. |
+| An OpenAPI configuration, generation, publication, compatibility, mock, or scaffolding task fails | The first failing OpenAPI task identifies the affected layer. | Follow [OpenAPI Troubleshooting](openapi/troubleshooting.md) for task isolation, report locations, exact messages, and recovery. |
 | Standalone examples still use old framework code | Example repositories point to module-local `build/repository` artifacts that were not regenerated. | Run `./gradlew publishLocalArtifacts`, then rerun the example test. |
 | `documentationCheck` fails on generated property references | A `@ConfigurationProperties` class changed but generated docs were not refreshed. | Run `./gradlew generatePropertyReferences`, review the generated docs, then rerun `./gradlew documentationCheck`. |
 | `documentationCheck` fails on a Markdown link or anchor | A linked file is missing or a `#heading-anchor` does not match a real heading. | Fix the target path or heading, then rerun `./gradlew documentationCheck`. |
 | `documentationCheck` fails on documentation catalog or release docs | A required canonical document, index link, changelog section, or release checklist reference is missing. | Update `README.md`, `docs/index.md`, `docs/documentation-architecture.md`, `CHANGELOG.md`, or `docs/releasing.md` as reported. |
 | `documentationCheck` fails on framework versions | A dependency snippet, example build, release snippet, or current-status line references an older framework version. | Align the version with the root `build.gradle` project version. |
 | A module compatibility contract is stale | A supported public type, extension point, property, auto-configuration import, or Gradle plugin id changed. | Run `./gradlew generateModuleCompatibilityContracts`, review the contract diff, document intentional breaking changes, and rerun the focused `<module>CompatibilityCheck`. |
-| `documentationCheck` fails on OpenAPI name normalization | The `info.title` normalization contract changed or a title normalizes to an invalid artifact base name. | Run `./gradlew validateOpenApiNameNormalization`, then fix the title or normalization rule. |
-| `documentationCheck` fails on OpenAPI specs | An OpenAPI document has missing/invalid `info.title` or `info.version`, or generated coordinates collide. | Fix the OpenAPI `info` block or rename the contract title before rerunning `./gradlew validateOpenApiSpecs`. |
-| `documentationCheck` fails on OpenAPI spec version catalog | A spec changed without a matching catalog entry, or the same `info.version` now has different content. | For intentional contract changes, bump `info.version`, run `./gradlew generateOpenApiSpecVersionCatalog`, and commit the catalog update. |
-| `openApiBreakingChangeCheck` reports a missing current baseline | The current `info.version` has no exact snapshot under `docs/openapi-baselines/<contract>`. | Copy the completed current spec to `<version>.yaml` in its baseline directory and rerun the task. |
-| `openApiBreakingChangeCheck` reports a baseline mismatch | The same-version baseline was edited independently or was not refreshed with the completed current contract. | Before publication, make the new version snapshot byte-identical to the current spec. Never rewrite a previously published baseline. |
-| `openApiBreakingChangeCheck` rejects the version increase | A breaking change used minor/patch, or a compatible addition used patch. | Increase `MAJOR` for breaking changes or `MINOR` for compatible additions, then refresh the spec catalog and current baseline snapshot. |
-| `documentationCheck` fails on OpenAPI metadata | Generated `contract.properties` is missing or does not match the source spec. | Run `./gradlew generateOpenApiMetadata validateOpenApiMetadata` and inspect `build/generated/smbtech-openapi/metadata`. |
-| `documentationCheck` fails on advanced OpenAPI model generation | The generated model source no longer contains expected refs, enums, arrays, maps, or validation annotations for the advanced fixture. | Run `./gradlew validateOpenApiAdvancedModelGeneration`, then inspect `docs/openapi/warehouse-inventory-catalog.yaml` and `build/generated/smbtech-openapi/models/warehouse-inventory-catalog`. |
-| `documentationCheck` fails on OpenAPI models JAR | The generated model sources do not compile or the JAR misses model classes/metadata. | Run `./gradlew openApiModelsJar validateOpenApiModelsJar` and inspect `build/generated/smbtech-openapi/models` plus `build/libs/openapi/models`. |
-| `documentationCheck` fails on OpenAPI server API JAR | The generated server API sources do not compile or the JAR misses delegate/controller classes/metadata. | Run `./gradlew openApiServerApiJar validateOpenApiServerApiJar` and inspect `build/generated/smbtech-openapi/server-api` plus `build/libs/openapi/api`. |
-| `documentationCheck` fails on OpenAPI client JAR | The generated client interface sources do not compile or the JAR misses client classes/metadata. | Run `./gradlew openApiClientJar validateOpenApiClientJar` and inspect `build/generated/smbtech-openapi/client` plus `build/libs/openapi/client`. |
-| `documentationCheck` fails on OpenAPI artifact separation | A generated JAR contains classes from the wrong artifact boundary or duplicates classes across `models`, `api`, and `client`. | Run `./gradlew validateOpenApiArtifactSeparation`, then inspect `build/libs/openapi`. |
-| `documentationCheck` fails on OpenAPI reproducibility | Generated output contains volatile values, JAR entry order changed, timestamps are not fixed, or a rebuilt artifact hash differs. | Run `./gradlew validateOpenApiReproducibleGeneration`, then inspect `build/generated/smbtech-openapi`, `build/classes/smbtech-openapi`, and `build/libs/openapi`. |
-| `documentationCheck` fails on OpenAPI compilation tests | A consumer-style source cannot compile against the generated `models`, `api`, and `client` JARs together. | Run `./gradlew validateOpenApiCompilationTests`, then inspect `build/generated/smbtech-openapi/compile-tests` and the reported missing type or classpath error. |
-| `documentationCheck` fails on OpenAPI task compatibility | A public OpenAPI Gradle command was renamed, removed, or left without task metadata. | Restore the public task name or provide a backward-compatible alias, then run `./gradlew validateOpenApiTaskCompatibility`. |
-| `openApiCompatibilityCheck` fails on generator module compatibility | The reusable OpenAPI generator module no longer exposes a required public type or its module tests fail. | Run `./gradlew validateOpenApiGeneratorModuleCompatibility --stacktrace`, then inspect `spring-boot-service-framework-openapi-generator`. |
-| `openApiCompatibilityCheck` fails | One part of the generated OpenAPI compatibility contract failed: spec naming, metadata, version catalog, JAR contents, artifact separation, reproducibility, compilation, generator module checks, build-logic checks, or local publication. | Run `./gradlew openApiCompatibilityCheck --stacktrace`, then rerun the specific failing `validateOpenApi*` task named in the Gradle output. |
 | `documentationCheck` fails on example secrets | Example docs or config contain literal secret-like values. | Replace real values with environment placeholders such as `${PAYMENTS_CLIENT_SECRET}`. |
 
 ## Logging
@@ -138,7 +135,7 @@ For a full compatibility pass:
 |---|---|---|
 | Controller returns `404` | Mock key is missing, disabled, or not configured. | Check `smbtech.mocks.endpoints.<key>.enabled=true`. |
 | `Mock file does not exist` | Wrong classpath or file location. | Use `classpath:mocks/name.json`, `file:/...`, or place the file under `src/main/resources/mocks`. |
-| Outbound `RestClient` still calls the real service | `MockRestClientInterceptor` was not added, `X-Mock-Key` is missing, or no path fallback mock exists. | Add the interceptor manually or through `RestClientBuilderCustomizer`, and configure `default-headers.X-Mock-Key`. |
+| Outbound `RestClient` still calls the real service | The `mockRestClientInterceptor` bean was not added, `X-Mock-Key` is missing, or no path fallback mock exists. | Inject the qualified `ClientHttpRequestInterceptor`, add it manually or through `RestClientBuilderCustomizer`, and configure `default-headers.X-Mock-Key`. |
 | Response body conversion fails | Mock JSON body does not match the target DTO. | Validate the mock file body against the controller response type. |
 | Core boundary check fails | Spring/Jackson/RestClient import was added to `mock-core`. | Move adapter code to the starter. |
 

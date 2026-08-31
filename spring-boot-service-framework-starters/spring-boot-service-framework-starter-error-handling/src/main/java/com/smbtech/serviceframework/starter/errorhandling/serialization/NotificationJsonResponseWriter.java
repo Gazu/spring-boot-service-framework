@@ -17,7 +17,7 @@ import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.module.SimpleModule;
 
 /** Writes notification JSON with a dedicated mapper copy and snake-case serializer. */
-public final class NotificationJsonResponseWriter implements NotificationResponseWriter {
+final class NotificationJsonResponseWriter implements NotificationResponseWriter {
 
     private final ObjectWriter objectWriter;
 
@@ -26,7 +26,7 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
      *
      * @param objectMapper application object mapper
      */
-    public NotificationJsonResponseWriter(ObjectMapper objectMapper) {
+    NotificationJsonResponseWriter(ObjectMapper objectMapper) {
         this(objectMapper, new NotificationJsonSerializer());
     }
 
@@ -36,7 +36,7 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
      * @param objectMapper application object mapper
      * @param serializer notification serializer
      */
-    public NotificationJsonResponseWriter(
+    NotificationJsonResponseWriter(
             ObjectMapper objectMapper, NotificationJsonSerializer serializer) {
         this(objectMapper, (NotificationSerializer) serializer);
     }
@@ -47,8 +47,7 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
      * @param objectMapper application object mapper
      * @param serializer notification serializer
      */
-    public NotificationJsonResponseWriter(
-            ObjectMapper objectMapper, NotificationSerializer serializer) {
+    NotificationJsonResponseWriter(ObjectMapper objectMapper, NotificationSerializer serializer) {
         SimpleModule module = new SimpleModule("service-framework-notification-json");
         NotificationSerializer safeSerializer =
                 Objects.requireNonNull(serializer, "serializer must not be null");
@@ -88,7 +87,7 @@ public final class NotificationJsonResponseWriter implements NotificationRespons
      * @param outputStream destination stream
      * @throws IOException when JSON cannot be written
      */
-    public void write(Notification notification, OutputStream outputStream) throws IOException {
+    void write(Notification notification, OutputStream outputStream) throws IOException {
         objectWriter.writeValue(
                 Objects.requireNonNull(outputStream, "outputStream must not be null"),
                 Objects.requireNonNull(notification, "notification must not be null"));

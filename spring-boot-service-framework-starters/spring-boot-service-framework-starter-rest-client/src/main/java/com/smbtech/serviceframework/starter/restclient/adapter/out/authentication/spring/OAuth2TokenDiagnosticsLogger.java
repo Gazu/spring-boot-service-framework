@@ -16,7 +16,7 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /** Provides OAuth2 token diagnostics logger behavior. */
-public final class OAuth2TokenDiagnosticsLogger {
+final class OAuth2TokenDiagnosticsLogger {
 
     private static final EventType DIAGNOSTIC_TYPE = EventType.named("OAUTH2_TOKEN_DIAGNOSTIC");
 

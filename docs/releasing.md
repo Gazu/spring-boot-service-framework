@@ -15,13 +15,15 @@ It applies to private and internal distributions of the repository artifacts.
   keystores, or other environment-specific values.
 - Keep source, documentation, examples, generated property references, and
   compatibility notes aligned before creating the tag.
+- Merge the release preparation through the protected `main` branch before
+  creating the signed tag.
 
 ## Version Sources
 
 The framework artifact version is defined in `gradle.properties`:
 
 ```properties
-frameworkVersion=0.4.0
+frameworkVersion=0.5.0
 ```
 
 The root build applies that version to every framework artifact. The supported
@@ -33,6 +35,95 @@ springBootVersion=4.1.0
 
 The platform publishes the same framework version and imports the Spring Boot
 BOM at this exact Spring Boot version.
+
+## Release Artifact Contract
+
+The canonical publication set is versioned in
+[`gradle/release-artifacts.txt`](../gradle/release-artifacts.txt). Every entry
+uses `frameworkVersion`; generated `com.smbtech.contracts` example artifacts are
+outside this framework release contract.
+
+The manifest covers the platform, libraries, starters, OpenAPI Gradle plugin,
+OpenAPI templates, and Gradle plugin marker. Any added, removed, or renamed Maven
+publication requires an explicit manifest review.
+
+Validate the manifest against the publications exposed by the main build and
+the included `build-logic` build:
+
+```bash
+./gradlew releaseArtifactManifestCheck
+```
+
+The check is part of `supplyChainCheck` and therefore runs from both pull request
+and release gates.
+
+## Release Lifecycle
+
+The versioned lifecycle contract is stored in
+[`gradle/release-lifecycle.properties`](../gradle/release-lifecycle.properties).
+Its public Gradle entry points are:
+
+| Task | Responsibility |
+|---|---|
+| `releaseGate` | Runs compatibility, documentation, consumer, AOT, supply-chain, and publication-contract checks without publishing remotely. |
+| `releaseCandidate` | Runs the complete gate, verifies the unpublished unsigned bundle, and records its commit and checksum for review. |
+| `generateReleaseNotes` | Extracts the current version from `CHANGELOG.md` into standalone notes with tag-stable documentation links. |
+| `verifyReleaseBundle` | Verifies the exact manifest coordinates, complete archive content, payload hashes, external archive checksum, and signatures required during a release build. |
+| `prepareRelease` | Requires `-PreleaseBuild=true`, validates the signed tag and changelog, runs the gate, and creates the verified signed bundle. |
+| `publishRelease` | Requires private registry credentials and publishes the main build, OpenAPI Gradle plugin, plugin marker, and templates. |
+
+Create the reviewable candidate from the release commit without signing or
+registry credentials:
+
+```bash
+./gradlew clean releaseCandidate
+```
+
+Review `build/reports/release/candidate.properties`, the generated release
+notes, archive, and external checksum. `source_clean=false` records that the
+candidate was assembled from a dirty checkout; the signed release must always
+come from the merged tag commit.
+
+Use `releaseGate` during development. Only the signed tag workflow should invoke
+the publishing lifecycle:
+
+```bash
+./gradlew clean prepareRelease -PreleaseBuild=true
+./gradlew publishRelease -PreleaseBuild=true
+```
+
+`releaseLifecycleCheck` prevents CI, documentation, and task wiring from
+drifting away from this contract.
+
+The reproducible archive is written to
+`build/distributions/spring-boot-service-framework-VERSION.zip`, accompanied by
+`spring-boot-service-framework-VERSION.zip.sha256`. It contains only the 17
+framework coordinates declared by `gradle/release-artifacts.txt`; generated
+`com.smbtech.contracts` example artifacts are rejected.
+
+The archive layout is:
+
+```text
+repository/                      Maven repository for the framework artifacts
+sbom/bom.json                    CycloneDX JSON SBOM
+sbom/bom.xml                     CycloneDX XML SBOM
+documentation/README.md          Project overview
+documentation/CHANGELOG.md       Release notes
+documentation/RELEASE_NOTES.md   Standalone notes for the current version
+documentation/LICENSE            Apache License 2.0
+documentation/releasing.md       Release and publication procedure
+metadata/release-artifacts.txt   Canonical publication contract
+metadata/release-lifecycle.properties
+metadata/release-manifest.json   Version and artifact identity
+metadata/SHA256SUMS              SHA-256 for every other archive entry
+```
+
+Verify the downloaded archive before extracting it:
+
+```bash
+cd build/distributions
+shasum -a 256 -c spring-boot-service-framework-0.5.0.zip.sha256
+```
 
 When preparing a release, update every consumer-facing version example that
 mentions the framework version. At minimum, check:
@@ -49,13 +140,13 @@ mentions the framework version. At minimum, check:
 1. Create a release branch:
 
 ```bash
-git checkout -b release/v0.4.0
+git checkout -b release/v0.5.0
 ```
 
 2. Confirm the target version and update `gradle.properties` if needed:
 
 ```properties
-frameworkVersion=0.4.0
+frameworkVersion=0.5.0
 ```
 
 3. Refresh generated property references after configuration changes:
@@ -66,6 +157,8 @@ frameworkVersion=0.4.0
 ./gradlew generatePlatformCompatibilityContract
 ./gradlew generatePublicApiInventory
 ./gradlew generatePublicInternalTypeBaseline
+./gradlew generatePublicTypeClassificationBaseline
+./gradlew generateConcreteReplaceableBeanBaseline
 ```
 
 Review module compatibility contract diffs. Do not accept a generated change
@@ -81,11 +174,23 @@ implementation even though JVM wiring requires public visibility.
   `Security` when those groups apply;
 - call out breaking changes clearly.
 
+Generate and inspect the standalone notes that will accompany the release:
+
+```bash
+./gradlew generateReleaseNotes validateReleaseNotes
+```
+
+The generated file is written to
+`build/release/documentation/RELEASE_NOTES.md`. Do not maintain a second source
+file; correct `CHANGELOG.md` and regenerate it.
+
 5. Run documentation validation:
 
 ```bash
-./gradlew openApiBreakingChangeCheck
+./gradlew smbtechOpenApiBreakingChangeCheck
+./gradlew openApiDocumentationCompatibilityCheck
 ./gradlew documentationCheck
+./gradlew releaseArtifactManifestCheck
 ```
 
 6. Run the full framework check:
@@ -126,13 +231,16 @@ git diff --exit-code
 all published consumers without requiring GraalVM. Before a native-image
 release, additionally run `nativeCompile` with GraalVM 25 or a compatible
 Native Image Kit in at least one consumer.
-The release workflow performs that native compile and runtime smoke test for the
-logging consumer.
+The framework release workflow guarantees AOT processing; native executable
+certification remains an explicit consumer-level validation.
 
 It also enforces module line coverage, verifies dependency checksums from
 `gradle/verification-metadata.xml`, validates complete Maven POM metadata and
 reproducible archives, and generates validated, deterministic CycloneDX 1.6
-SBOMs containing production runtime dependencies:
+SBOMs containing only published framework runtime components and their
+production dependencies. Examples, quality pilots, and test dependencies are
+excluded. Framework components declare Apache-2.0, and the JSON/XML dependency
+graphs must be complete, connected, and equivalent:
 
 ```bash
 ./gradlew dependencyTrackSbom
@@ -162,21 +270,37 @@ git diff
 
 ```bash
 git add .
-git commit -m "chore(release): prepare v0.4.0"
+git commit -m "chore(release): prepare v0.5.0"
 ```
 
-10. Create the signed release tag:
+10. Push the release branch and open a pull request:
 
 ```bash
-git tag -s v0.4.0 -m "Release v0.4.0"
-git verify-tag v0.4.0
+git push --set-upstream origin release/v0.5.0
 ```
 
-11. Push the branch and tag when the release is approved:
+Wait for `Pull Request / Policy`, `Pull Request / Quality`, and
+`Pull Request / Security`, obtain the required independent approval, resolve
+every conversation, and merge with squash or rebase.
+
+11. Update the local protected branch to the approved commit:
 
 ```bash
-git push origin release/v0.4.0
-git push origin v0.4.0
+git checkout main
+git pull --ff-only origin main
+```
+
+12. Create the signed release tag on the merged commit:
+
+```bash
+git tag -s v0.5.0 -m "Release v0.5.0"
+git verify-tag v0.5.0
+```
+
+13. Push the approved tag:
+
+```bash
+git push origin v0.5.0
 ```
 
 ## Publishing Locally
@@ -195,16 +319,15 @@ their versionless framework dependencies.
 Generated OpenAPI artifacts can be published and verified independently:
 
 ```bash
-./gradlew publishOpenApiArtifactsToLocalBuildRepository
-./gradlew validateOpenApiLocalPublication
-./gradlew openApiCompatibilityCheck
+./gradlew smbtechOpenApiPublishToLocalRepository
+./gradlew smbtechOpenApiCompatibilityCheck
 ```
 
 Use Maven local when another local application consumes the framework through
 `mavenLocal()`:
 
 ```bash
-./gradlew publishToMavenLocal
+./gradlew publishToMavenLocal publishBuildLogicToMavenLocal
 ```
 
 ## Publishing To A Private Registry
@@ -219,24 +342,31 @@ export PRIVATE_MAVEN_PASSWORD=secret
 export SIGNING_KEY="$(cat release-signing-key.asc)"
 export SIGNING_PASSWORD=secret
 
-./gradlew publish -PreleaseBuild=true
+./gradlew publishRelease -PreleaseBuild=true
 ```
 
 `SIGNING_KEY` must contain an ASCII-armored private key. Repository credentials
 also support equivalent Gradle properties:
 
 ```bash
-./gradlew publish \
+./gradlew publishRelease \
   -PreleaseBuild=true \
   -PprivateMavenUrl=https://maven.example.com/releases \
   -PprivateMavenUsername=user \
   -PprivateMavenPassword=secret
 ```
 
+`publishRelease` publishes the OpenAPI Gradle plugin implementation, its Gradle
+plugin marker, and the versioned OpenAPI templates in addition to every
+framework module. The lifecycle starts the included `build-logic` publication
+only after release preparation has passed.
+
 The canonical remote path is `.github/workflows/release.yml`. It verifies that
 the tag matches `frameworkVersion`, cryptographically verifies the tag, runs
 the release gate, creates a reproducible release bundle with signed Maven
-artifacts and SBOMs, records GitHub build provenance, and then publishes.
+artifacts and SBOMs, verifies the archive checksum, records GitHub build
+provenance, and then publishes. Release credentials are exposed only to the
+steps that sign or publish artifacts.
 
 Required `release` environment secrets are:
 
@@ -252,7 +382,7 @@ For any breaking change:
 
 - use `!` in the Conventional Commit subject or add a `BREAKING CHANGE:` footer;
 - increase the affected OpenAPI contract major version and review
-  `openApiBreakingChangeCheck` output;
+  `smbtechOpenApiBreakingChangeCheck` output;
 - update `docs/compatibility.md`;
 - update affected guides and examples;
 - add migration notes to `CHANGELOG.md`;
@@ -268,8 +398,9 @@ available and keep approved exclusions scoped to individual members.
 After the release is published:
 
 - verify the tag points to the intended commit;
-- verify the private registry contains the platform POM and every managed
-  framework artifact at the same version;
+- verify the private registry contains the platform POM, every managed
+  framework artifact, the OpenAPI Gradle plugin, its marker, and the OpenAPI
+  templates at the same version;
 - verify a clean consumer can resolve the released version;
 - create the next development version only when the repository workflow needs
   snapshot or pre-release versions.
@@ -277,6 +408,6 @@ After the release is published:
 Useful checks:
 
 ```bash
-git show --stat v0.4.0
+git show --stat v0.5.0
 ./gradlew publishLocalArtifacts consumerSmoke
 ```

@@ -6,6 +6,7 @@ on:
       - "v*.*.*"
 
 permissions:
+  artifact-metadata: write
   attestations: write
   contents: read
   id-token: write
@@ -20,12 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: release
-    env:
-      PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
-      PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
-      PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
-      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
 
     steps:
       - name: Check out signed tag
@@ -66,20 +61,31 @@ jobs:
 
       - name: Verify release tag and signing key
         shell: bash
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
           expected_tag="v$(sed -n 's/^frameworkVersion=//p' gradle.properties)"
           test "${GITHUB_REF_NAME}" = "${expected_tag}"
-          test -n "${PRIVATE_MAVEN_URL}"
-          test -n "${PRIVATE_MAVEN_USERNAME}"
-          test -n "${PRIVATE_MAVEN_PASSWORD}"
           test -n "${SIGNING_KEY}"
           test -n "${SIGNING_PASSWORD}"
           printf '%s' "${SIGNING_KEY}" | gpg --batch --import
           git verify-tag "${GITHUB_REF_NAME}"
 
       - name: Build signed release bundle
-        run: ./gradlew clean releaseGate releaseBundle -PreleaseBuild=true --no-daemon --stacktrace
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew clean prepareRelease -PreleaseBuild=true --no-daemon --stacktrace
+
+      - name: Verify release bundle checksum
+        shell: bash
+        working-directory: build/distributions
+        run: |
+          set -euo pipefail
+          release_version="${GITHUB_REF_NAME#v}"
+          sha256sum --check "spring-boot-service-framework-${release_version}.zip.sha256"
 
       - name: Install Trivy
         run: .github/scripts/install-trivy.sh
@@ -104,6 +110,7 @@ jobs:
         uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4
         with:
           subject-path: build/distributions/*.zip
+          create-storage-record: false
 
       - name: Upload release bundle and SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -111,12 +118,21 @@ jobs:
           name: spring-boot-service-framework-${{ github.ref_name }}
           path: |
             build/distributions/*.zip
+            build/distributions/*.zip.sha256
+            build/release/documentation/RELEASE_NOTES.md
             build/reports/bom.json
             build/reports/bom.xml
+            build/reports/release/lifecycle.txt
             build/reports/security/*.sarif
             build/reports/security/security-scan-*-summary.json
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish signed Maven artifacts
-        run: ./gradlew publish -PreleaseBuild=true --no-daemon --stacktrace
+        env:
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew publishRelease -PreleaseBuild=true --no-daemon --stacktrace

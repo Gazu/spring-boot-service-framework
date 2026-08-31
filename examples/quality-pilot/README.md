@@ -1,6 +1,7 @@
 # Quality Pilot
 
-Executable Spring Boot application used by the private quality platform pilot.
+Executable Spring Boot application used to prove that the repository quality
+contract covers application code in addition to framework libraries.
 
 Run the tests and coverage report:
 

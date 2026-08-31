@@ -1,10 +1,19 @@
-# OpenAPI Generator Build Logic
+# Spring Boot Service Framework OpenAPI Gradle Plugin
 
-Internal Gradle plugin boundary for OpenAPI contract artifact generation.
+Public Gradle plugin boundary for OpenAPI contract artifact generation.
 
 This build logic owns Gradle-facing concerns: plugin id, DSL shape, task
-registration, task wiring, and Gradle validation. Runtime-neutral generator code
-belongs in `spring-boot-service-framework-openapi-generator`.
+registration, task wiring, and Gradle validation. Source generation is delegated
+directly to OpenAPI Generator through typed task classes.
+
+## Artifact
+
+```text
+com.smbtech:spring-boot-service-framework-openapi-gradle-plugin:<framework-version>
+```
+
+The Gradle plugin marker is published for
+`com.smbtech.service-framework.openapi-generator`.
 
 ## Plugin ID
 
@@ -22,11 +31,6 @@ artifact assembly, and Maven publication wiring. Applying the plugin is enough
 to expose the complete OpenAPI build workflow; the root build does not apply a
 separate generator script.
 
-`validateOpenApiSpecs` is a typed, path-sensitive task. It parses OpenAPI 3.0
-and 3.1 YAML/JSON with Jackson 3, includes both discovered and explicitly
-configured specs, and validates artifact coordinates before generation. DSL
-values are wired through providers without `afterEvaluate`.
-
 The plugin should own Gradle-facing behavior only:
 
 - plugin id and plugin metadata;
@@ -35,17 +39,17 @@ The plugin should own Gradle-facing behavior only:
 - Gradle provider/property usage;
 - validation of Gradle configuration.
 
-Reusable OpenAPI parsing, naming, metadata, source generation, and packaging
-behavior belongs in `spring-boot-service-framework-openapi-generator`.
+OpenAPI parsing, naming, metadata, source generation, packaging, and publication
+are implemented inside this build-logic boundary.
 
-## Configuration API
+## Usage
 
 ```groovy
-smbtechOpenApi {
-    groupId.set('com.smbtech.openapi')
-    outputDirectory.set(layout.buildDirectory.dir('generated/smbtech-openapi'))
-    repositoryDirectory.set(layout.buildDirectory.dir('repository/openapi'))
+plugins {
+    id 'com.smbtech.service-framework.openapi-generator' version '0.5.0'
+}
 
+smbtechOpenApi {
     specs {
         register('merchantOrderStatus') {
             input.set(file('docs/openapi/merchant-order-status.yaml'))
@@ -54,59 +58,37 @@ smbtechOpenApi {
 }
 ```
 
-Per-spec overrides:
-
-```groovy
-smbtechOpenApi {
-    specs {
-        register('merchantOrderStatus') {
-            input.set(file('docs/openapi/merchant-order-status.yaml'))
-            groupId.set('com.smbtech.contracts')
-            artifactBaseName.set('merchant-order-status')
-            version.set('1.1.0')
-            basePackage.set('com.smbtech.contracts.merchantorderstatus')
-        }
-    }
-}
-```
-
-Validation:
-
-```bash
-./gradlew smbtechOpenApiBuildLogicCheck
-```
-
-Full build-logic compatibility:
-
-```bash
-./gradlew openApiBuildLogicCheck
-```
+Use the
+[OpenAPI Gradle Plugin Reference](../../docs/openapi/plugin-reference.md) for
+the complete DSL, defaults, validation rules, tasks, credentials, and build
+wiring.
 
 ## Boundary
 
 Build logic is implementation by default. The supported Java type exceptions
 are `SmbtechOpenApiExtension` and `SmbtechOpenApiSpec`, which define the public
 DSL model. `SmbtechOpenApiGeneratorPlugin`, concrete task classes, and build
-wiring are implementation. See
+wiring are implementation. Artifact kinds are internal task state and are not
+part of the Java DSL. See
 [Public API Boundaries](../../docs/public-api-boundaries.md).
 
 | Concern | Location |
 |---|---|
-| Gradle plugin, task implementation, and publication wiring | `build-logic/openapi-generator-plugin` |
-| Generator domain/services | `spring-boot-service-framework-openapi-generator` |
-| User documentation | [OpenAPI Code Generation](../../docs/openapi-codegen.md) |
-| Evolution roadmap | [OpenAPI Generator Evolution](../../docs/openapi-evolution.md) |
+| Gradle plugin, task implementation, and publication wiring | This module |
+| OpenAPI Generator template overrides | `spring-boot-service-framework-openapi-templates` |
+| Hexagonal project scaffolding | `spring-boot-service-framework-project-generator` |
+| User documentation | [OpenAPI Portal](../../docs/openapi/index.md) |
+| First workflow | [OpenAPI Getting Started](../../docs/openapi/getting-started.md) |
+| Gradle DSL and tasks | [OpenAPI Gradle Plugin Reference](../../docs/openapi/plugin-reference.md) |
+| Generated artifacts | [OpenAPI Artifact Generation](../../docs/openapi/generation.md) |
+| Documentation ownership | [OpenAPI Documentation Architecture](../../docs/openapi/documentation-architecture.md) |
 
 ## Local validation
 
 ```bash
-./gradlew -p build-logic :openapi-generator-plugin:check
+./gradlew -p build-logic :spring-boot-service-framework-openapi-gradle-plugin:check
 ```
 
-From the repository root, use:
-
-```bash
-./gradlew openApiBuildLogicCheck
-./gradlew openApiGradlePluginCompatibilityCheck
-./gradlew openApiCompatibilityCheck
-```
+Repository-wide task and compatibility gates are defined in the
+[OpenAPI Gradle Plugin Reference](../../docs/openapi/plugin-reference.md) and
+[OpenAPI Validation](../../docs/openapi/validation.md).

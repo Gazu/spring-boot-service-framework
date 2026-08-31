@@ -196,3 +196,12 @@ auto-configuration-imports:
 - com.smbtech:spring-boot-service-framework-starter-rest-client|com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration
 
 gradle-plugin-ids:
+
+runtime-contracts:
+- dynamic-rest-client-aot=SUPPORTED
+- dynamic-rest-client-bean-name=<client-name>RestClient
+- dynamic-rest-client-custom-bean-name=SUPPORTED
+- dynamic-rest-client-disabled-registration=OMITTED
+- dynamic-rest-client-initialization=LAZY
+- dynamic-rest-client-registry-replacement=SUPPORTED
+- dynamic-rest-client-user-bean-precedence=APPLICATION

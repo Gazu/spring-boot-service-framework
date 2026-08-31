@@ -14,8 +14,8 @@ server configuration:
 @Bean
 SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        SecurityAuthenticationEntryPoint authenticationEntryPoint,
-        SecurityAccessDeniedHandler accessDeniedHandler
+        AuthenticationEntryPoint authenticationEntryPoint,
+        AccessDeniedHandler accessDeniedHandler
 ) throws Exception {
     return http
             .authorizeHttpRequests(authorize -> authorize

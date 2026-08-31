@@ -4,14 +4,6 @@ plugins {
 
 description = 'Shared, framework-agnostic utilities for SMB Tech services'
 
-dependencies {
-    api project(':spring-boot-service-framework-logging-core')
-    api 'org.slf4j:slf4j-api:2.0.18'
-    api 'org.slf4j:slf4j-ext:2.0.18'
-
-    testImplementation 'ch.qos.logback:logback-classic:1.5.21'
-}
-
 publishing {
     publications {
         named('mavenJava', MavenPublication) {
@@ -20,4 +12,33 @@ publishing {
             }
         }
     }
+}
+
+tasks.register('verifyCommonsDependencyBoundary') {
+    group = 'verification'
+    description = 'Verifies that Commons does not publish framework or logging dependencies.'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+
+    def generatedPom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml')
+    inputs.file(generatedPom)
+
+    doLast {
+        def pomText = generatedPom.get().asFile.getText('UTF-8')
+        def forbiddenDependencies = [
+                'spring-boot-service-framework-logging-core',
+                '<groupId>org.slf4j</groupId>',
+                '<groupId>org.springframework</groupId>'
+        ]
+        def publishedDependencies = forbiddenDependencies.findAll { pomText.contains(it) }
+        if (!publishedDependencies.isEmpty()) {
+            throw new GradleException(
+                    'Commons must remain framework-neutral: '
+                            + publishedDependencies.join(', ')
+            )
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('verifyCommonsDependencyBoundary')
 }

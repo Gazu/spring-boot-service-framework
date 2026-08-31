@@ -1,8 +1,7 @@
 package com.smbtech.serviceframework.starter.errorhandling.autoconfigure;
 
-import com.smbtech.serviceframework.error.DefaultNotificationSanitizer;
 import com.smbtech.serviceframework.error.ErrorExposure;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.out.metrics.MicrometerErrorMetricsRecorder;
+import com.smbtech.serviceframework.error.NotificationSanitizer;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -10,6 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /** Configuration properties for reusable HTTP error handling. */
 @ConfigurationProperties("smbtech.error-handling")
 public class ErrorHandlingProperties {
+
+    private static final String DEFAULT_METRIC_NAME = "smbtech.error.handling.errors";
+
     /** Creates a error handling properties instance. */
     public ErrorHandlingProperties() {}
 
@@ -81,7 +83,7 @@ public class ErrorHandlingProperties {
         private ErrorExposure exposure = ErrorExposure.PUBLIC;
         private boolean includeFieldViolations = true;
         private Set<String> metadataAllowlist =
-                new LinkedHashSet<>(DefaultNotificationSanitizer.DEFAULT_METADATA_ALLOWLIST);
+                new LinkedHashSet<>(NotificationSanitizer.DEFAULT_METADATA_ALLOWLIST);
 
         /**
          * Returns the configured response audience and detail level.
@@ -192,7 +194,7 @@ public class ErrorHandlingProperties {
         public Metrics() {}
 
         private boolean enabled = true;
-        private String metricName = MicrometerErrorMetricsRecorder.DEFAULT_METRIC_NAME;
+        private String metricName = DEFAULT_METRIC_NAME;
 
         /**
          * Reports whether enabled.

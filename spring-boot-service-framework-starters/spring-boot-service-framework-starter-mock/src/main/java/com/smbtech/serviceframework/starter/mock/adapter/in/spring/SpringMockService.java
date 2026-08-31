@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import tools.jackson.core.type.TypeReference;
 
 /** Provides spring mock service behavior. */
-public final class SpringMockService implements MockService {
+final class SpringMockService implements MockService {
 
     private final MockResponder mockResponder;
     private final MockResponseEntityMapper responseEntityMapper;
@@ -20,8 +20,7 @@ public final class SpringMockService implements MockService {
      * @param mockResponder mock responder value
      * @param responseEntityMapper response entity mapper value
      */
-    public SpringMockService(
-            MockResponder mockResponder, MockResponseEntityMapper responseEntityMapper) {
+    SpringMockService(MockResponder mockResponder, MockResponseEntityMapper responseEntityMapper) {
         this.mockResponder =
                 Objects.requireNonNull(mockResponder, "mockResponder must not be null");
         this.responseEntityMapper =

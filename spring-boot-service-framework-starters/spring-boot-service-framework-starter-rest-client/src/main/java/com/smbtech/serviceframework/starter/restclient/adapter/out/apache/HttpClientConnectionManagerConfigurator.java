@@ -5,7 +5,7 @@ import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 
 /** Provides http client connection manager configurator behavior. */
-public final class HttpClientConnectionManagerConfigurator {
+final class HttpClientConnectionManagerConfigurator {
 
     private final RegistryConfigurator registryConfigurator;
     private final SocketConfigConfigurator socketConfigConfigurator;

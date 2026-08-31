@@ -1,25 +1,21 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.spring;
 
 import com.smbtech.serviceframework.httpclient.domain.AuthenticationType;
-import com.smbtech.serviceframework.httpclient.domain.KeyStoreDefinition;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
-import com.smbtech.serviceframework.httpclient.service.ScopeValidator;
-import com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreManager;
 import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties;
-import java.security.Key;
-import java.security.KeyStore;
-import java.security.PrivateKey;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 /** Provides OAuth2 rest client configuration validator behavior. */
-public final class OAuth2RestClientConfigurationValidator {
+final class OAuth2RestClientConfigurationValidator {
 
     private static final AuthorizationGrantType JWT_BEARER_GRANT =
             new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:jwt-bearer");
@@ -36,23 +32,28 @@ public final class OAuth2RestClientConfigurationValidator {
                     ClientAuthenticationMethod.PRIVATE_KEY_JWT);
 
     private final ScopeValidator scopeValidator = new ScopeValidator();
-    private final KeyStoreManager keyStoreManager;
+    private final Consumer<String> keyStoreValidator;
+    private final Function<String, String> mtlsKeyStoreValidator;
     private final SigningJwkResolver signingJwkResolver;
 
     /** Creates a OAuth2 rest client configuration validator instance. */
     public OAuth2RestClientConfigurationValidator() {
-        this(null, null);
+        this(null, null, null);
     }
 
     /**
      * Creates a OAuth2 rest client configuration validator instance.
      *
-     * @param keyStoreManager key store manager value
+     * @param keyStoreValidator key store content validator
+     * @param mtlsKeyStoreValidator mTLS key store content validator
      * @param signingJwkResolver signing jwk resolver value
      */
     public OAuth2RestClientConfigurationValidator(
-            KeyStoreManager keyStoreManager, SigningJwkResolver signingJwkResolver) {
-        this.keyStoreManager = keyStoreManager;
+            Consumer<String> keyStoreValidator,
+            Function<String, String> mtlsKeyStoreValidator,
+            SigningJwkResolver signingJwkResolver) {
+        this.keyStoreValidator = keyStoreValidator;
+        this.mtlsKeyStoreValidator = mtlsKeyStoreValidator;
         this.signingJwkResolver = signingJwkResolver;
     }
 
@@ -505,10 +506,10 @@ public final class OAuth2RestClientConfigurationValidator {
         if (!validateKeyStoreContent || references.keyStoreIds.isEmpty()) {
             return;
         }
-        if (keyStoreManager == null) {
+        if (keyStoreValidator == null || mtlsKeyStoreValidator == null) {
             result.error(
                     "validation.validate-key-store-content",
-                    "requires KeyStoreManager to validate configured key store content");
+                    "requires key store runtime support to validate configured key store content");
             return;
         }
 
@@ -522,7 +523,7 @@ public final class OAuth2RestClientConfigurationValidator {
     private void validateLoadableKeyStore(
             String keyStoreId, String usage, OAuth2ConfigurationValidationResult.Builder result) {
         try {
-            keyStoreManager.getKeyStore(keyStoreId);
+            keyStoreValidator.accept(keyStoreId);
         } catch (Exception exception) {
             result.error(
                     "authentication.key-stores." + keyStoreId,
@@ -536,29 +537,11 @@ public final class OAuth2RestClientConfigurationValidator {
     private void validateMtlsKeyStore(
             String keyStoreId, OAuth2ConfigurationValidationResult.Builder result) {
         try {
-            KeyStoreDefinition definition = keyStoreManager.getDefinition(keyStoreId);
-            if (definition.keyAlias().isBlank()) {
+            String validationMessage = mtlsKeyStoreValidator.apply(keyStoreId);
+            if (validationMessage != null && !validationMessage.isBlank()) {
                 result.error(
                         "authentication.key-stores." + keyStoreId + ".key-alias",
-                        "is required for mTLS key store content validation");
-                return;
-            }
-
-            KeyStore keyStore = keyStoreManager.getKeyStore(keyStoreId);
-            if (!keyStore.containsAlias(definition.keyAlias())) {
-                result.error(
-                        "authentication.key-stores." + keyStoreId + ".key-alias",
-                        "references missing alias " + definition.keyAlias());
-                return;
-            }
-
-            Key key =
-                    keyStore.getKey(
-                            definition.keyAlias(), KeyStoreManager.chars(definition.keyPassword()));
-            if (!(key instanceof PrivateKey)) {
-                result.error(
-                        "authentication.key-stores." + keyStoreId + ".key-alias",
-                        "does not contain a private key: " + definition.keyAlias());
+                        validationMessage);
             }
         } catch (Exception exception) {
             result.error(

@@ -9,7 +9,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 /** Provides http client configurator behavior. */
-public final class HttpClientConfigurator {
+final class HttpClientConfigurator {
 
     private final ApacheHttpClientConfigurator apacheHttpClientConfigurator;
     private final List<ClientHttpRequestFactoryCustomizer> customizers;

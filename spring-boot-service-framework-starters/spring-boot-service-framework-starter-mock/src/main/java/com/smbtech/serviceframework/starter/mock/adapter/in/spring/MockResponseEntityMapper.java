@@ -11,7 +11,7 @@ import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
 
 /** Provides mock response entity mapper behavior. */
-public final class MockResponseEntityMapper {
+final class MockResponseEntityMapper {
 
     private final ObjectMapper objectMapper;
 
@@ -20,7 +20,7 @@ public final class MockResponseEntityMapper {
      *
      * @param objectMapper object mapper value
      */
-    public MockResponseEntityMapper(ObjectMapper objectMapper) {
+    MockResponseEntityMapper(ObjectMapper objectMapper) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     }
 

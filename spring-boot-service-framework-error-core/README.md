@@ -16,7 +16,7 @@ when implementing framework-neutral error contracts or adapters.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-error-core'
 }
@@ -65,21 +65,23 @@ Resolution components use `ResolvedError` to keep the response candidate,
 `FieldViolation` values separate. The response adapter applies the final global
 exposure policy.
 
-Implement `ThrowableErrorResolver` for application-specific failures and pass
-the resolvers to `ThrowableErrorResolutionPipeline`. Resolvers run by ascending
-`order()`; registration order breaks ties. `FallbackThrowableErrorResolver`
-produces a generic framework notification when no resolver matches. A response
-adapter applies its final exposure and sanitization policy afterward.
+Implement `ThrowableErrorResolver` for application-specific failures and compose
+resolvers with `ThrowableErrorResolver.composite(...)`. Resolvers run by
+ascending `order()`; registration order breaks ties. The composition uses a safe
+fallback when no resolver matches. A response adapter applies its final exposure
+and sanitization policy afterward.
 
-`ServiceExceptionThrowableErrorResolver` uses a replaceable
-`NotificationAggregationPolicy`. The default policy selects the first ordered
-notification and converts every notification with a `fieldName` into an
-immutable `FieldViolation` on the resulting `ResolvedError`.
+Create service exception resolution with
+`ThrowableErrorResolver.serviceExceptions(...)`. It accepts a replaceable
+`NotificationAggregationPolicy`; `NotificationAggregationPolicy.defaultPolicy()`
+selects the first ordered notification and converts every notification with a
+`fieldName` into an immutable `FieldViolation` on the resulting `ResolvedError`.
 
-`DefaultNotificationSanitizer` applies a case-insensitive top-level metadata
-allowlist and recursively redacts credentials, tokens, passwords, headers,
-bodies, exception causes, stack traces, JWTs, and authorization values. The
-default allowlist contains `correlationId`, `path`, and `violations`.
+`NotificationSanitizer.defaultSanitizer()` applies a case-insensitive top-level
+metadata allowlist and recursively redacts credentials, tokens, passwords,
+headers, bodies, exception causes, stack traces, JWTs, and authorization values.
+Use `NotificationSanitizer.withMetadataAllowlist(...)` when the response contract
+needs additional safe metadata.
 
 ## What this module does not do
 

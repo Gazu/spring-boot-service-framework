@@ -9,7 +9,7 @@ import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2A
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 
 /** Provides OAuth2 authorization context attributes mapper behavior. */
-public final class OAuth2AuthorizationContextAttributesMapper
+final class OAuth2AuthorizationContextAttributesMapper
         implements Function<OAuth2AuthorizeRequest, Map<String, Object>> {
 
     private final AuthorizedClientServiceOAuth2AuthorizedClientManager

@@ -6,7 +6,7 @@ import org.apache.hc.client5.http.ssl.HttpsSupport;
 import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 
 /** Provides hostname verifier configurator behavior. */
-public final class HostnameVerifierConfigurator {
+final class HostnameVerifierConfigurator {
     /** Creates a hostname verifier configurator instance. */
     public HostnameVerifierConfigurator() {}
 

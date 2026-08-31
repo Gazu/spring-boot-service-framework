@@ -4,16 +4,16 @@ import com.smbtech.serviceframework.commons.notification.Notification;
 import java.util.Objects;
 
 /** Produces a safe internal error when no specialized resolver supports a failure. */
-public final class FallbackThrowableErrorResolver implements ThrowableErrorResolver {
+final class FallbackThrowableErrorResolver implements ThrowableErrorResolver {
 
     /** Prevents unresolved failures from exposing implementation-specific codes. */
-    public static final String DEFAULT_ERROR_CODE = "E_SERVICE_FRAMEWORK_INTERNAL_0001";
+    static final String DEFAULT_ERROR_CODE = ThrowableErrorResolver.DEFAULT_ERROR_CODE;
 
     /** Prevents unresolved failures from exposing exception messages. */
-    public static final String DEFAULT_PUBLIC_MESSAGE = "The request could not be completed";
+    static final String DEFAULT_PUBLIC_MESSAGE = ThrowableErrorResolver.DEFAULT_PUBLIC_MESSAGE;
 
     /** Creates the default fallback resolver. */
-    public FallbackThrowableErrorResolver() {}
+    FallbackThrowableErrorResolver() {}
 
     @Override
     public boolean supports(Throwable throwable) {

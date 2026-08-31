@@ -6,17 +6,16 @@ import java.security.Key;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
 
-/** Provides private key loader behavior. */
-public final class PrivateKeyLoader {
+final class PrivateKeyLoader {
 
     private final KeyStoreManager keyStoreManager;
 
     /**
      * Creates a private key loader instance.
      *
-     * @param keyStoreManager key store manager value
+     * @param keyStoreManager key store manager
      */
-    public PrivateKeyLoader(KeyStoreManager keyStoreManager) {
+    PrivateKeyLoader(KeyStoreManager keyStoreManager) {
         this.keyStoreManager = keyStoreManager;
     }
 
@@ -26,8 +25,8 @@ public final class PrivateKeyLoader {
      * @param keyStoreId key store id value
      * @return load private key result
      */
-    public PrivateKey loadPrivateKey(String keyStoreId) {
-        KeyStoreDefinition definition = keyStoreManager.getDefinition(keyStoreId);
+    PrivateKey loadPrivateKey(String keyStoreId) {
+        KeyStoreDefinition definition = definition(keyStoreId);
         validateKeyAlias(keyStoreId, definition);
         try {
             Key key =
@@ -55,8 +54,8 @@ public final class PrivateKeyLoader {
      * @param keyStoreId key store id value
      * @return load certificate result
      */
-    public Certificate loadCertificate(String keyStoreId) {
-        KeyStoreDefinition definition = keyStoreManager.getDefinition(keyStoreId);
+    Certificate loadCertificate(String keyStoreId) {
+        KeyStoreDefinition definition = definition(keyStoreId);
         validateKeyAlias(keyStoreId, definition);
         try {
             Certificate certificate =
@@ -79,5 +78,9 @@ public final class PrivateKeyLoader {
             throw new HttpClientAuthenticationException(
                     "keyAlias is required for key store private key access: " + keyStoreId);
         }
+    }
+
+    private KeyStoreDefinition definition(String keyStoreId) {
+        return keyStoreManager.getDefinition(keyStoreId);
     }
 }

@@ -21,7 +21,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 /** Provides spring OAuth2 token response client factory behavior. */
-public final class SpringOAuth2TokenResponseClientFactory {
+final class SpringOAuth2TokenResponseClientFactory {
 
     private final ClientAssertionJwkResolver jwkResolver;
     private final OAuth2TokenDiagnosticsLogger diagnosticsLogger;

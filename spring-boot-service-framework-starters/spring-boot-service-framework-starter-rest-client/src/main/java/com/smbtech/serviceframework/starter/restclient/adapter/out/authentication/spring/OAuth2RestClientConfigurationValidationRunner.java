@@ -11,8 +11,7 @@ import org.springframework.context.ApplicationContextException;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 
 /** Provides OAuth2 rest client configuration validation runner behavior. */
-public final class OAuth2RestClientConfigurationValidationRunner
-        implements SmartInitializingSingleton {
+final class OAuth2RestClientConfigurationValidationRunner implements SmartInitializingSingleton {
 
     private static final EventType VALIDATION_EVENT =
             EventType.named("OAUTH2_CONFIGURATION_VALIDATION");

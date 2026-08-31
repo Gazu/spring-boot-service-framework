@@ -1,0 +1,423 @@
+import groovy.json.JsonSlurper
+
+def pullRequestCiContract = file('.ci/pull-request-contract.json')
+def pullRequestSecurityScan = file('.ci/security/scan.sh')
+def branchProtectionVerifier = file('.github/scripts/verify-branch-protection.sh')
+def workflowFiles = fileTree('.github/workflows') {
+    include '*.yml', '*.yaml'
+}
+def conventionalSubjectPattern = java.util.regex.Pattern.compile(
+        '^(feat|fix|docs|test|refactor|build|ci|chore|perf|style|revert)' +
+                '(\\([a-z0-9][a-z0-9._/-]*\\))?!?: \\S.*$')
+def isConventionalSubject = { String subject ->
+    subject != null && conventionalSubjectPattern.matcher(subject).matches()
+}
+
+tasks.register('validatePullRequestPolicyFixtures') {
+    group = 'verification'
+    description = 'Validates the Conventional Commit policy fixtures used by pull request CI.'
+
+    doLast {
+        def validSubjects = [
+                'feat: add request validation',
+                'fix(rest-client): preserve authorization headers',
+                'docs!: reorganize public guides',
+                'chore(deps): bump dependency version',
+                'revert(logging): restore synchronous fallback'
+        ]
+        def invalidSubjects = [
+                'Add request validation',
+                'feature: add request validation',
+                'fix(RestClient): preserve authorization headers',
+                'fix: ',
+                'fix missing separator'
+        ]
+        def failures = []
+        validSubjects.findAll { !isConventionalSubject(it) }.each {
+            failures << "valid policy fixture was rejected: ${it}"
+        }
+        invalidSubjects.findAll { isConventionalSubject(it) }.each {
+            failures << "invalid policy fixture was accepted: ${it}"
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Invalid pull request policy fixtures:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('validatePullRequestPolicy') {
+    group = 'verification'
+    description = 'Validates the pull request title and commit subjects against Conventional Commits.'
+    dependsOn tasks.named('validatePullRequestPolicyFixtures')
+
+    doLast {
+        def eventName = providers.environmentVariable('GITHUB_EVENT_NAME').orNull ?: ''
+        def title = providers.gradleProperty('pullRequestTitle')
+                .orElse(providers.environmentVariable('PULL_REQUEST_TITLE'))
+                .getOrElse('')
+        def baseSha = providers.gradleProperty('pullRequestBaseSha')
+                .orElse(providers.environmentVariable('PULL_REQUEST_BASE_SHA'))
+                .getOrElse('')
+        def headSha = providers.gradleProperty('pullRequestHeadSha')
+                .orElse(providers.environmentVariable('PULL_REQUEST_HEAD_SHA'))
+                .getOrElse('')
+        def failures = []
+        def shaPattern = ~/^[0-9a-fA-F]{7,64}$/
+
+        if (eventName == 'pull_request' && title.isBlank()) {
+            failures << 'pull request title is required'
+        } else if (!title.isBlank() && !isConventionalSubject(title)) {
+            failures << "pull request title is not a Conventional Commit: ${title}"
+        }
+        if (!(baseSha ==~ shaPattern)) {
+            failures << 'PULL_REQUEST_BASE_SHA must be a Git commit SHA'
+        }
+        if (!(headSha ==~ shaPattern)) {
+            failures << 'PULL_REQUEST_HEAD_SHA must be a Git commit SHA'
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Invalid pull request policy:\n" + failures.join('\n'))
+        }
+
+        def commitLines = providers.exec {
+            commandLine(
+                    'git',
+                    'log',
+                    '--format=%H%x09%P%x09%s',
+                    "${baseSha}..${headSha}")
+        }.standardOutput.asText.get().readLines().findAll { !it.isBlank() }
+
+        if (commitLines.isEmpty()) {
+            failures << "no commits found in range ${baseSha}..${headSha}"
+        }
+        commitLines.each { line ->
+            def parts = line.split('\\t', 3)
+            if (parts.length != 3) {
+                failures << "could not parse Git commit metadata: ${line}"
+                return
+            }
+            def commitSha = parts[0]
+            def parentShas = parts[1].tokenize(' ')
+            def subject = parts[2]
+            def automaticMerge = parentShas.size() > 1 && subject.startsWith('Merge ')
+            if (!automaticMerge && !isConventionalSubject(subject)) {
+                failures << "${commitSha}: commit subject is not a Conventional Commit: ${subject}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Invalid pull request policy:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('verifyPullRequestBranchProtection', Exec) {
+    group = 'verification'
+    description = 'Verifies the live GitHub branch protection and merge policy against the CI contract.'
+    inputs.file(pullRequestCiContract)
+    inputs.file(branchProtectionVerifier)
+    commandLine 'bash', branchProtectionVerifier.absolutePath
+}
+
+tasks.register('validatePullRequestCiContract') {
+    group = 'verification'
+    description = 'Validates the versioned security and status-check contract for pull request CI.'
+
+    inputs.file(pullRequestCiContract)
+    inputs.file(pullRequestSecurityScan)
+    inputs.file(branchProtectionVerifier)
+    inputs.files(workflowFiles)
+
+    doLast {
+        def contract = new JsonSlurper().parse(pullRequestCiContract)
+        def failures = []
+
+        if (contract.schemaVersion != 1) {
+            failures << 'schemaVersion must be 1'
+        }
+        if (contract.authority != 'github-actions') {
+            failures << 'authority must be github-actions'
+        }
+        if (contract.repository != 'Gazu/spring-boot-service-framework') {
+            failures << 'repository must be Gazu/spring-boot-service-framework'
+        }
+        if (contract.workflow != '.github/workflows/pull-request.yml') {
+            failures << 'workflow must be .github/workflows/pull-request.yml'
+        }
+
+        def expectedEvents = ['merge_group', 'pull_request']
+        if ((contract.events ?: []).sort() != expectedEvents) {
+            failures << "events must contain exactly ${expectedEvents.join(', ')}"
+        }
+
+        def expectedChecks = [
+                policy  : 'Pull Request / Policy',
+                quality : 'Pull Request / Quality',
+                security: 'Pull Request / Security'
+        ]
+        def actualChecks = (contract.requiredChecks ?: []).collectEntries { check ->
+            [(check.id): check.name]
+        }
+        if (actualChecks != expectedChecks ||
+                (contract.requiredChecks ?: []).size() != expectedChecks.size()) {
+            failures << 'requiredChecks must define the stable Policy, Quality, and Security checks'
+        }
+
+        if (contract.permissions != [contents: 'read']) {
+            failures << 'permissions must contain only contents: read'
+        }
+
+        def expectedCommitPolicy = [
+                conventionalCommits      : true,
+                validatePullRequestTitle : true,
+                validateEveryCommit      : true,
+                allowAutomaticMergeCommits: true,
+                language                 : 'en',
+                languageEnforcement      : 'review'
+        ]
+        if (contract.commitPolicy != expectedCommitPolicy) {
+            failures << 'commitPolicy must preserve the reviewed Conventional Commit contract'
+        }
+
+        [
+                allowPullRequestTarget: false,
+                allowRepositorySecrets: false,
+                allowRemotePublication: false,
+                allowReleaseEnvironment: false
+        ].each { property, expected ->
+            if (contract.security?."${property}" != expected) {
+                failures << "security.${property} must be ${expected}"
+            }
+        }
+
+        def expectedSecurityGate = [
+                scanProfile                         : 'pull-request',
+                scanMode                            : 'all',
+                reportsRedacted                     : true,
+                blockSecrets                        : true,
+                blockCriticalVulnerabilities        : true,
+                blockFixableHighVulnerabilities     : true,
+                blockHighCriticalMisconfigurations  : true,
+                artifactRetentionDays               : 7
+        ]
+        expectedSecurityGate.each { property, expected ->
+            if (contract.security?."${property}" != expected) {
+                failures << "security.${property} must be ${expected}"
+            }
+        }
+
+        def expectedEvidence = [
+                publishOnFailure              : true,
+                retentionDays                 : 7,
+                includeJUnitXml               : true,
+                includeJacocoXml              : true,
+                includeCycloneDxSbom          : true,
+                includeRedactedSarif          : true,
+                includeSecuritySummary        : true,
+                includeBuildBinaries          : false,
+                includeLocalMavenRepositories : false
+        ]
+        if (contract.evidence != expectedEvidence) {
+            failures << 'evidence must preserve the reviewed pull request artifact contract'
+        }
+
+        def expectedBranchProtection = [
+                branch                        : 'main',
+                strictStatusChecks            : true,
+                statusCheckApp                : 'github-actions',
+                statusCheckAppId              : 15368,
+                requiredApprovingReviewCount  : 1,
+                dismissStaleReviews           : true,
+                requireLastPushApproval       : true,
+                requireCodeOwnerReviews       : false,
+                enforceAdmins                 : true,
+                requireLinearHistory          : true,
+                requireConversationResolution : true,
+                allowBypass                   : false,
+                allowForcePushes              : false,
+                allowDeletions                : false
+        ]
+        if (contract.branchProtection != expectedBranchProtection) {
+            failures << 'branchProtection must preserve the reviewed main branch policy'
+        }
+
+        def expectedMergePolicy = [
+                allowMergeCommits : false,
+                allowSquashMerge  : true,
+                allowRebaseMerge  : true,
+                allowAutoMerge    : true,
+                deleteHeadBranches: true
+        ]
+        if (contract.mergePolicy != expectedMergePolicy) {
+            failures << 'mergePolicy must preserve the reviewed linear-history rollout policy'
+        }
+
+        if (contract.execution?.gateTask != 'pullRequestGate') {
+            failures << 'execution.gateTask must be pullRequestGate'
+        }
+        if (contract.execution?.javaVersion != 21) {
+            failures << 'execution.javaVersion must be 21'
+        }
+        ['supportsForks', 'supportsDependabot', 'cancelSupersededRuns'].each { property ->
+            if (contract.execution?."${property}" != true) {
+                failures << "execution.${property} must be true"
+            }
+        }
+
+        def pullRequestWorkflow = file(contract.workflow)
+        if (!pullRequestWorkflow.isFile()) {
+            failures << "workflow does not exist: ${contract.workflow}"
+        } else {
+            def workflowText = pullRequestWorkflow.text
+            def requiredPatterns = [
+                    'workflow name'          : ~/(?m)^name:\s*Pull Request\s*$/,
+                    'pull_request event'     : ~/(?m)^\s{2}pull_request:\s*$/,
+                    'merge_group event'      : ~/(?m)^\s{2}merge_group:\s*$/,
+                    'read-only contents'     : ~/(?m)^\s{2}contents:\s*read\s*$/,
+                    'cancel superseded runs' : ~/(?m)^\s{2}cancel-in-progress:\s*true\s*$/,
+                    'complete Git history'   : ~/(?m)^\s+fetch-depth:\s*0\s*$/,
+                    'Java 21'                : ~/(?m)^\s+java-version:\s*["']?21["']?\s*$/,
+                    'Gradle wrapper check'   : ~/gradle\/actions\/wrapper-validation@/,
+                    'Gradle setup'           : ~/gradle\/actions\/setup-gradle@/,
+                    'read-only Gradle cache' : ~/(?m)^\s+cache-read-only:\s*true\s*$/,
+                    'policy job'             : ~/(?m)^\s{2}policy:\s*$/,
+                    'policy check name'      : ~/(?m)^\s{4}name:\s*Policy\s*$/,
+                    'base SHA input'          : ~/PULL_REQUEST_BASE_SHA:/,
+                    'head SHA input'          : ~/PULL_REQUEST_HEAD_SHA:/,
+                    'title input'             : ~/PULL_REQUEST_TITLE:/,
+                    'contract validation'    : ~/\.\/gradlew\s+validatePullRequestCiContract/,
+                    'policy validation'      : ~/validatePullRequestPolicy/,
+                    'quality job'            : ~/(?m)^\s{2}quality:\s*$/,
+                    'quality check name'     : ~/(?m)^\s{4}name:\s*Quality\s*$/,
+                    'quality policy dependency': ~/(?m)^\s{4}needs:\s*policy\s*$/,
+                    'quality gate execution' : ~/\.\/gradlew\s+clean\s+pullRequestGate/,
+                    'quality evidence upload': ~/(?m)^\s+- name:\s*Upload quality evidence\s*$/,
+                    'JUnit XML evidence'     : ~/\*\*\/build\/test-results\/test\/TEST-\*\.xml/,
+                    'JaCoCo XML evidence'    : ~/\*\*\/build\/reports\/jacoco\/test\/jacocoTestReport\.xml/,
+                    'OpenAPI documentation evidence': ~/build\/reports\/smbtech-openapi\/documentation-check\.txt/,
+                    'security job'           : ~/(?m)^\s{2}security:\s*$/,
+                    'security check name'    : ~/(?m)^\s{4}name:\s*Security\s*$/,
+                    'security policy dependency': ~/(?m)^\s{4}needs:\s*policy\s*$/,
+                    'security profile'       : ~/(?m)^\s+SECURITY_EXECUTION_PROFILE:\s*pull-request\s*$/,
+                    'security SBOM'          : ~/\.\/gradlew\s+dependencyTrackSbom/,
+                    'Trivy installer'        : ~/\.github\/scripts\/install-trivy\.sh/,
+                    'Gitleaks installer'     : ~/\.github\/scripts\/install-gitleaks\.sh/,
+                    'security gate execution': ~/\.ci\/security\/scan\.sh\s+all/,
+                    'redacted evidence upload': ~/actions\/upload-artifact@/,
+                    'CycloneDX JSON evidence': ~/build\/reports\/bom\.json/,
+                    'CycloneDX XML evidence' : ~/build\/reports\/bom\.xml/,
+                    'security SARIF evidence': ~/build\/reports\/security\/\*\.sarif/,
+                    'security summary evidence': ~/build\/reports\/security\/security-scan-\*-summary\.json/,
+                    'quality evidence summary': ~/Pull Request Quality Evidence/,
+                    'security evidence summary': ~/Pull Request Security Evidence/
+            ]
+            requiredPatterns.each { requirement, pattern ->
+                if (!(workflowText =~ pattern).find()) {
+                    failures << "${contract.workflow}: missing ${requirement}"
+                }
+            }
+
+            def forbiddenPatterns = [
+                    'pull_request_target'       : ~/pull_request_target/,
+                    'repository secrets'        : ~/secrets\./,
+                    'release environment'       : ~/(?m)^\s*environment:\s*release\s*$/,
+                    'remote publication command': ~/(?m)^\s*run:.*\.\/gradlew.*\bpublish\b/,
+                    'signing credentials'       : ~/\bSIGNING_(?:KEY|PASSWORD)\b/,
+                    'Maven credentials'         : ~/\bPRIVATE_MAVEN_(?:URL|USERNAME|PASSWORD)\b/,
+                    'write permission'          : ~/(?m)^\s+[a-z-]+:\s*write\s*$/
+            ]
+            forbiddenPatterns.each { prohibition, pattern ->
+                if ((workflowText =~ pattern).find()) {
+                    failures << "${contract.workflow}: forbidden ${prohibition}"
+                }
+            }
+
+            if ((workflowText =~ /actions\/upload-artifact@/).findAll().size() != 2) {
+                failures << "${contract.workflow}: Quality and Security must publish separate artifacts"
+            }
+            if ((workflowText =~ /always\(\)/).findAll().size() < 4) {
+                failures << "${contract.workflow}: evidence and summaries must publish after failed gates"
+            }
+            if ((workflowText =~ /(?m)^\s+retention-days:\s*7\s*$/).findAll().size() != 2) {
+                failures << "${contract.workflow}: evidence artifacts must be retained for seven days"
+            }
+            def forbiddenEvidencePatterns = [
+                    'compiled binaries': ~/\*\*\/build\/libs/,
+                    'distribution archives': ~/build\/distributions/,
+                    'local Maven repositories': ~/build\/repository/,
+                    'Maven publication staging': ~/build\/publications/
+            ]
+            forbiddenEvidencePatterns.each { prohibition, pattern ->
+                if ((workflowText =~ pattern).find()) {
+                    failures << "${contract.workflow}: evidence includes forbidden ${prohibition}"
+                }
+            }
+        }
+
+        workflowFiles.files.sort().each { workflow ->
+            if (workflow.text.contains('pull_request_target')) {
+                failures << "${rootDir.toPath().relativize(workflow.toPath())}: pull_request_target is forbidden"
+            }
+        }
+
+        if (!pullRequestSecurityScan.isFile()) {
+            failures << '.ci/security/scan.sh does not exist'
+        } else {
+            def scanText = pullRequestSecurityScan.text
+            def requiredScanPatterns = [
+                    'complete Git history scan': ~/gitleaks\s+git\s+"\$\{WORKSPACE\}"/,
+                    'secret redaction'         : ~/--redact=100/,
+                    'critical vulnerability gate': ~/--severity\s+CRITICAL/,
+                    'fixable high vulnerability gate': ~/(?s)--severity\s+HIGH.*--ignore-unfixed/,
+                    'high and critical misconfiguration gate': ~/--severity\s+HIGH,CRITICAL/,
+                    'redacted execution summary': ~/"reportsRedacted":\s*true/
+            ]
+            requiredScanPatterns.each { requirement, pattern ->
+                if (!(scanText =~ pattern).find()) {
+                    failures << ".ci/security/scan.sh: missing ${requirement}"
+                }
+            }
+            if ((scanText =~ /--exit-code\s+1/).findAll().size() < 4) {
+                failures << '.ci/security/scan.sh: every security gate must fail on findings'
+            }
+        }
+
+        if (!branchProtectionVerifier.isFile()) {
+            failures << '.github/scripts/verify-branch-protection.sh does not exist'
+        } else {
+            def verifierText = branchProtectionVerifier.text
+            [
+                    'versioned contract': ~/\.ci\/pull-request-contract\.json/,
+                    'branch protection API': ~/branches\/\$\{branch\}\/protection/,
+                    'repository API': ~/repos\/\$\{repository\}/,
+                    'credential cleanup': ~/unset\s+token/
+            ].each { requirement, pattern ->
+                if (!(verifierText =~ pattern).find()) {
+                    failures << ".github/scripts/verify-branch-protection.sh: missing ${requirement}"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Invalid pull request CI contract:\n" + failures.sort().join('\n'))
+        }
+    }
+}
+
+tasks.register('pullRequestCiCompatibilityCheck') {
+    group = 'verification'
+    description = 'Validates the stable pull request checks, policy, evidence, security, and rollout contract.'
+    dependsOn(
+            tasks.named('validatePullRequestCiContract'),
+            tasks.named('validatePullRequestPolicyFixtures'),
+            tasks.named('documentationCheck')
+    )
+}
+
+tasks.named('documentationCheck') {
+    dependsOn tasks.named('validatePullRequestCiContract')
+}

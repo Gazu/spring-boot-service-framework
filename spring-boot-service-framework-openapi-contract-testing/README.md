@@ -13,7 +13,7 @@ the status, content type, and JSON response shape declared by its OpenAPI file.
 ```groovy
 dependencies {
     testImplementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
 }
@@ -31,6 +31,9 @@ dependencies {
 - `OpenApiContractTestResult` and `OpenApiContractViolation` provide an
   inspectable result; `throwIfInvalid()` integrates with JUnit.
 
+Parser-only request definitions remain package-private. The types listed above
+are the complete supported Java surface.
+
 The complete usage contract and examples live in
 [OpenAPI Contract Testing](../docs/openapi-contract-testing.md).
 
@@ -46,9 +49,11 @@ The complete usage contract and examples live in
 
 | Topic | Document |
 |---|---|
+| OpenAPI navigation | [OpenAPI Portal](../docs/openapi/index.md) |
 | Contract testing reference | [OpenAPI Contract Testing](../docs/openapi-contract-testing.md) |
 | Copy-ready test setup | [Test a Spring MVC API Against OpenAPI](../docs/guides/openapi-contract-testing.md) |
-| OpenAPI generation | [OpenAPI Code Generation](../docs/openapi-codegen.md) |
+| OpenAPI generation | [OpenAPI Artifact Generation](../docs/openapi/generation.md) |
+| Documentation ownership | [OpenAPI Documentation Architecture](../docs/openapi/documentation-architecture.md) |
 | Compatibility policy | [Compatibility](../docs/compatibility.md) |
 
 ## Local validation

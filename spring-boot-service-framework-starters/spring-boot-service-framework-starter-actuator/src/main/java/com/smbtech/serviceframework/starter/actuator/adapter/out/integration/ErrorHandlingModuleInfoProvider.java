@@ -8,10 +8,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Provides bounded application information for the error handling starter. */
-public final class ErrorHandlingModuleInfoProvider implements FrameworkModuleInfoProvider {
+final class ErrorHandlingModuleInfoProvider implements FrameworkModuleInfoProvider {
 
     /** Stable framework module name. */
-    public static final String MODULE_NAME = "error-handling";
+    static final String MODULE_NAME = "error-handling";
 
     private final ErrorHandlingProperties properties;
 
@@ -20,7 +20,7 @@ public final class ErrorHandlingModuleInfoProvider implements FrameworkModuleInf
      *
      * @param properties error handling configuration
      */
-    public ErrorHandlingModuleInfoProvider(ErrorHandlingProperties properties) {
+    ErrorHandlingModuleInfoProvider(ErrorHandlingProperties properties) {
         this.properties = Objects.requireNonNull(properties, "properties");
     }
 

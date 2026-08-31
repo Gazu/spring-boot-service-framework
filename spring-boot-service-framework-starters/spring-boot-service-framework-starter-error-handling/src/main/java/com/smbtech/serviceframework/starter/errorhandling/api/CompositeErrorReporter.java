@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /** Invokes multiple error reporters in deterministic order. */
-public final class CompositeErrorReporter implements ErrorReporter {
+final class CompositeErrorReporter implements ErrorReporter {
 
     private final List<ErrorReporter> reporters;
 
@@ -18,7 +18,7 @@ public final class CompositeErrorReporter implements ErrorReporter {
      *
      * @param reporters reporters to invoke
      */
-    public CompositeErrorReporter(List<? extends ErrorReporter> reporters) {
+    CompositeErrorReporter(List<? extends ErrorReporter> reporters) {
         if (reporters == null || reporters.isEmpty()) {
             this.reporters = List.of();
             return;

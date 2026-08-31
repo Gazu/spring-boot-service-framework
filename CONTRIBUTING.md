@@ -12,6 +12,7 @@ framework reusable, maintainable, and focused on shared backend infrastructure.
 3. Make focused changes.
 4. Run the relevant tests and checks.
 5. Open a pull request with a clear description.
+6. Keep the branch current with `main` and address review feedback.
 
 Use descriptive branch names:
 
@@ -33,7 +34,20 @@ docs/contributing-guidelines
   [Public API Boundaries](docs/public-api-boundaries.md).
 - Follow the repository documentation ownership rules in
   [Documentation Architecture](docs/documentation-architecture.md).
+- Format the pull request title as a Conventional Commit so it can become the
+  squash commit subject.
 - Do not include unrelated refactors in the same pull request.
+- Wait for `Pull Request / Policy`, `Pull Request / Quality`, and
+  `Pull Request / Security` to pass.
+- Obtain one approval from someone other than the last contributor who pushed
+  to the branch, and resolve every review conversation.
+- Merge with squash or rebase. Merge commits and direct pushes to `main` are
+  rejected by branch protection.
+
+The required checks use read-only permissions and support forks and Dependabot.
+They never receive release credentials or publish Maven artifacts. See the
+[Quality Pipeline](docs/quality-pipeline.md) for the complete CI, evidence, and
+branch protection contract.
 
 ## Commit Message Rules
 
@@ -77,6 +91,9 @@ Or include a footer:
 ```text
 BREAKING CHANGE: rest client timeout properties were renamed.
 ```
+
+Pull request CI validates the title and every non-merge commit subject. English
+remains a review requirement because automated language detection is not used.
 
 ## Versioning
 
@@ -139,19 +156,27 @@ A release pull request should include:
 - When a feature changes public behavior, update the canonical document in the
   same pull request.
 
-## Tests
+## Validation
 
-Before opening a pull request, run the relevant checks:
+Before opening a pull request, run focused checks while developing:
 
 ```bash
 ./gradlew codeQualityCheck test
 ```
 
-For broader changes, run the full build:
+For broader changes, run the same non-publishing Gradle gate used by GitHub
+Actions:
 
 ```bash
-./gradlew build
+./gradlew clean pullRequestGate \
+  --no-daemon \
+  --stacktrace \
+  --console=plain
 ```
+
+The Security job separately generates the aggregate SBOM and runs Gitleaks and
+Trivy. Its redacted evidence and the Quality test, coverage, and SBOM evidence
+are attached to every workflow run for seven days.
 
 ## Code of Conduct
 

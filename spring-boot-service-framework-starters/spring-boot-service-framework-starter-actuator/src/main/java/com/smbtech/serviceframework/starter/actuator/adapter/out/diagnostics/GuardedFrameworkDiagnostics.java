@@ -30,13 +30,13 @@ import java.util.function.LongSupplier;
  * <p>The guard uses two daemon workers and no task queue. Snapshot and module refreshes are
  * independently single-flight, so concurrent readers reuse the same bounded result.
  */
-public final class GuardedFrameworkDiagnostics implements FrameworkDiagnostics, AutoCloseable {
+final class GuardedFrameworkDiagnostics implements FrameworkDiagnostics, AutoCloseable {
 
     /** Maximum configurable number of component results. */
-    public static final int MAX_COMPONENT_LIMIT = 256;
+    static final int MAX_COMPONENT_LIMIT = 256;
 
     /** Maximum configurable number of module results. */
-    public static final int MAX_MODULE_LIMIT = 256;
+    static final int MAX_MODULE_LIMIT = 256;
 
     private static final String FAILURE_COMPONENT = "service-framework-diagnostics";
     private static final int MAX_CONCURRENT_TASKS = 2;
@@ -64,7 +64,7 @@ public final class GuardedFrameworkDiagnostics implements FrameworkDiagnostics, 
      * @param maxComponents maximum component results retained in a snapshot
      * @param maxModules maximum module results retained
      */
-    public GuardedFrameworkDiagnostics(
+    GuardedFrameworkDiagnostics(
             FrameworkDiagnostics delegate,
             Clock clock,
             Duration cacheTtl,

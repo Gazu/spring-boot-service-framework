@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Provides properties mock definition source behavior. */
-public final class PropertiesMockDefinitionSource implements MockDefinitionSource {
+final class PropertiesMockDefinitionSource implements MockDefinitionSource {
 
     private final MockProperties properties;
 
@@ -17,7 +17,7 @@ public final class PropertiesMockDefinitionSource implements MockDefinitionSourc
      *
      * @param properties properties value
      */
-    public PropertiesMockDefinitionSource(MockProperties properties) {
+    PropertiesMockDefinitionSource(MockProperties properties) {
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
     }
 

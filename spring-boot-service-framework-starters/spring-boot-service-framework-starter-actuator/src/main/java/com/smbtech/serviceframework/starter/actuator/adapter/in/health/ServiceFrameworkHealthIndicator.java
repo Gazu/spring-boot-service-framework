@@ -13,7 +13,7 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.health.contributor.Status;
 
 /** Adapts framework-neutral diagnostics to a Spring Boot health indicator. */
-public final class ServiceFrameworkHealthIndicator implements HealthIndicator {
+final class ServiceFrameworkHealthIndicator implements HealthIndicator {
 
     private static final String REASON = "reason";
 
@@ -24,7 +24,7 @@ public final class ServiceFrameworkHealthIndicator implements HealthIndicator {
      *
      * @param diagnostics framework diagnostics use case
      */
-    public ServiceFrameworkHealthIndicator(FrameworkDiagnostics diagnostics) {
+    ServiceFrameworkHealthIndicator(FrameworkDiagnostics diagnostics) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 

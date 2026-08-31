@@ -21,7 +21,7 @@ ports.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-logging-core'
 }
@@ -38,9 +38,9 @@ dependencies {
 - `LogEventSink`
 - `CorrelationContext`
 
-Supported contracts live in the `domain` and `port.*` packages.
-`StructuredLoggingService` is the framework default implementation and is not a
-supported extension point. See
+Supported contracts live in the `domain` and `port.*` packages. Create the
+default implementation with `StructuredLogger.create(...)`; its concrete type
+is internal. See
 [Public API Boundaries](../docs/public-api-boundaries.md).
 
 ## What this module does not do

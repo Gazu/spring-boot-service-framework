@@ -6,7 +6,7 @@ import java.util.Map;
 import org.slf4j.MDC;
 
 /** Provides mdc correlation headers provider behavior. */
-public final class MdcCorrelationHeadersProvider implements CorrelationHeadersProvider {
+final class MdcCorrelationHeadersProvider implements CorrelationHeadersProvider {
     /** Creates a mdc correlation headers provider instance. */
     public MdcCorrelationHeadersProvider() {}
 

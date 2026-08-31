@@ -20,7 +20,7 @@ Most services should depend on the starter:
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
 }
@@ -31,7 +31,7 @@ Framework-level code can depend on the core:
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-logging-core'
 }
@@ -178,8 +178,7 @@ The core module contains:
 - immutable domain objects: `StructuredEvent`, `EventType`, `LogLevel`, and
   `Sensitivity`;
 - input port: `StructuredLogger`;
-- output ports: `LogEventSink` and `CorrelationContext`;
-- application service: `StructuredLoggingService`.
+- output ports: `LogEventSink` and `CorrelationContext`.
 
 Adapters implement `LogEventSink` to send events to a concrete backend:
 
@@ -198,9 +197,10 @@ final class ConsoleSink implements LogEventSink {
 }
 ```
 
-`StructuredLoggingService` applies core logging policy before delegating to the
-sink. When `production=true`, metric events are disabled by the core policy;
-audit, security, and tracking events remain enabled.
+Create the default policy implementation with
+`StructuredLogger.create(sink, production)`. Its concrete class is internal.
+When `production=true`, metric events are disabled by the core policy; audit,
+security, and tracking events remain enabled.
 
 `CorrelationContext` is an outbound port for transport-independent correlation
 values:

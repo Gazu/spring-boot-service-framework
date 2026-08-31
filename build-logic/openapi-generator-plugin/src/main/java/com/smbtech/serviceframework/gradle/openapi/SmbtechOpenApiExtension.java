@@ -14,7 +14,15 @@ public abstract class SmbtechOpenApiExtension {
     private final Property<String> groupId;
     private final DirectoryProperty outputDirectory;
     private final DirectoryProperty repositoryDirectory;
+    private final DirectoryProperty baselineDirectory;
+    private final Property<String> publicationRepositoryUrl;
+    private final Property<Boolean> requireBaseline;
+    private final Property<Boolean> failOnBreakingChanges;
+    private final Property<Boolean> publishModels;
+    private final Property<Boolean> publishServerApi;
+    private final Property<Boolean> publishClient;
     private final NamedDomainObjectContainer<SmbtechOpenApiSpec> specs;
+    private Action<? super SmbtechOpenApiSpec> specConfiguredAction = ignored -> {};
 
     /**
      * Creates the extension with project-relative output conventions.
@@ -24,13 +32,22 @@ public abstract class SmbtechOpenApiExtension {
      */
     @Inject
     public SmbtechOpenApiExtension(ObjectFactory objects, ProjectLayout layout) {
-        this.groupId = objects.property(String.class).convention("com.smbtech.openapi");
+        this.groupId = objects.property(String.class).convention("com.smbtech.contracts");
         this.outputDirectory =
                 objects.directoryProperty()
                         .convention(layout.getBuildDirectory().dir("generated/smbtech-openapi"));
         this.repositoryDirectory =
                 objects.directoryProperty()
                         .convention(layout.getBuildDirectory().dir("repository/openapi"));
+        this.baselineDirectory =
+                objects.directoryProperty()
+                        .convention(layout.getProjectDirectory().dir("src/main/openapi-baselines"));
+        this.publicationRepositoryUrl = objects.property(String.class);
+        this.requireBaseline = objects.property(Boolean.class).convention(false);
+        this.failOnBreakingChanges = objects.property(Boolean.class).convention(false);
+        this.publishModels = objects.property(Boolean.class).convention(true);
+        this.publishServerApi = objects.property(Boolean.class).convention(true);
+        this.publishClient = objects.property(Boolean.class).convention(true);
         this.specs =
                 objects.domainObjectContainer(
                         SmbtechOpenApiSpec.class,
@@ -65,6 +82,69 @@ public abstract class SmbtechOpenApiExtension {
     }
 
     /**
+     * Returns the directory containing immutable versioned contract baselines.
+     *
+     * @return configurable baseline directory
+     */
+    public DirectoryProperty getBaselineDirectory() {
+        return baselineDirectory;
+    }
+
+    /**
+     * Returns the optional remote Maven repository used to publish generated artifacts.
+     *
+     * @return configurable repository URL
+     */
+    public Property<String> getPublicationRepositoryUrl() {
+        return publicationRepositoryUrl;
+    }
+
+    /**
+     * Returns whether every current contract must have an exact baseline snapshot.
+     *
+     * @return configurable baseline requirement
+     */
+    public Property<Boolean> getRequireBaseline() {
+        return requireBaseline;
+    }
+
+    /**
+     * Returns whether any breaking change fails even after a valid major version increase.
+     *
+     * @return configurable strict compatibility flag
+     */
+    public Property<Boolean> getFailOnBreakingChanges() {
+        return failOnBreakingChanges;
+    }
+
+    /**
+     * Returns whether model artifacts are generated and published by default.
+     *
+     * @return configurable models artifact flag
+     */
+    public Property<Boolean> getPublishModels() {
+        return publishModels;
+    }
+
+    /**
+     * Returns whether server API artifacts are generated and published by default.
+     *
+     * @return configurable server API artifact flag
+     */
+    public Property<Boolean> getPublishServerApi() {
+        return publishServerApi;
+    }
+
+    /**
+     * Returns whether client artifacts are generated and published by default.
+     *
+     * @return configurable client artifact flag
+     */
+    public Property<Boolean> getPublishClient() {
+        return publishClient;
+    }
+
+    /**
      * Returns the named OpenAPI contract configurations.
      *
      * @return mutable contract configuration container
@@ -80,5 +160,10 @@ public abstract class SmbtechOpenApiExtension {
      */
     public void specs(Action<? super NamedDomainObjectContainer<SmbtechOpenApiSpec>> action) {
         action.execute(specs);
+        specs.forEach(spec -> specConfiguredAction.execute(spec));
+    }
+
+    void onSpecConfigured(Action<? super SmbtechOpenApiSpec> action) {
+        this.specConfiguredAction = action;
     }
 }

@@ -3,8 +3,7 @@ package com.smbtech.serviceframework.starter.restclient.autoconfigure;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
 import com.smbtech.serviceframework.httpclient.port.out.CredentialProvider;
 
-/** Provides credential resolver behavior. */
-public final class CredentialResolver {
+final class CredentialResolver {
 
     private final CredentialProvider credentialProvider;
 
@@ -13,7 +12,7 @@ public final class CredentialResolver {
      *
      * @param credentialProvider credential provider value
      */
-    public CredentialResolver(CredentialProvider credentialProvider) {
+    CredentialResolver(CredentialProvider credentialProvider) {
         this.credentialProvider = credentialProvider;
     }
 
@@ -25,7 +24,7 @@ public final class CredentialResolver {
      * @param fieldName field name value
      * @return resolve result
      */
-    public String resolve(String directValue, String credentialRef, String fieldName) {
+    String resolve(String directValue, String credentialRef, String fieldName) {
         if (credentialRef != null && !credentialRef.isBlank()) {
             return credentialProvider
                     .findSecret(credentialRef)

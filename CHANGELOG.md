@@ -12,6 +12,102 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 No unreleased changes.
 
+## 0.5.0 - 2026-08-31
+
+**Migration required:** This pre-1.0 release intentionally removes accidental
+public implementation APIs and includes source, binary, dependency, and
+configuration changes. Follow the
+[pre-1.0 migration guide](docs/guides/migrate-public-names-and-properties.md)
+before upgrading from `0.4.x`.
+
+### Highlights
+
+- Generate and publish independent OpenAPI models, Spring MVC server API, and
+  Spring HTTP interface client artifacts directly from a validated contract.
+- Scaffold Spring Boot 4.1 components with hexagonal boundaries and ArchUnit
+  verification from a generated server API artifact.
+- Establish a deliberately small public framework surface based on neutral
+  contracts, replaceable Spring beans, factories, contributors, and customizers.
+- Add reproducible, signed release bundles and read-only pull request gates for
+  compatibility, quality, security, and supply-chain evidence.
+
+### Added
+
+- Add a publishable OpenAPI Gradle plugin and template bundle backed by OpenAPI
+  Generator, with typed DSL configuration for artifacts, packages, and Maven
+  publication.
+- Add plugin-native contract validation, OpenAPI Diff and SemVer enforcement,
+  reproducibility hashes, generated consumer checks, migration reporting,
+  contract testing, and OpenAPI mock-server support.
+- Add canonical OpenAPI guides for generation, publication, versioning,
+  validation, testing, troubleshooting, and scaffolding, protected by a
+  documentation compatibility gate.
+- Add a project generator for Spring Boot 4.1 applications with delegate
+  implementation, hexagonal packages, configuration, tests, and ArchUnit rules.
+- Add a versioned release lifecycle, publication manifest, signed `build-logic`
+  artifacts, deterministic metadata, complete payload checksums, CycloneDX
+  SBOMs, and a verified release archive.
+- Add an explicit unsigned `releaseCandidate` lifecycle with commit, source
+  state, archive identity, and checksum evidence before tag creation.
+- Add pull request gates for Conventional Commits, Gradle quality checks,
+  compatibility, Gitleaks, Trivy, dependency review, evidence retention, and
+  branch-protection verification.
+- Add reviewed public API inventories and automated rules for package
+  boundaries, replaceable beans, Javadocs, source layout, test conventions, and
+  implementation-type containment.
+
+### Changed
+
+- Make the typed `smbtechOpenApi*` Gradle lifecycle the only supported OpenAPI
+  generation, publication, and compatibility workflow.
+- Align runtime serialization contracts with Spring Boot 4.1 and Jackson 3;
+  generated model annotations remain on `com.fasterxml.jackson.annotation`.
+- Rename REST client `credential-token-requestor-id` to `token-request-id` and
+  `AuthenticationException` to `HttpClientAuthenticationException`.
+- Move `MockService` to `starter.mock.api` and make
+  `JwtBearerTokenRequest` the canonical dynamic JWT bearer request contract.
+- Expose default behavior through supported factories including
+  `ThrowableErrorResolver`, `NotificationSanitizer`,
+  `NotificationAggregationPolicy`, `StructuredLogger`, `HttpClientCatalog`,
+  `MockCatalog`, `MockResponder`, `HexagonalProjectGenerator`, and
+  `FrameworkDiagnostics`.
+- Keep error handling, OAuth2, transport, logging, mock, Actuator, and generator
+  implementation classes behind their public ports and Spring replacement
+  points.
+- Remove the logging dependency from Commons and keep its notification API
+  framework-neutral.
+- Homologate tests with current production packages, remove obsolete source
+  directories, and enforce the maintained module structure automatically.
+
+### Removed
+
+- Remove the custom `spring-boot-service-framework-openapi-generator` runtime
+  module, embedded Groovy generator, spec version catalog, and legacy task
+  aliases.
+- Remove accidentally public concrete implementations from Error Core, error
+  handling, HTTP client, REST client, logging, Mock, Actuator, OpenAPI, and the
+  project generator. Supported interfaces, factories, properties, and
+  customizers replace direct construction.
+- Remove the misplaced core `ScopeValidator`, `MockRestClientException`, and
+  unsupported implementation markers that had no runtime behavior.
+
+### Fixed
+
+- Track embedded OpenAPI toolchain versions as build inputs so clean release
+  builds compile generated clients against the matching framework version.
+- Correct release workflow permissions and secret scope, verify the bundle
+  checksum before attestation, and retain lifecycle evidence.
+- Exclude examples and test tooling from the production SBOM, add Apache 2.0
+  license metadata, and validate CycloneDX 1.6 coverage and graph integrity.
+
+### Security
+
+- Prevent tokens, passwords, sensitive headers, downstream bodies, stack
+  traces, and diagnostic messages from leaking through public notifications.
+- Add Gitleaks and Trivy scanning with redacted evidence, dependency checksum
+  verification, signed Maven publication, provenance attestation, and strict
+  branch protection for `main`.
+
 ## 0.4.0 - 2026-07-29
 
 ### Added

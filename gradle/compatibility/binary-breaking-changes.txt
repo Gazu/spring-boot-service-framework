@@ -1,8 +1,8 @@
-# Approved pre-1.0 breaks against v0.3.0. Each entry is artifact|japicmp member exclusion.
-# These members moved from Jackson 2 to Jackson 3 and are documented in CHANGELOG.md.
+# Approved pre-1.0 breaks against v0.4.0. Each entry is artifact|japicmp member exclusion.
+# Every entry must be documented in CHANGELOG.md and the pre-1.0 migration guide.
 spring-boot-service-framework-openapi-contract-testing|com.smbtech.serviceframework.openapi.contract.OpenApiContractLoader#OpenApiContractLoader(com.fasterxml.jackson.databind.ObjectMapper)
 spring-boot-service-framework-openapi-contract-testing|com.smbtech.serviceframework.openapi.contract.OpenApiMvcContractTester#OpenApiMvcContractTester(org.springframework.test.web.servlet.MockMvc,com.fasterxml.jackson.databind.ObjectMapper,com.smbtech.serviceframework.openapi.contract.OpenApiContract)
-spring-boot-service-framework-openapi-generator|com.smbtech.serviceframework.openapi.generator.OpenApiBreakingChangeDetector#OpenApiBreakingChangeDetector(com.fasterxml.jackson.databind.ObjectMapper,com.smbtech.serviceframework.openapi.generator.OpenApiSpecReader)
+spring-boot-service-framework-starter-error-handling|com.smbtech.serviceframework.starter.errorhandling.api.CompositeErrorReporter
 spring-boot-service-framework-starter-error-handling|com.smbtech.serviceframework.starter.errorhandling.api.NotificationSerializer#serialize(com.smbtech.serviceframework.commons.notification.Notification,com.fasterxml.jackson.core.JsonGenerator,com.fasterxml.jackson.databind.SerializerProvider)
 spring-boot-service-framework-starter-mock|com.smbtech.serviceframework.starter.mock.api.MockService#exchangeMock(java.lang.String,com.fasterxml.jackson.core.type.TypeReference)
 spring-boot-service-framework-starter-mock|com.smbtech.serviceframework.starter.mock.api.MockService#response(java.lang.String,com.fasterxml.jackson.core.type.TypeReference)

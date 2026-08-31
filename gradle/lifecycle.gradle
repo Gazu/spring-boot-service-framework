@@ -1,5 +1,46 @@
 // Repository lifecycle tasks extracted from the root build.
 
+import groovy.io.FileType
+import groovy.json.JsonSlurper
+import java.net.URI
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+
+def releaseLifecycleContract = layout.projectDirectory.file(
+        'gradle/release-lifecycle.properties'
+)
+def releaseArtifactManifest = layout.projectDirectory.file(
+        'gradle/release-artifacts.txt'
+)
+def releaseWorkflow = layout.projectDirectory.file('.github/workflows/release.yml')
+def releaseDocumentation = layout.projectDirectory.file('docs/releasing.md')
+def releaseBuild = providers.gradleProperty('releaseBuild')
+        .map { it.toBoolean() }
+        .orElse(false)
+def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
+def privateRepositoryUsername = providers.gradleProperty('privateMavenUsername')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_USERNAME'))
+def privateRepositoryPassword = providers.gradleProperty('privateMavenPassword')
+        .orElse(providers.environmentVariable('PRIVATE_MAVEN_PASSWORD'))
+def signingKey = providers.gradleProperty('signingKey')
+        .orElse(providers.environmentVariable('SIGNING_KEY'))
+def signingPassword = providers.gradleProperty('signingPassword')
+        .orElse(providers.environmentVariable('SIGNING_PASSWORD'))
+def sha256InputStream = { InputStream input ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    byte[] buffer = new byte[8192]
+    int read
+    while ((read = input.read(buffer)) != -1) {
+        digest.update(buffer, 0, read)
+    }
+    digest.digest().encodeHex().toString()
+}
+def sha256File = { File source ->
+    source.withInputStream { input -> sha256InputStream(input) }
+}
+
 tasks.named('check') {
     dependsOn(
             tasks.named('actuatorContractCheck'),
@@ -52,7 +93,9 @@ tasks.register('baseline') {
             tasks.named('codeQualityCheck'),
             tasks.named('documentationCheck'),
             tasks.named('conventionPluginsCheck'),
-            tasks.named('openApiBuildLogicCheck'),
+            gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-gradle-plugin:check'),
+            gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-templates:check'),
+            tasks.named('smbtechOpenApiBuildLogicCheck'),
             tasks.named('platformCompatibilityCheck'),
             tasks.named('verifyErrorNotificationReuse'),
             ':spring-boot-service-framework-actuator-core:check',
@@ -61,8 +104,8 @@ tasks.register('baseline') {
             ':spring-boot-service-framework-mock-core:check',
             ':spring-boot-service-framework-error-core:check',
             ':spring-boot-service-framework-commons:check',
-            ':spring-boot-service-framework-openapi-generator:check',
             ':spring-boot-service-framework-openapi-contract-testing:check',
+            ':spring-boot-service-framework-project-generator:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:check',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:check',
@@ -75,7 +118,9 @@ tasks.register('publishLocalArtifacts') {
     group = 'publishing'
     description = 'Publishes every framework artifact into module-local Maven repositories.'
     dependsOn(
-            tasks.named('publishOpenApiArtifactsToLocalBuildRepository'),
+            gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-gradle-plugin:publishAllPublicationsToLocalBuildRepository'),
+            gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-templates:publishAllPublicationsToLocalBuildRepository'),
+            tasks.named('smbtechOpenApiPublishToLocalRepository'),
             ':spring-boot-service-framework-platform:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-actuator-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-logging-core:publishAllPublicationsToLocalBuildRepository',
@@ -83,14 +128,26 @@ tasks.register('publishLocalArtifacts') {
             ':spring-boot-service-framework-mock-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-error-core:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-commons:publishAllPublicationsToLocalBuildRepository',
-            ':spring-boot-service-framework-openapi-generator:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-openapi-contract-testing:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-project-generator:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-mock:publishAllPublicationsToLocalBuildRepository',
             ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-error-handling:publishAllPublicationsToLocalBuildRepository'
     )
+}
+
+tasks.register('publishBuildLogic') {
+    group = 'publishing'
+    description = 'Publishes the signed OpenAPI Gradle plugin, plugin marker, and templates.'
+    dependsOn gradle.includedBuild('build-logic').task(':publishReleaseArtifacts')
+}
+
+tasks.register('publishBuildLogicToMavenLocal') {
+    group = 'publishing'
+    description = 'Publishes the OpenAPI Gradle plugin, plugin marker, and templates to Maven local.'
+    dependsOn gradle.includedBuild('build-logic').task(':publishReleaseArtifactsToMavenLocal')
 }
 
 tasks.register('loggingConsumerSmoke', GradleBuild) {
@@ -125,6 +182,45 @@ tasks.register('actuatorConsumerSmoke', GradleBuild) {
     tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
+def supportedApiConsumerDirectory = file('gradle/compatibility/consumers/supported-api')
+def supportedApiConsumerSources = fileTree(supportedApiConsumerDirectory) {
+    include 'src/**/*.java'
+}
+
+tasks.register('validateSupportedApiConsumerImports') {
+    group = 'verification'
+    description = 'Ensures the compile-only contract consumer imports supported API package segments only.'
+    inputs.files(supportedApiConsumerSources)
+
+    doLast {
+        def supportedImport = ~/^com\.smbtech\.serviceframework(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*\.(?:api|domain|port)(?:\..+)?$/
+        def violations = []
+        supportedApiConsumerSources.files.sort().each { source ->
+            source.eachLine('UTF-8') { line, lineNumber ->
+                def matcher = line =~ /^import\s+(com\.smbtech\.serviceframework\.[A-Za-z0-9_$.]+);$/
+                if (matcher.find() && !(matcher.group(1) ==~ supportedImport)) {
+                    violations << "${rootDir.toPath().relativize(source.toPath())}:${lineNumber}: ${matcher.group(1)}"
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException(
+                    "Supported API consumer imports implementation packages:\n${violations.join('\n')}")
+        }
+    }
+}
+
+tasks.register('supportedApiConsumerCompile', GradleBuild) {
+    group = 'verification'
+    description = 'Compiles the supported extension-point consumer against published artifacts.'
+    dependsOn(
+            rootProject.tasks.named('publishLocalArtifacts'),
+            rootProject.tasks.named('validateSupportedApiConsumerImports')
+    )
+    dir = supportedApiConsumerDirectory
+    tasks = ['clean', 'compileJava']
+}
+
 tasks.register('consumerSmoke') {
     group = 'verification'
     description = 'Builds all standalone consumer examples against the published Maven artifacts.'
@@ -132,7 +228,8 @@ tasks.register('consumerSmoke') {
             tasks.named('actuatorConsumerSmoke'),
             tasks.named('errorHandlingConsumerSmoke'),
             tasks.named('loggingConsumerSmoke'),
-            tasks.named('restClientConsumerSmoke')
+            tasks.named('restClientConsumerSmoke'),
+            tasks.named('supportedApiConsumerCompile')
     )
 }
 
@@ -190,11 +287,175 @@ tasks.register('compatibilityCheck') {
             tasks.named('errorHandlingCompatibilityCheck'),
             tasks.named('binaryCompatibilityCheck'),
             tasks.named('moduleCompatibilityCheck'),
-            tasks.named('openApiCompatibilityCheck'),
+            tasks.named('openApiDocumentationCompatibilityCheck'),
+            tasks.named('smbtechOpenApiCompatibilityCheck'),
             tasks.named('platformCompatibilityCheck'),
+            tasks.named('pullRequestCiCompatibilityCheck'),
+            ':spring-boot-service-framework-project-generator:scaffoldingCompatibilityCheck',
             tasks.named('baseline'),
             tasks.named('consumerSmoke')
     )
+}
+
+tasks.register('releaseLifecycleCheck') {
+    group = 'verification'
+    description = 'Validates the versioned release lifecycle and its CI integration.'
+
+    inputs.files(
+            releaseLifecycleContract,
+            releaseArtifactManifest,
+            releaseWorkflow,
+            releaseDocumentation,
+            layout.projectDirectory.file('gradle/lifecycle.gradle')
+    )
+
+    doLast {
+        def contract = new Properties()
+        releaseLifecycleContract.asFile.withInputStream { contract.load(it) }
+        def expectedContract = [
+                schemaVersion   : '1',
+                gateTask        : 'releaseGate',
+                candidateTask   : 'releaseCandidate',
+                bundleTask      : 'releaseBundle',
+                releaseNotesTask: 'generateReleaseNotes',
+                verifyBundleTask: 'verifyReleaseBundle',
+                prepareTask     : 'prepareRelease',
+                publishTask     : 'publishRelease',
+                artifactManifest: 'gradle/release-artifacts.txt',
+                releaseProperty : 'releaseBuild',
+                remoteRepository: 'privateRegistry',
+                tagPrefix       : 'v',
+                bundleManifestSchema: '1',
+                bundleChecksumAlgorithm: 'SHA-256'
+        ]
+        def failures = []
+        expectedContract.each { property, expectedValue ->
+            if (contract.getProperty(property) != expectedValue) {
+                failures.add("${property} must be ${expectedValue}")
+            }
+        }
+        if (contract.size() != expectedContract.size()) {
+            failures.add('release lifecycle contract contains unreviewed properties')
+        }
+
+        def workflowText = releaseWorkflow.asFile.getText('UTF-8')
+        if (!workflowText.contains(
+                './gradlew clean prepareRelease -PreleaseBuild=true'
+        )) {
+            failures.add('release workflow must invoke prepareRelease')
+        }
+        if (!workflowText.contains('./gradlew publishRelease -PreleaseBuild=true')) {
+            failures.add('release workflow must invoke publishRelease')
+        }
+        [
+                'artifact-metadata: write',
+                'sha256sum --check',
+                'build/distributions/*.zip.sha256',
+                'build/release/documentation/RELEASE_NOTES.md',
+                'build/reports/release/lifecycle.txt',
+                'create-storage-record: false'
+        ].each { workflowMarker ->
+            if (!workflowText.contains(workflowMarker)) {
+                failures.add("release workflow must contain ${workflowMarker}")
+            }
+        }
+        if (workflowText =~ /(?m)^    env:\s*$/) {
+            failures.add('release secrets must be scoped to the steps that consume them')
+        }
+
+        def documentationText = releaseDocumentation.asFile.getText('UTF-8')
+        [
+                'releaseGate',
+                'releaseCandidate',
+                'generateReleaseNotes',
+                'prepareRelease',
+                'publishRelease',
+                'release-manifest.json',
+                'SHA256SUMS'
+        ].each { taskName ->
+            if (!documentationText.contains(taskName)) {
+                failures.add("release documentation must describe ${taskName}")
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Release lifecycle validation failed:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('validateReleasePreparation') {
+    group = 'verification'
+    description = 'Validates version and signing inputs required to prepare a release.'
+    dependsOn tasks.named('validateReleaseNotes')
+
+    doLast {
+        def failures = []
+        if (!releaseBuild.get()) {
+            failures.add('prepareRelease requires -PreleaseBuild=true')
+        }
+        if (!(project.version.toString() ==~ /(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)/)) {
+            failures.add("frameworkVersion must be a stable SemVer version: ${project.version}")
+        }
+        if (!signingKey.isPresent()) {
+            failures.add('prepareRelease requires SIGNING_KEY or -PsigningKey')
+        }
+        if (!file('CHANGELOG.md').getText('UTF-8').contains(
+                "## ${project.version} -"
+        )) {
+            failures.add("CHANGELOG.md must contain a ${project.version} release section")
+        }
+        def changelog = file('CHANGELOG.md').getText('UTF-8')
+        def unreleasedMatcher = (changelog =~ /(?s)## Unreleased\s+(.*?)\s+## /)
+        if (!unreleasedMatcher.find() ||
+                unreleasedMatcher.group(1).trim() != 'No unreleased changes.') {
+            failures.add('prepareRelease requires an empty Unreleased changelog section')
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Release preparation validation failed:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.register('validateReleasePublication') {
+    group = 'verification'
+    description = 'Validates private registry inputs required to publish a release.'
+    dependsOn tasks.named('validateReleasePreparation')
+
+    doLast {
+        def failures = []
+        if (!privateRepositoryUrl.isPresent()) {
+            failures.add('publishRelease requires PRIVATE_MAVEN_URL or -PprivateMavenUrl')
+        } else {
+            try {
+                def repositoryUri = new URI(privateRepositoryUrl.get())
+                if (!repositoryUri.isAbsolute()) {
+                    failures.add('private Maven repository URL must be absolute')
+                }
+            } catch (Exception ignored) {
+                failures.add('private Maven repository URL must be a valid URI')
+            }
+        }
+        if (!privateRepositoryUsername.isPresent()) {
+            failures.add(
+                    'publishRelease requires PRIVATE_MAVEN_USERNAME or -PprivateMavenUsername'
+            )
+        }
+        if (!privateRepositoryPassword.isPresent()) {
+            failures.add(
+                    'publishRelease requires PRIVATE_MAVEN_PASSWORD or -PprivateMavenPassword'
+            )
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Release publication validation failed:\n' + failures.join('\n')
+            )
+        }
+    }
 }
 
 tasks.register('releaseGate') {
@@ -204,6 +465,369 @@ tasks.register('releaseGate') {
             tasks.named('compatibilityCheck'),
             tasks.named('nativeAotCheck'),
             tasks.named('platformCompatibilityCheck'),
+            tasks.named('releaseLifecycleCheck'),
+            tasks.named('validateReleaseNotes'),
             tasks.named('supplyChainCheck')
+    )
+}
+
+tasks.named('releaseBundle') {
+    mustRunAfter tasks.named('releaseGate')
+}
+
+tasks.register('verifyReleaseBundle') {
+    group = 'verification'
+    description = 'Validates the complete release archive, coordinates, and checksums.'
+    dependsOn tasks.named('generateReleaseBundleChecksum'), tasks.named('releaseGate')
+
+    def stagedRepository = layout.buildDirectory.dir('release/repository')
+    def releaseArchive = layout.buildDirectory.file(
+            "distributions/${project.name}-${project.version}.zip"
+    )
+    def releaseArchiveChecksum = layout.buildDirectory.file(
+            "distributions/${project.name}-${project.version}.zip.sha256"
+    )
+    def lifecycleReport = layout.buildDirectory.file('reports/release/lifecycle.txt')
+    inputs.file(releaseArtifactManifest)
+    inputs.dir(stagedRepository)
+    inputs.file(releaseArchive)
+    inputs.file(releaseArchiveChecksum)
+    inputs.property('releaseBuild', releaseBuild)
+    outputs.file(lifecycleReport)
+
+    doLast {
+        def failures = []
+        def coordinates = []
+        releaseArtifactManifest.asFile.eachLine('UTF-8') { line ->
+            def normalized = line.trim()
+            if (!normalized || normalized.startsWith('#')) {
+                return
+            }
+            def parts = normalized.split('\\|', -1)*.trim()
+            if (parts.size() == 3) {
+                coordinates.add([kind: parts[0], groupId: parts[1], artifactId: parts[2]])
+            }
+        }
+
+        def repositoryDirectory = stagedRepository.get().asFile
+        def allowedVersionDirectories = coordinates.collect { coordinate ->
+            coordinate.groupId.replace('.', '/') + '/' + coordinate.artifactId +
+                    "/${project.version}/"
+        } as Set
+        repositoryDirectory.eachFileRecurse(FileType.FILES) { repositoryFile ->
+            def relativePath = repositoryDirectory.toPath()
+                    .relativize(repositoryFile.toPath()).toString().replace('\\', '/')
+            if (!allowedVersionDirectories.any { relativePath.startsWith(it) }) {
+                failures.add("unexpected staged artifact: ${relativePath}")
+            }
+        }
+
+        coordinates.each { coordinate ->
+            def versionDirectory = new File(
+                    repositoryDirectory,
+                    coordinate.groupId.replace('.', '/') + '/' + coordinate.artifactId +
+                            '/' + project.version
+            )
+            def artifactBaseName = "${coordinate.artifactId}-${project.version}"
+            def requiredSuffixes = ['.pom']
+            if (coordinate.kind == 'platform') {
+                requiredSuffixes.add('.module')
+            } else if (coordinate.kind != 'plugin-marker') {
+                requiredSuffixes.addAll([
+                        '.module',
+                        '.jar',
+                        '-sources.jar',
+                        '-javadoc.jar'
+                ])
+            }
+
+            requiredSuffixes.each { suffix ->
+                def artifactFile = new File(
+                        versionDirectory,
+                        "${artifactBaseName}${suffix}"
+                )
+                if (!artifactFile.isFile()) {
+                    failures.add(
+                            "missing staged ${suffix}: " +
+                                    "${coordinate.groupId}:${coordinate.artifactId}"
+                    )
+                    return
+                }
+                def sha256Sidecar = new File("${artifactFile}.sha256")
+                if (!sha256Sidecar.isFile() ||
+                        sha256Sidecar.getText('UTF-8').trim() != sha256File(artifactFile)) {
+                    failures.add(
+                            "invalid SHA-256 sidecar for ${artifactFile.name}"
+                    )
+                }
+                if (releaseBuild.get() && !new File("${artifactFile}.asc").isFile()) {
+                    failures.add(
+                            "missing signature for ${coordinate.groupId}:" +
+                                    "${coordinate.artifactId}:${suffix}"
+                    )
+                }
+            }
+        }
+
+        def archiveFile = releaseArchive.get().asFile
+        def archiveChecksumFile = releaseArchiveChecksum.get().asFile
+        if (!archiveFile.isFile()) {
+            failures.add('release archive was not generated')
+        }
+        if (!archiveChecksumFile.isFile()) {
+            failures.add('release archive checksum was not generated')
+        } else {
+            def checksumMatcher = archiveChecksumFile.getText('UTF-8').trim() =~
+                    /^([0-9a-f]{64})  (.+)$/
+            if (!checksumMatcher.matches() || checksumMatcher.group(2) != archiveFile.name ||
+                    checksumMatcher.group(1) != sha256File(archiveFile)) {
+                failures.add('release archive checksum is invalid')
+            }
+        }
+
+        def archiveEntryCount = 0
+        if (archiveFile.isFile()) {
+            def archive = new ZipFile(archiveFile)
+            try {
+                def entries = archive.entries().toList()
+                def entryNames = entries.collect { it.name }
+                archiveEntryCount = entries.count { !it.directory }
+                def duplicateEntries = entryNames.groupBy { it }
+                        .findAll { ignored, matching -> matching.size() > 1 }
+                        .keySet()
+                duplicateEntries.each { failures.add("duplicate archive entry: ${it}") }
+                entryNames.findAll { name ->
+                    name.startsWith('/') || name.contains('../') || name.contains('\\')
+                }.each { failures.add("unsafe archive entry: ${it}") }
+                if (entryNames.any { it.startsWith('repository/com/smbtech/contracts/') }) {
+                    failures.add('release archive contains generated OpenAPI example artifacts')
+                }
+
+                def requiredBundleEntries = [
+                        'documentation/README.md',
+                        'documentation/CHANGELOG.md',
+                        'documentation/RELEASE_NOTES.md',
+                        'documentation/LICENSE',
+                        'documentation/releasing.md',
+                        'metadata/release-artifacts.txt',
+                        'metadata/release-lifecycle.properties',
+                        'metadata/release-manifest.json',
+                        'metadata/SHA256SUMS',
+                        'sbom/bom.json',
+                        'sbom/bom.xml'
+                ]
+                requiredBundleEntries.findAll { !entryNames.contains(it) }.each {
+                    failures.add("missing archive entry: ${it}")
+                }
+
+                def checksumEntry = archive.getEntry('metadata/SHA256SUMS')
+                if (checksumEntry != null) {
+                    def checksumLines = archive.getInputStream(checksumEntry)
+                            .getText('UTF-8').readLines().findAll { it }
+                    def payloadChecksums = [:]
+                    checksumLines.each { checksumLine ->
+                        def matcher = checksumLine =~ /^([0-9a-f]{64})  (.+)$/
+                        if (!matcher.matches()) {
+                            failures.add("invalid SHA256SUMS entry: ${checksumLine}")
+                            return
+                        }
+                        def payloadPath = matcher.group(2)
+                        if (payloadChecksums.containsKey(payloadPath)) {
+                            failures.add("duplicate SHA256SUMS path: ${payloadPath}")
+                        }
+                        payloadChecksums[payloadPath] = matcher.group(1)
+                    }
+                    def expectedPayloadPaths = entries.findAll {
+                        !it.directory && it.name != 'metadata/SHA256SUMS'
+                    }.collect { it.name }.toSet()
+                    if (payloadChecksums.keySet() != expectedPayloadPaths) {
+                        failures.add('SHA256SUMS does not cover the exact release payload')
+                    }
+                    payloadChecksums.each { payloadPath, expectedChecksum ->
+                        def payloadEntry = archive.getEntry(payloadPath)
+                        if (payloadEntry == null) {
+                            return
+                        }
+                        def actualChecksum = archive.getInputStream(payloadEntry).withCloseable {
+                            sha256InputStream(it)
+                        }
+                        if (actualChecksum != expectedChecksum) {
+                            failures.add("checksum mismatch: ${payloadPath}")
+                        }
+                    }
+                }
+
+                def manifestEntry = archive.getEntry('metadata/release-manifest.json')
+                if (manifestEntry != null) {
+                    def manifest = archive.getInputStream(manifestEntry).withCloseable {
+                        new JsonSlurper().parse(it)
+                    }
+                    if (manifest.schema_version != 1 ||
+                            manifest.name != project.name ||
+                            manifest.version != project.version.toString() ||
+                            manifest.tag != "v${project.version}" ||
+                            manifest.release_notes !=
+                                    'documentation/RELEASE_NOTES.md') {
+                        failures.add('release manifest identity is invalid')
+                    }
+                    def expectedCoordinates = coordinates.collect {
+                        "${it.kind}|${it.groupId}|${it.artifactId}|${project.version}"
+                    }.toSet()
+                    def manifestCoordinates = (manifest.artifacts ?: []).collect {
+                        "${it.kind}|${it.group_id}|${it.artifact_id}|${it.version}"
+                    }.toSet()
+                    if (manifestCoordinates != expectedCoordinates) {
+                        failures.add('release manifest coordinates do not match the contract')
+                    }
+                }
+            } finally {
+                archive.close()
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Release bundle validation failed:\n' + failures.join('\n')
+            )
+        }
+
+        def reportFile = lifecycleReport.get().asFile
+        reportFile.parentFile.mkdirs()
+        reportFile.setText(
+                "version=${project.version}\n" +
+                        "artifacts=${coordinates.size()}\n" +
+                        "signed=${releaseBuild.get()}\n" +
+                        "archive=${archiveFile.name}\n" +
+                        "checksum=${archiveChecksumFile.name}\n" +
+                        "files=${archiveEntryCount}\n",
+                'UTF-8'
+        )
+    }
+}
+
+tasks.register('releaseCandidate') {
+    group = 'publishing'
+    description = 'Builds and verifies an unpublished release candidate for review.'
+    dependsOn tasks.named('verifyReleaseBundle')
+
+    def archive = layout.buildDirectory.file(
+            "distributions/${project.name}-${project.version}.zip"
+    )
+    def archiveChecksum = layout.buildDirectory.file(
+            "distributions/${project.name}-${project.version}.zip.sha256"
+    )
+    def releaseNotes = layout.buildDirectory.file(
+            'release/documentation/RELEASE_NOTES.md'
+    )
+    def candidateReport = layout.buildDirectory.file(
+            'reports/release/candidate.properties'
+    )
+    inputs.files(archive, archiveChecksum, releaseNotes)
+    inputs.property('frameworkVersion', project.version.toString())
+    outputs.file(candidateReport)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        if (releaseBuild.get()) {
+            throw new GradleException(
+                    'releaseCandidate must run without -PreleaseBuild=true; ' +
+                            'use prepareRelease for a signed tag build.'
+            )
+        }
+        def commit = providers.exec {
+            commandLine 'git', 'rev-parse', 'HEAD'
+        }.standardOutput.asText.get().trim()
+        def sourceStatus = providers.exec {
+            commandLine 'git', 'status', '--porcelain'
+        }.standardOutput.asText.get()
+        def checksum = archiveChecksum.get().asFile.getText('UTF-8')
+                .trim().split('\\s+', 2)[0]
+        def output = candidateReport.get().asFile
+        output.parentFile.mkdirs()
+        output.setText(
+                "schema_version=1\n" +
+                        "status=VERIFIED\n" +
+                        "version=${project.version}\n" +
+                        "tag=v${project.version}\n" +
+                        "commit=${commit}\n" +
+                        "source_clean=${sourceStatus.trim().isEmpty()}\n" +
+                        "signed=false\n" +
+                        "published=false\n" +
+                        "archive=${archive.get().asFile.name}\n" +
+                        "archive_sha256=${checksum}\n" +
+                        "release_notes=build/release/documentation/RELEASE_NOTES.md\n",
+                'UTF-8'
+        )
+    }
+}
+
+tasks.register('prepareRelease') {
+    group = 'publishing'
+    description = 'Runs the release gate and creates a verified signed release bundle.'
+    dependsOn(
+            tasks.named('validateReleasePreparation'),
+            tasks.named('verifyReleaseBundle')
+    )
+}
+
+def mainBuildRemotePublicationTasks = providers.provider {
+    subprojects.collectMany { candidate ->
+        candidate.tasks.withType(PublishToMavenRepository).findAll { publishTask ->
+            publishTask.name.endsWith('ToPrivateRegistryRepository')
+        }
+    }
+}
+
+tasks.register('publishBuildLogicRelease', Exec) {
+    group = 'publishing'
+    description = 'Publishes the included build-logic artifacts after release preparation.'
+    dependsOn(
+            tasks.named('prepareRelease'),
+            tasks.named('validateReleasePublication')
+    )
+    workingDir rootDir
+    commandLine(
+            './gradlew',
+            '-p',
+            'build-logic',
+            'publishReleaseArtifacts',
+            '-PreleaseBuild=true',
+            '--no-daemon',
+            '--stacktrace'
+    )
+    doFirst {
+        environment 'PRIVATE_MAVEN_URL', privateRepositoryUrl.get()
+        environment 'PRIVATE_MAVEN_USERNAME', privateRepositoryUsername.get()
+        environment 'PRIVATE_MAVEN_PASSWORD', privateRepositoryPassword.get()
+        environment 'SIGNING_KEY', signingKey.get()
+        environment 'SIGNING_PASSWORD', signingPassword.getOrElse('')
+    }
+}
+
+subprojects { publishedProject ->
+    publishedProject.tasks.withType(PublishToMavenRepository).configureEach { publishTask ->
+        if (publishTask.name.endsWith('ToPrivateRegistryRepository')) {
+            dependsOn rootProject.tasks.named('validateReleasePublication')
+            mustRunAfter rootProject.tasks.named('prepareRelease')
+        }
+    }
+}
+
+tasks.register('publishRelease') {
+    group = 'publishing'
+    description = 'Publishes every verified and signed framework release artifact.'
+    dependsOn(
+            mainBuildRemotePublicationTasks,
+            tasks.named('prepareRelease'),
+            tasks.named('publishBuildLogicRelease'),
+            tasks.named('validateReleasePublication')
+    )
+}
+
+tasks.register('pullRequestGate') {
+    group = 'verification'
+    description = 'Runs the complete, non-publishing verification contract for pull requests.'
+    dependsOn(
+            tasks.named('validatePullRequestCiContract'),
+            tasks.named('releaseGate')
     )
 }

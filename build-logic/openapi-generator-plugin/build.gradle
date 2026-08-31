@@ -1,8 +1,9 @@
 plugins {
     id 'java-gradle-plugin'
+    id 'maven-publish'
 }
 
-description = 'Internal Gradle plugin for SMB Tech OpenAPI contract artifact generation'
+description = 'Gradle plugin for SMB Tech OpenAPI contract artifact generation and publication'
 
 def frameworkProperties = new Properties()
 rootProject.file('../gradle.properties').withInputStream { frameworkProperties.load(it) }
@@ -11,6 +12,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 gradlePlugin {
@@ -24,19 +27,59 @@ gradlePlugin {
     }
 }
 
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            name = 'Spring Boot Service Framework - OpenAPI Gradle Plugin'
+            description = project.description
+        }
+    }
+    repositories {
+        maven {
+            name = 'localBuild'
+            url = rootProject.layout.buildDirectory.dir('repository')
+        }
+
+    }
+}
+
 dependencies {
     compileOnly "org.jspecify:jspecify:${frameworkProperties.getProperty('jspecifyVersion')}"
+    implementation project(':spring-boot-service-framework-openapi-templates')
+    implementation "org.openapitools:openapi-generator:${frameworkProperties.getProperty('openApiGeneratorVersion')}"
+    implementation "org.openapitools.openapidiff:openapi-diff-core:${frameworkProperties.getProperty('openApiDiffVersion')}"
     implementation "tools.jackson.core:jackson-databind:${frameworkProperties.getProperty('jackson3Version')}"
     implementation "tools.jackson.dataformat:jackson-dataformat-yaml:${frameworkProperties.getProperty('jackson3Version')}"
+    constraints {
+        implementation "com.github.jknack:handlebars:${frameworkProperties.getProperty('handlebarsVersion')}"
+    }
 
     testImplementation gradleTestKit()
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.3'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
+    testImplementation "org.junit.jupiter:junit-jupiter:${frameworkProperties.getProperty('junitVersion')}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:${frameworkProperties.getProperty('junitVersion')}"
+}
+
+def openApiToolchainMetadata = [
+        frameworkVersion: frameworkProperties.getProperty('frameworkVersion'),
+        springBootVersion: frameworkProperties.getProperty('springBootVersion'),
+        openApiGeneratorVersion: frameworkProperties.getProperty('openApiGeneratorVersion')
+]
+
+tasks.named('processResources') {
+    inputs.properties(openApiToolchainMetadata)
+    filesMatching('com/smbtech/serviceframework/gradle/openapi/openapi-toolchain.properties') {
+        expand(openApiToolchainMetadata)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
 }
 
 tasks.withType(Javadoc).configureEach {

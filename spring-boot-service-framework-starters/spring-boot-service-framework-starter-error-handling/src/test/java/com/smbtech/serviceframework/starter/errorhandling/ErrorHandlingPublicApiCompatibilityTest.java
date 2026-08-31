@@ -13,15 +13,6 @@ import com.smbtech.serviceframework.error.NotificationSanitizer;
 import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.ServiceException;
 import com.smbtech.serviceframework.error.ThrowableErrorResolver;
-import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultOAuth2SecurityChallengeWriter;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultOAuth2SecurityMetadataFactory;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultRequiredScopeResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultSecurityAuthenticationFailureResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultSecurityAuthorizationFailureResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAccessDeniedHandler;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
-import com.smbtech.serviceframework.starter.errorhandling.api.CompositeErrorReporter;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorExposurePolicy;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorMetricsRecorder;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
@@ -42,8 +33,6 @@ import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityF
 import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityFailureReason;
 import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityFailureResolution;
 import com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties;
-import com.smbtech.serviceframework.starter.errorhandling.customizer.ErrorCustomizationPipeline;
-import com.smbtech.serviceframework.starter.errorhandling.customizer.StandardErrorMetadataCustomizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Constructor;
@@ -73,13 +62,6 @@ class ErrorHandlingPublicApiCompatibilityTest {
                         ResolvedError.class,
                         ServiceException.class,
                         ThrowableErrorResolver.class,
-                        SecurityAccessDeniedHandler.class,
-                        SecurityAuthenticationEntryPoint.class,
-                        DefaultRequiredScopeResolver.class,
-                        DefaultOAuth2SecurityMetadataFactory.class,
-                        DefaultOAuth2SecurityChallengeWriter.class,
-                        DefaultSecurityAuthenticationFailureResolver.class,
-                        DefaultSecurityAuthorizationFailureResolver.class,
                         OAuth2SecurityError.class,
                         OAuth2SecurityChallengeWriter.class,
                         OAuth2SecurityMetadataFactory.class,
@@ -94,8 +76,6 @@ class ErrorHandlingPublicApiCompatibilityTest {
                         ErrorHandlingProperties.Response.class,
                         ErrorHandlingProperties.Security.class,
                         ErrorHandlingProperties.OAuth2Metadata.class,
-                        StandardErrorMetadataCustomizer.class,
-                        CompositeErrorReporter.class,
                         ErrorExposurePolicy.class,
                         ErrorMetricsRecorder.class,
                         ErrorReporter.class,
@@ -112,6 +92,37 @@ class ErrorHandlingPublicApiCompatibilityTest {
                                 assertThat(Modifier.isPublic(type.getModifiers()))
                                         .as("%s must remain public", type.getName())
                                         .isTrue());
+    }
+
+    @Test
+    void keepsDefaultAdaptersOutsideThePublicApi() {
+        List<String> internalTypes =
+                List.of(
+                        "com.smbtech.serviceframework.starter.errorhandling.api.CompositeErrorReporter",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultOAuth2SecurityChallengeWriter",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultOAuth2SecurityMetadataFactory",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultRequiredScopeResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultSecurityAuthenticationFailureResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultSecurityAuthorizationFailureResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.SecurityAccessDeniedHandler",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.SecurityAuthenticationEntryPoint",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultNotificationHttpStatusResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.HttpClientExceptionResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.NotificationHttpMessageConverter",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.NotificationWebMvcConfigurer",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.ServiceFrameworkExceptionHandler",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.SpringMvcExceptionResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.internal.ValidationExceptionResolver",
+                        "com.smbtech.serviceframework.starter.errorhandling.adapter.out.logging.StructuredErrorReporter",
+                        "com.smbtech.serviceframework.starter.errorhandling.adapter.out.metrics.MicrometerErrorMetricsRecorder",
+                        "com.smbtech.serviceframework.starter.errorhandling.serialization.NotificationMetadataKeyNormalizer");
+
+        assertThat(internalTypes)
+                .allSatisfy(
+                        typeName ->
+                                assertThat(Modifier.isPublic(loadClass(typeName).getModifiers()))
+                                        .as("%s must remain internal", typeName)
+                                        .isFalse());
     }
 
     @Test
@@ -259,6 +270,7 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 HttpServletRequest.class,
                 int.class);
         assertPublicMethod(ErrorReporter.class, "order", int.class);
+        assertPublicMethod(ErrorReporter.class, "composite", ErrorReporter.class, List.class);
         assertPublicMethod(
                 ErrorMetricsRecorder.class, "record", void.class, ResolvedError.class, int.class);
         assertPublicMethod(
@@ -279,9 +291,6 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 ResolvedError.class,
                 HttpServletRequest.class);
         assertPublicMethod(ResolvedErrorCustomizer.class, "order", int.class);
-        assertPublicConstructor(StandardErrorMetadataCustomizer.class);
-        assertPublicConstructor(StandardErrorMetadataCustomizer.class, CorrelationContext.class);
-        assertPublicMethod(StandardErrorMetadataCustomizer.class, "order", int.class);
         assertPublicMethod(
                 NotificationResponseCustomizer.class,
                 "customize",
@@ -303,28 +312,18 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 Notification.class,
                 JsonGenerator.class,
                 SerializationContext.class);
-        assertPublicConstructor(CompositeErrorReporter.class, List.class);
-        assertPublicMethod(CompositeErrorReporter.class, "reporters", List.class);
         assertPublicMethod(
                 RequiredScopeResolver.class,
                 "resolve",
                 java.util.Set.class,
                 HttpServletRequest.class,
                 org.springframework.security.core.Authentication.class);
-        assertPublicConstructor(DefaultRequiredScopeResolver.class);
         assertPublicMethod(
                 OAuth2SecurityMetadataFactory.class,
                 "create",
                 com.smbtech.serviceframework.error.metadata.StandardErrorMetadata.class,
                 SecurityFailureContext.class,
                 SecurityFailureResolution.class);
-        assertPublicConstructor(DefaultOAuth2SecurityMetadataFactory.class);
-        assertPublicConstructor(
-                DefaultOAuth2SecurityMetadataFactory.class,
-                boolean.class,
-                boolean.class,
-                boolean.class,
-                boolean.class);
         assertPublicMethod(
                 OAuth2SecurityChallengeWriter.class,
                 "write",
@@ -333,89 +332,16 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 HttpServletResponse.class,
                 SecurityFailureContext.class,
                 SecurityFailureResolution.class);
-        assertPublicConstructor(DefaultOAuth2SecurityChallengeWriter.class);
         assertPublicMethod(
                 SecurityAuthenticationFailureResolver.class,
                 "resolve",
                 SecurityFailureResolution.class,
                 SecurityFailureContext.class);
-        assertPublicConstructor(DefaultSecurityAuthenticationFailureResolver.class);
         assertPublicMethod(
                 SecurityAuthorizationFailureResolver.class,
                 "resolve",
                 SecurityFailureResolution.class,
                 SecurityFailureContext.class);
-        assertPublicConstructor(DefaultSecurityAuthorizationFailureResolver.class);
-    }
-
-    @Test
-    void keepsSecurityHandlersCompatible() {
-        assertThat(SecurityAuthenticationEntryPoint.ERROR_CODE)
-                .isEqualTo("E_SERVICE_FRAMEWORK_SECURITY_AUTHENTICATION_0001");
-        assertThat(SecurityAuthenticationEntryPoint.PUBLIC_MESSAGE)
-                .isEqualTo("Authentication is required");
-        assertThat(SecurityAccessDeniedHandler.ERROR_CODE)
-                .isEqualTo("E_SERVICE_FRAMEWORK_SECURITY_AUTHORIZATION_0001");
-        assertThat(SecurityAccessDeniedHandler.PUBLIC_MESSAGE).isEqualTo("Access is denied");
-
-        assertSecurityHandlerConstructors(SecurityAuthenticationEntryPoint.class);
-        assertSecurityHandlerConstructors(SecurityAccessDeniedHandler.class);
-        assertPublicConstructor(
-                SecurityAuthenticationEntryPoint.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                OAuth2SecurityMetadataFactory.class);
-        assertPublicConstructor(
-                SecurityAccessDeniedHandler.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                OAuth2SecurityMetadataFactory.class);
-        assertPublicConstructor(
-                SecurityAuthenticationEntryPoint.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                SecurityAuthenticationFailureResolver.class,
-                OAuth2SecurityChallengeWriter.class);
-        assertPublicConstructor(
-                SecurityAuthenticationEntryPoint.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                SecurityAuthenticationFailureResolver.class,
-                OAuth2SecurityMetadataFactory.class,
-                OAuth2SecurityChallengeWriter.class);
-        assertPublicConstructor(
-                SecurityAccessDeniedHandler.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                SecurityAuthorizationFailureResolver.class,
-                RequiredScopeResolver.class,
-                OAuth2SecurityChallengeWriter.class);
-        assertPublicConstructor(
-                SecurityAccessDeniedHandler.class,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class,
-                SecurityAuthorizationFailureResolver.class,
-                RequiredScopeResolver.class,
-                OAuth2SecurityMetadataFactory.class,
-                OAuth2SecurityChallengeWriter.class);
     }
 
     @Test
@@ -541,15 +467,6 @@ class ErrorHandlingPublicApiCompatibilityTest {
         assertPublicMethod(OAuth2SecurityError.class, "isPresent", boolean.class);
         assertPublicMethod(SecurityFailureContext.class, "hasRequiredScopes", boolean.class);
         assertPublicMethod(SecurityFailureResolution.class, "hasOAuth2Error", boolean.class);
-
-        assertThat(DefaultOAuth2SecurityMetadataFactory.RFC6750_ERROR_URI)
-                .isEqualTo("https://www.rfc-editor.org/rfc/rfc6750#section-3.1");
-        assertThat(DefaultOAuth2SecurityMetadataFactory.INVALID_REQUEST_DESCRIPTION)
-                .isEqualTo("The Bearer token request is invalid");
-        assertThat(DefaultOAuth2SecurityMetadataFactory.INVALID_TOKEN_DESCRIPTION)
-                .isEqualTo("The access token is invalid");
-        assertThat(DefaultOAuth2SecurityMetadataFactory.INSUFFICIENT_SCOPE_DESCRIPTION)
-                .isEqualTo("The access token does not grant the required scope");
     }
 
     @Test
@@ -602,29 +519,6 @@ class ErrorHandlingPublicApiCompatibilityTest {
                 boolean.class);
     }
 
-    private static void assertSecurityHandlerConstructors(Class<?> handlerType) {
-        assertPublicConstructor(
-                handlerType, NotificationResponseFactory.class, NotificationResponseWriter.class);
-        assertPublicConstructor(
-                handlerType,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class);
-        assertPublicConstructor(
-                handlerType,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class);
-        assertPublicConstructor(
-                handlerType,
-                NotificationResponseFactory.class,
-                NotificationResponseWriter.class,
-                ErrorReporter.class,
-                ErrorMetricsRecorder.class,
-                ErrorCustomizationPipeline.class);
-    }
-
     private static void assertPublicConstructor(Class<?> type, Class<?>... parameterTypes) {
         Constructor<?> constructor = findConstructor(type, parameterTypes);
         assertThat(Modifier.isPublic(constructor.getModifiers()))
@@ -637,6 +531,14 @@ class ErrorHandlingPublicApiCompatibilityTest {
             return type.getDeclaredConstructor(parameterTypes);
         } catch (NoSuchMethodException exception) {
             throw new AssertionError("Missing constructor on " + type.getName(), exception);
+        }
+    }
+
+    private static Class<?> loadClass(String typeName) {
+        try {
+            return Class.forName(typeName);
+        } catch (ClassNotFoundException exception) {
+            throw new AssertionError("Missing internal type " + typeName, exception);
         }
     }
 

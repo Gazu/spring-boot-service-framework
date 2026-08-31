@@ -4,7 +4,7 @@ import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import org.apache.hc.client5.http.config.RequestConfig;
 
 /** Provides request config configurator behavior. */
-public final class RequestConfigConfigurator {
+final class RequestConfigConfigurator {
     /** Creates a request config configurator instance. */
     public RequestConfigConfigurator() {}
 

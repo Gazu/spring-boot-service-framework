@@ -9,7 +9,7 @@ HTTP client errors, unexpected failures, and Spring Security 401/403 responses.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }
@@ -125,7 +125,7 @@ Applications that need a different selection policy can replace the
 
 ```mermaid
 flowchart LR
-    Failure["Throwable"] --> Resolver["ThrowableErrorResolutionPipeline"]
+    Failure["Throwable"] --> Resolver["ThrowableErrorResolver composition"]
     Resolver --> Resolved["ResolvedError"]
     Resolved --> SecurityMetadata["Security metadata enrichment when applicable"]
     SecurityMetadata --> Customize["Ordered ResolvedErrorCustomizer"]
@@ -138,10 +138,11 @@ flowchart LR
     Prepared --> Json["Adapter writes snake_case JSON"]
 ```
 
-Resolvers run by ascending `order()`. The first supporting resolver wins. If no
-resolver supports the failure, `FallbackThrowableErrorResolver` returns a safe
-internal error. Diagnostics remain in `ResolvedError.diagnosticMessage()` for
-logging and are not copied to the response.
+Resolvers run by ascending `order()`. The first supporting resolver wins.
+`ThrowableErrorResolver.composite(...)` supplies a safe fallback when no
+resolver supports the failure. Diagnostics remain in
+`ResolvedError.diagnosticMessage()` for logging and are not copied to the
+response.
 
 MVC and Spring Security share the same internal response pipeline. For security
 failures, framework-controlled metadata is enriched before application
@@ -218,10 +219,10 @@ shape is defined in the [snake-case contract](error-handling/json-contract.md).
 ## Downstream Errors
 
 When `HttpClientResponseException` is on the classpath,
-`HttpClientExceptionResolver` maps it to `DOWNSTREAM` or `RATE_LIMIT`. Neither
-response exposure includes the downstream URI, headers, body, cookies, cause,
-or source message. Complete details remain available only in the diagnostic
-path used by reporters and logging.
+the built-in downstream resolver maps it to `DOWNSTREAM` or `RATE_LIMIT`.
+Neither response exposure includes the downstream URI, headers, body, cookies,
+cause, or source message. Complete details remain available only in the
+diagnostic path used by reporters and logging.
 
 ## Spring Security
 

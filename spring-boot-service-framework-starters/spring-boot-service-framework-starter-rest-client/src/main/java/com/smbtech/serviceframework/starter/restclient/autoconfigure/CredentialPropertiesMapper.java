@@ -8,10 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Provides credential properties mapper behavior. */
-public final class CredentialPropertiesMapper {
-    /** Creates a credential properties mapper instance. */
-    public CredentialPropertiesMapper() {}
+final class CredentialPropertiesMapper {
+    CredentialPropertiesMapper() {}
 
     /**
      * Performs the map operation.
@@ -19,7 +17,7 @@ public final class CredentialPropertiesMapper {
      * @param properties properties value
      * @return map result
      */
-    public Map<String, CredentialDefinition> map(RestClientProperties properties) {
+    Map<String, CredentialDefinition> map(RestClientProperties properties) {
         Map<String, CredentialDefinition> definitions = new LinkedHashMap<>();
         RestClientProperties.Authentication authentication =
                 Objects.requireNonNullElseGet(

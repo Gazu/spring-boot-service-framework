@@ -5,30 +5,29 @@ implementation with the committed OpenAPI contract.
 
 ## 1. Add The Test Dependency
 
+Add the test-scope module and Spring Boot test support as documented in
+[OpenAPI Contract Testing](../openapi-contract-testing.md#dependency).
+
+## 2. Load The Published Contract
+
+The generated models JAR already contains the exact source contract. Add it to
+the test classpath and load its versioned resource:
+
 ```groovy
 dependencies {
-    testImplementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
-    )
-    testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0'
 }
 ```
 
-## 2. Put The Contract On The Test Classpath
-
-```text
-src/test/resources/openapi/inventory-api.yaml
+```java
+OpenApiContract contract = new OpenApiContractLoader().loadClasspath(
+        "META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml"
+);
 ```
-
-Use the same versioned contract that produced the models and server API JARs.
 
 ## 3. Execute Every Important Operation
 
 ```java
-OpenApiContract contract = new OpenApiContractLoader()
-        .loadClasspath("openapi/inventory-api.yaml");
-
 OpenApiContractTestResult result = new OpenApiMvcContractTester(
         mockMvc,
         objectMapper,

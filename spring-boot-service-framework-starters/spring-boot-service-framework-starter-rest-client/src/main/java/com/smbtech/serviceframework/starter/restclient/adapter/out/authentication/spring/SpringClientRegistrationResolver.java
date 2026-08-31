@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
  * resolver is the bridge between the framework client name/token-request-id and Spring's
  * registration model.
  */
-public final class SpringClientRegistrationResolver {
+final class SpringClientRegistrationResolver {
 
     private final ClientRegistrationRepository clientRegistrationRepository;
 

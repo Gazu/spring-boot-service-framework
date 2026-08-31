@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.smbtech.serviceframework.commons.notification.NotificationSeverity;
 import com.smbtech.serviceframework.error.ErrorCategory;
 import com.smbtech.serviceframework.error.ErrorDefinition;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAccessDeniedHandler;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -66,18 +64,6 @@ class SecurityErrorCatalogTest {
                 .doesNotHaveDuplicates();
         assertThat(Arrays.stream(SecurityErrorCatalog.values()).map(SecurityErrorCatalog::severity))
                 .containsOnly(NotificationSeverity.ERROR);
-    }
-
-    @Test
-    void preservesTheCodesAndMessagesAlreadyExposedByHandlers() {
-        assertThat(SecurityErrorCatalog.AUTHENTICATION_REQUIRED.code())
-                .isEqualTo(SecurityAuthenticationEntryPoint.ERROR_CODE);
-        assertThat(SecurityErrorCatalog.AUTHENTICATION_REQUIRED.publicMessage())
-                .isEqualTo(SecurityAuthenticationEntryPoint.PUBLIC_MESSAGE);
-        assertThat(SecurityErrorCatalog.ACCESS_DENIED.code())
-                .isEqualTo(SecurityAccessDeniedHandler.ERROR_CODE);
-        assertThat(SecurityErrorCatalog.ACCESS_DENIED.publicMessage())
-                .isEqualTo(SecurityAccessDeniedHandler.PUBLIC_MESSAGE);
     }
 
     private static void assertEntry(

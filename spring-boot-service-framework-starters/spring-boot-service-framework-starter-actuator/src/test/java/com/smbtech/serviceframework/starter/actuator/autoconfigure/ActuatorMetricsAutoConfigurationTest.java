@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.actuator.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
-import com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -34,7 +33,6 @@ class ActuatorMetricsAutoConfigurationTest {
                             assertThat(context)
                                     .hasSingleBean(FrameworkDiagnostics.class)
                                     .hasSingleBean(MeterBinder.class)
-                                    .hasSingleBean(ServiceFrameworkMetrics.class)
                                     .hasBean("serviceFrameworkMetrics");
                             assertThat(
                                             context.getBean(ActuatorProperties.class)
@@ -45,7 +43,7 @@ class ActuatorMetricsAutoConfigurationTest {
                             MeterRegistry registry = context.getBean(MeterRegistry.class);
                             context.getBean(MeterBinder.class).bindTo(registry);
                             assertThat(
-                                            registry.get(ServiceFrameworkMetrics.STATUS_METRIC_NAME)
+                                            registry.get("smbtech.service.framework.status")
                                                     .tag("status", "unknown")
                                                     .gauge()
                                                     .value())
@@ -70,9 +68,7 @@ class ActuatorMetricsAutoConfigurationTest {
                                     .hasBean("serviceFrameworkMetrics");
                             assertThat(
                                             context.getBean(MeterRegistry.class)
-                                                    .find(
-                                                            ServiceFrameworkMetrics
-                                                                    .MODULES_METRIC_NAME)
+                                                    .find("smbtech.service.framework.modules")
                                                     .gauge())
                                     .isNotNull();
                         });

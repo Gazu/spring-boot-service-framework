@@ -3,7 +3,6 @@ package com.smbtech.serviceframework.starter.actuator.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.smbtech.serviceframework.actuator.port.in.FrameworkDiagnostics;
-import com.smbtech.serviceframework.starter.actuator.adapter.in.info.ServiceFrameworkInfoContributor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -25,7 +24,6 @@ class ActuatorInfoAutoConfigurationTest {
                         assertThat(context)
                                 .hasSingleBean(FrameworkDiagnostics.class)
                                 .hasSingleBean(InfoContributor.class)
-                                .hasSingleBean(ServiceFrameworkInfoContributor.class)
                                 .hasBean("serviceFrameworkInfoContributor"));
     }
 

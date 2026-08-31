@@ -20,8 +20,13 @@ tasks.register('verifyHexagonalBoundaries') {
                 'org.springframework.',
                 'org.slf4j.',
                 'ch.qos.logback.',
-                'jakarta.servlet.',
-                'com.fasterxml.jackson.'
+                'org.apache.',
+                'io.micrometer.',
+                'jakarta.',
+                'reactor.',
+                'com.fasterxml.jackson.',
+                'tools.jackson.',
+                'com.smbtech.serviceframework.starter.'
         ]
         def violations = []
         inputs.files.files.each { source ->

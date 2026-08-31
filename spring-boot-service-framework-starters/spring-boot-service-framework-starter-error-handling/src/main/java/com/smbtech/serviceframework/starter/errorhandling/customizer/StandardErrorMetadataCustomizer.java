@@ -37,7 +37,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /** Applies safe, request-aware standard metadata to every resolved MVC error. */
-public final class StandardErrorMetadataCustomizer implements ResolvedErrorCustomizer {
+final class StandardErrorMetadataCustomizer implements ResolvedErrorCustomizer {
 
     /** Correlation key shared with the logging starter. */
     public static final String TRANSACTION_ID_KEY = "transactionId";
@@ -48,7 +48,7 @@ public final class StandardErrorMetadataCustomizer implements ResolvedErrorCusto
     private final CorrelationContext correlationContext;
 
     /** Creates the customizer without a correlation context. */
-    public StandardErrorMetadataCustomizer() {
+    StandardErrorMetadataCustomizer() {
         this.correlationContext = null;
     }
 
@@ -57,7 +57,7 @@ public final class StandardErrorMetadataCustomizer implements ResolvedErrorCusto
      *
      * @param correlationContext correlation context used to resolve identifiers
      */
-    public StandardErrorMetadataCustomizer(CorrelationContext correlationContext) {
+    StandardErrorMetadataCustomizer(CorrelationContext correlationContext) {
         this.correlationContext =
                 Objects.requireNonNull(correlationContext, "correlationContext must not be null");
     }

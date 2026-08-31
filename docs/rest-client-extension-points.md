@@ -183,6 +183,12 @@ Consumers should not depend on internal classes such as
 Use the public `api.oauth2` SPIs or the documented replacement points above for
 OAuth2 behavior that cannot be expressed with properties.
 
+Apache transport configurators and Spring Security OAuth2 adapters are
+package-private implementation details. Their defaults are assembled by the
+starter; consumers customize them with `ApacheHttpClientBuilderCustomizer`,
+`ClientHttpRequestFactoryCustomizer`, the OAuth2 SPIs above, or the documented
+Spring Security replacement beans.
+
 ---
 
 ## 5. Examples

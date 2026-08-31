@@ -9,12 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.smbtech.serviceframework.commons.notification.Notification;
 import com.smbtech.serviceframework.error.ErrorExposure;
-import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
 import com.smbtech.serviceframework.error.ServiceException;
+import com.smbtech.serviceframework.error.ThrowableErrorResolver;
 import com.smbtech.serviceframework.httpclient.domain.HttpErrorResponse;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientResponseException;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAccessDeniedHandler;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorExposurePolicy;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationResponseFactory;
 import com.smbtech.serviceframework.starter.errorhandling.api.NotificationSerializer;
@@ -33,6 +31,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -134,10 +134,9 @@ class ErrorHandlingWebApplicationIntegrationTest {
     void autoConfiguredSecurityHandlersUseTheSameSnakeCaseContract() {
         contextRunner.run(
                 context -> {
-                    SecurityAuthenticationEntryPoint entryPoint =
-                            context.getBean(SecurityAuthenticationEntryPoint.class);
-                    SecurityAccessDeniedHandler deniedHandler =
-                            context.getBean(SecurityAccessDeniedHandler.class);
+                    AuthenticationEntryPoint entryPoint =
+                            context.getBean(AuthenticationEntryPoint.class);
+                    AccessDeniedHandler deniedHandler = context.getBean(AccessDeniedHandler.class);
                     ObjectMapper objectMapper = context.getBean(ObjectMapper.class);
                     MockHttpServletResponse unauthorized = new MockHttpServletResponse();
                     MockHttpServletResponse forbidden = new MockHttpServletResponse();
@@ -263,9 +262,7 @@ class ErrorHandlingWebApplicationIntegrationTest {
                                 .andExpect(status().isInternalServerError())
                                 .andExpect(
                                         jsonPath("$.code")
-                                                .value(
-                                                        FallbackThrowableErrorResolver
-                                                                .DEFAULT_ERROR_CODE));
+                                                .value(ThrowableErrorResolver.DEFAULT_ERROR_CODE));
                     } catch (Exception exception) {
                         throw new AssertionError(exception);
                     }
@@ -284,7 +281,7 @@ class ErrorHandlingWebApplicationIntegrationTest {
                                 .andExpect(
                                         jsonPath("$.message")
                                                 .value(
-                                                        FallbackThrowableErrorResolver
+                                                        ThrowableErrorResolver
                                                                 .DEFAULT_PUBLIC_MESSAGE));
                     } catch (Exception exception) {
                         throw new AssertionError(exception);

@@ -21,7 +21,7 @@ Spring, Apache HttpClient, Micrometer, Jackson, or Spring Security.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-http-client-core'
 }
@@ -35,6 +35,9 @@ dependencies {
   `HttpClientResponseException`, and JSON error response decoding helpers.
 - Ports such as `AccessTokenProvider`, `HttpExchangeAuditSink`, and
   `HttpErrorResponseBodyReader`.
+- `HttpClientCatalog.from(...)` and
+  `HttpClientDefinitionValidator.defaultValidator()` for default core behavior
+  without exposing implementation classes.
 - Core exceptions such as `HttpClientAuthenticationException`,
   `HttpClientConfigurationException`, and `CircuitBreakerOpenException`.
 
@@ -42,6 +45,8 @@ dependencies {
 
 - It does not create Spring `RestClient` beans.
 - It does not perform OAuth2 token exchange by itself.
+- It does not validate OAuth2 token scopes; that policy belongs to the OAuth2
+  adapter using the token.
 - It does not configure Apache HttpClient, SSL, Micrometer, retry interceptors,
   or Spring Security.
 - It does not depend on Spring, Jackson, Servlet APIs, Apache, or Micrometer.

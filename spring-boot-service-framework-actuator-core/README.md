@@ -15,7 +15,7 @@ depend on Spring Boot Actuator.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-actuator-core'
 }
@@ -33,8 +33,9 @@ dependencies {
 | `FrameworkModuleInfoProvider` | Outbound extension port for module information. |
 | `FrameworkDiagnostics` | Inbound snapshot and module information contract. |
 
-The starter uses `DefaultFrameworkDiagnostics` as its default aggregator.
-Consumers should depend on the ports instead of the concrete service.
+Use `FrameworkDiagnostics.from(...)` when the default neutral aggregator is
+needed outside the starter. Its implementation is internal; consumers depend
+on the `FrameworkDiagnostics` port.
 
 ## Probe example
 

@@ -11,11 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.smbtech.serviceframework.error.ErrorExposure;
-import com.smbtech.serviceframework.error.FallbackThrowableErrorResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultSecurityAuthenticationFailureResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.DefaultSecurityAuthorizationFailureResolver;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAccessDeniedHandler;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
+import com.smbtech.serviceframework.error.ThrowableErrorResolver;
 import com.smbtech.serviceframework.starter.errorhandling.api.security.RequiredScopeResolver;
 import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityAuthenticationFailureResolver;
 import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityAuthorizationFailureResolver;
@@ -52,7 +48,9 @@ import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -103,7 +101,7 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                                 .andExpect(
                                                         jsonPath("$.message")
                                                                 .value(
-                                                                        FallbackThrowableErrorResolver
+                                                                        ThrowableErrorResolver
                                                                                 .DEFAULT_PUBLIC_MESSAGE))
                                                 .andExpect(
                                                         jsonPath("$.metadata.security")
@@ -293,7 +291,9 @@ class SpringSecurityErrorHandlingIntegrationTest {
         SecurityAuthenticationFailureResolver authenticationResolver =
                 failureContext -> {
                     authenticationResolverCalled.set(true);
-                    return new DefaultSecurityAuthenticationFailureResolver()
+                    return internalInstance(
+                                    "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultSecurityAuthenticationFailureResolver",
+                                    SecurityAuthenticationFailureResolver.class)
                             .resolve(failureContext);
                 };
         RequiredScopeResolver requiredScopeResolver =
@@ -304,7 +304,9 @@ class SpringSecurityErrorHandlingIntegrationTest {
         SecurityAuthorizationFailureResolver authorizationResolver =
                 failureContext -> {
                     authorizationResolverCalled.set(true);
-                    return new DefaultSecurityAuthorizationFailureResolver()
+                    return internalInstance(
+                                    "com.smbtech.serviceframework.starter.errorhandling.internal.DefaultSecurityAuthorizationFailureResolver",
+                                    SecurityAuthorizationFailureResolver.class)
                             .resolve(failureContext);
                 };
 
@@ -470,8 +472,8 @@ class SpringSecurityErrorHandlingIntegrationTest {
         SecurityFilterChain securityFilterChain(
                 HttpSecurity http,
                 AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver,
-                SecurityAuthenticationEntryPoint authenticationEntryPoint,
-                SecurityAccessDeniedHandler accessDeniedHandler)
+                AuthenticationEntryPoint authenticationEntryPoint,
+                AccessDeniedHandler accessDeniedHandler)
                 throws Exception {
             http.authorizeHttpRequests(
                             authorize ->
@@ -495,6 +497,16 @@ class SpringSecurityErrorHandlingIntegrationTest {
                                             .authenticationEntryPoint(authenticationEntryPoint)
                                             .accessDeniedHandler(accessDeniedHandler));
             return http.build();
+        }
+    }
+
+    private static <T> T internalInstance(String typeName, Class<T> contract) {
+        try {
+            var constructor = Class.forName(typeName).getDeclaredConstructor();
+            constructor.setAccessible(true);
+            return contract.cast(constructor.newInstance());
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError("Cannot create internal test fixture " + typeName, exception);
         }
     }
 

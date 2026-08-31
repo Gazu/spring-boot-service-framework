@@ -14,14 +14,14 @@ import org.springframework.http.ResponseEntity;
  * @param request current request
  * @param response final notification response
  */
-public record PreparedErrorResponse(
+record PreparedErrorResponse(
         Throwable cause,
         ResolvedError resolvedError,
         HttpServletRequest request,
         ResponseEntity<Notification> response) {
 
     /** Creates and validates a prepared error response. */
-    public PreparedErrorResponse {
+    PreparedErrorResponse {
         cause = Objects.requireNonNull(cause, "cause must not be null");
         resolvedError = Objects.requireNonNull(resolvedError, "resolvedError must not be null");
         request = Objects.requireNonNull(request, "request must not be null");
@@ -33,7 +33,7 @@ public record PreparedErrorResponse(
      *
      * @return HTTP status code
      */
-    public int statusCode() {
+    int statusCode() {
         return response.getStatusCode().value();
     }
 }

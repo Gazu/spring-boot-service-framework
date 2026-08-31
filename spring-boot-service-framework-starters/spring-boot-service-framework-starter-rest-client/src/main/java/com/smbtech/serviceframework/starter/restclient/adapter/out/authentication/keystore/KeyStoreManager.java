@@ -11,8 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.core.io.ResourceLoader;
 
-/** Provides key store manager behavior. */
-public final class KeyStoreManager {
+final class KeyStoreManager {
 
     private final KeyStoreDefinitionSource definitionSource;
     private final ResourceLoader resourceLoader;
@@ -24,8 +23,7 @@ public final class KeyStoreManager {
      * @param definitionSource definition source value
      * @param resourceLoader resource loader value
      */
-    public KeyStoreManager(
-            KeyStoreDefinitionSource definitionSource, ResourceLoader resourceLoader) {
+    KeyStoreManager(KeyStoreDefinitionSource definitionSource, ResourceLoader resourceLoader) {
         this.definitionSource = definitionSource;
         this.resourceLoader = resourceLoader;
     }
@@ -36,7 +34,7 @@ public final class KeyStoreManager {
      * @param id id value
      * @return get key store result
      */
-    public KeyStore getKeyStore(String id) {
+    KeyStore getKeyStore(String id) {
         return keyStores.computeIfAbsent(id, this::loadKeyStore);
     }
 
@@ -46,7 +44,7 @@ public final class KeyStoreManager {
      * @param id id value
      * @return get definition result
      */
-    public KeyStoreDefinition getDefinition(String id) {
+    KeyStoreDefinition getDefinition(String id) {
         return definitionSource
                 .findById(id)
                 .orElseThrow(
@@ -92,7 +90,7 @@ public final class KeyStoreManager {
      * @param value password text
      * @return chars result
      */
-    public static char[] chars(String value) {
+    static char[] chars(String value) {
         return value == null ? new char[0] : value.toCharArray();
     }
 }

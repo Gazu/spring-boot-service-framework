@@ -9,10 +9,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Provides bounded application information for the logging starter. */
-public final class LoggingModuleInfoProvider implements FrameworkModuleInfoProvider {
+final class LoggingModuleInfoProvider implements FrameworkModuleInfoProvider {
 
     /** Stable framework module name. */
-    public static final String MODULE_NAME = "logging";
+    static final String MODULE_NAME = "logging";
 
     private final LoggingProperties properties;
 
@@ -21,7 +21,7 @@ public final class LoggingModuleInfoProvider implements FrameworkModuleInfoProvi
      *
      * @param properties logging configuration
      */
-    public LoggingModuleInfoProvider(LoggingProperties properties) {
+    LoggingModuleInfoProvider(LoggingProperties properties) {
         this.properties = Objects.requireNonNull(properties, "properties");
     }
 

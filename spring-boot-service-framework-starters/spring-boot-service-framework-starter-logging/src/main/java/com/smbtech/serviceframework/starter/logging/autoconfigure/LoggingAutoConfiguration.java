@@ -3,9 +3,7 @@ package com.smbtech.serviceframework.starter.logging.autoconfigure;
 import com.smbtech.serviceframework.logging.port.in.StructuredLoggerFactory;
 import com.smbtech.serviceframework.logging.port.out.CorrelationContext;
 import com.smbtech.serviceframework.starter.logging.StructuredLoggers;
-import com.smbtech.serviceframework.starter.logging.adapter.in.servlet.TransactionIdFilter;
-import com.smbtech.serviceframework.starter.logging.adapter.out.context.MdcCorrelationContext;
-import com.smbtech.serviceframework.starter.logging.adapter.out.slf4j.Slf4jStructuredLoggerFactory;
+import jakarta.servlet.Filter;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -34,8 +32,8 @@ public class LoggingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    StructuredLoggerFactory structuredLoggerFactory(LoggingProperties properties) {
-        return new Slf4jStructuredLoggerFactory(properties.isProduction());
+    StructuredLoggerFactory structuredLoggerFactory() {
+        return StructuredLoggers::get;
     }
 
     @Bean
@@ -54,13 +52,13 @@ public class LoggingAutoConfiguration {
     static class ServletLoggingConfiguration {
 
         @Bean
-        @ConditionalOnMissingBean
+        @ConditionalOnMissingBean(name = "transactionIdFilter")
         @ConditionalOnProperty(
                 prefix = "smbtech.logging.transaction",
                 name = "enabled",
                 havingValue = "true",
                 matchIfMissing = true)
-        TransactionIdFilter transactionIdFilter(
+        Filter transactionIdFilter(
                 LoggingProperties properties, CorrelationContext correlationContext) {
             LoggingProperties.Transaction transaction = properties.getTransaction();
             return new TransactionIdFilter(

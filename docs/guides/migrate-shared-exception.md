@@ -11,20 +11,20 @@ builders and handlers after contract tests pass.
 | `ApplicationException` | `ServiceException` plus an application `ErrorDefinition` catalog. |
 | `AuthenticationException` and session subclasses | Catalog entries using `AUTHENTICATION` or `AUTHORIZATION`. |
 | `RequestValidationException` | Bean Validation for request models, or a field `Notification` inside `ServiceException`. |
-| `RestConnectorException` | `HttpClientResponseException`, resolved by `HttpClientExceptionResolver`. |
+| `RestConnectorException` | `HttpClientResponseException`, resolved automatically by the starter. |
 | `RichErrorResponse` | Immutable commons `Notification`. |
 | `SafeErrorResponse` | `ResolvedError`, `ErrorExposure`, and `NotificationSanitizer`. |
 | `ExposureEnum` | `ErrorExposure`. |
 | `ExceptionHelper` status logic | `ThrowableErrorResolver` and `NotificationHttpStatusResolver`. |
-| `BaseExceptionHandler`, `GenericExceptionHandler`, `UnhandledExceptionHandler` | Auto-configured `ServiceFrameworkExceptionHandler`. |
-| Local security exception handlers | `SecurityAuthenticationEntryPoint` and `SecurityAccessDeniedHandler`. |
+| `BaseExceptionHandler`, `GenericExceptionHandler`, `UnhandledExceptionHandler` | Auto-configured MVC error handling. |
+| Local security exception handlers | Auto-configured `AuthenticationEntryPoint` and `AccessDeniedHandler` beans. |
 
 ## Step 1: Add The Starter
 
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.4.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }

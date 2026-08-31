@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /** Provides OAuth2 token diagnostic sanitizer behavior. */
-public final class OAuth2TokenDiagnosticSanitizer {
+final class OAuth2TokenDiagnosticSanitizer {
     /** Creates a OAuth2 token diagnostic sanitizer instance. */
     public OAuth2TokenDiagnosticSanitizer() {}
 

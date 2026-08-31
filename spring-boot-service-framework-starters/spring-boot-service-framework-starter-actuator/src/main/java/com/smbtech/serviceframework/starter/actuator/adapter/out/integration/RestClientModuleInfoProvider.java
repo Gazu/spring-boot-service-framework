@@ -7,10 +7,10 @@ import com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientP
 import java.util.Objects;
 
 /** Provides bounded application information for the REST client starter. */
-public final class RestClientModuleInfoProvider implements FrameworkModuleInfoProvider {
+final class RestClientModuleInfoProvider implements FrameworkModuleInfoProvider {
 
     /** Stable framework module name. */
-    public static final String MODULE_NAME = "rest-client";
+    static final String MODULE_NAME = "rest-client";
 
     private final RestClientProperties properties;
     private final RestClientRegistry registry;
@@ -21,8 +21,7 @@ public final class RestClientModuleInfoProvider implements FrameworkModuleInfoPr
      * @param properties REST client configuration
      * @param registry REST client registry
      */
-    public RestClientModuleInfoProvider(
-            RestClientProperties properties, RestClientRegistry registry) {
+    RestClientModuleInfoProvider(RestClientProperties properties, RestClientRegistry registry) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.registry = Objects.requireNonNull(registry, "registry");
     }

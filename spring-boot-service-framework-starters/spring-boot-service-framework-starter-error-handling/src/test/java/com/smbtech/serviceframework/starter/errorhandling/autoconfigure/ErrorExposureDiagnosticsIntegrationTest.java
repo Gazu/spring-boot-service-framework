@@ -9,19 +9,21 @@ import com.smbtech.serviceframework.error.ErrorDefinition;
 import com.smbtech.serviceframework.error.ErrorExposure;
 import com.smbtech.serviceframework.error.ResolvedError;
 import com.smbtech.serviceframework.error.ServiceException;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.security.SecurityAuthenticationEntryPoint;
-import com.smbtech.serviceframework.starter.errorhandling.adapter.in.web.ServiceFrameworkExceptionHandler;
 import com.smbtech.serviceframework.starter.errorhandling.api.ErrorReporter;
 import com.smbtech.serviceframework.starter.errorhandling.api.security.SecurityErrorCatalog;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import tools.jackson.databind.ObjectMapper;
 
 class ErrorExposureDiagnosticsIntegrationTest {
@@ -50,8 +52,8 @@ class ErrorExposureDiagnosticsIntegrationTest {
                 .run(
                         context -> {
                             Notification response =
-                                    context.getBean(ServiceFrameworkExceptionHandler.class)
-                                            .handleException(
+                                    handleException(
+                                                    context,
                                                     failure,
                                                     new MockHttpServletRequest(
                                                             "GET", "/dependency"))
@@ -91,7 +93,7 @@ class ErrorExposureDiagnosticsIntegrationTest {
                         context -> {
                             MockHttpServletResponse response = new MockHttpServletResponse();
                             try {
-                                context.getBean(SecurityAuthenticationEntryPoint.class)
+                                context.getBean(AuthenticationEntryPoint.class)
                                         .commence(
                                                 new MockHttpServletRequest("GET", "/secure"),
                                                 response,
@@ -139,6 +141,22 @@ class ErrorExposureDiagnosticsIntegrationTest {
                 return NotificationSeverity.ERROR;
             }
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ResponseEntity<Notification> handleException(
+            ApplicationContext context, Exception exception, HttpServletRequest request) {
+        Object handler = context.getBean("serviceFrameworkExceptionHandler");
+        try {
+            var method =
+                    handler.getClass()
+                            .getDeclaredMethod(
+                                    "handleException", Exception.class, HttpServletRequest.class);
+            method.setAccessible(true);
+            return (ResponseEntity<Notification>) method.invoke(handler, exception, request);
+        } catch (ReflectiveOperationException reflectionFailure) {
+            throw new AssertionError(reflectionFailure);
+        }
     }
 
     private record ReportedFailure(Throwable cause, ResolvedError resolvedError) {}

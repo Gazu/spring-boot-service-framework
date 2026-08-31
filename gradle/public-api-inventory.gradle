@@ -46,9 +46,7 @@ def publicApiArtifacts = [
                 sourceDirectory      : 'spring-boot-service-framework-actuator-core/src/main/java',
                 publicPackageExceptions: [],
                 publicTypeExceptions : [],
-                infrastructureTypes  : [
-                        'com.smbtech.serviceframework.actuator.service.DefaultFrameworkDiagnostics'
-                ],
+                infrastructureTypes  : [],
                 buildLogic           : false,
                 propertyReference    : null,
                 configurationProperties: []
@@ -56,21 +54,18 @@ def publicApiArtifacts = [
         [
                 artifact             : 'com.smbtech:spring-boot-service-framework-error-core',
                 sourceDirectory      : 'spring-boot-service-framework-error-core/src/main/java',
-                publicPackageExceptions: [
-                        'com.smbtech.serviceframework.error',
-                        'com.smbtech.serviceframework.error.metadata'
+                publicPackageExceptions: ['com.smbtech.serviceframework.error.metadata'],
+                publicTypeExceptions : [
+                        'com.smbtech.serviceframework.error.ErrorCategory',
+                        'com.smbtech.serviceframework.error.ErrorDefinition',
+                        'com.smbtech.serviceframework.error.ErrorExposure',
+                        'com.smbtech.serviceframework.error.FieldViolation',
+                        'com.smbtech.serviceframework.error.NotificationAggregationPolicy',
+                        'com.smbtech.serviceframework.error.NotificationSanitizer',
+                        'com.smbtech.serviceframework.error.ResolvedError',
+                        'com.smbtech.serviceframework.error.ServiceException',
+                        'com.smbtech.serviceframework.error.ThrowableErrorResolver'
                 ],
-                publicTypeExceptions : [],
-                infrastructureTypes  : [],
-                buildLogic           : false,
-                propertyReference    : null,
-                configurationProperties: []
-        ],
-        [
-                artifact             : 'com.smbtech:spring-boot-service-framework-openapi-generator',
-                sourceDirectory      : 'spring-boot-service-framework-openapi-generator/src/main/java',
-                publicPackageExceptions: ['com.smbtech.serviceframework.openapi.generator'],
-                publicTypeExceptions : [],
                 infrastructureTypes  : [],
                 buildLogic           : false,
                 propertyReference    : null,
@@ -94,7 +89,10 @@ def publicApiArtifacts = [
                         'com.smbtech.serviceframework.starter.logging.StructuredLoggers'
                 ],
                 infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender',
+                        'com.smbtech.serviceframework.starter.logging.adapter.out.logback.ServiceFrameworkStructuredLogFormatter',
                         'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingMetricsAutoConfiguration',
                         'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties'
                 ],
                 buildLogic           : false,
@@ -107,16 +105,6 @@ def publicApiArtifacts = [
                 publicPackageExceptions: [],
                 publicTypeExceptions : [],
                 infrastructureTypes  : [
-                        'com.smbtech.serviceframework.starter.actuator.adapter.in.endpoint.ServiceFrameworkDiagnosticsEndpoint',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.in.health.ServiceFrameworkHealthIndicator',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.in.info.ServiceFrameworkInfoContributor',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.in.metrics.ServiceFrameworkMetrics',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.diagnostics.GuardedFrameworkDiagnostics',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.ErrorHandlingModuleInfoProvider',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.LoggingModuleInfoProvider',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.MockModuleInfoProvider',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientDiagnosticProbe',
-                        'com.smbtech.serviceframework.starter.actuator.adapter.out.integration.RestClientModuleInfoProvider',
                         'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorAutoConfiguration',
                         'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration',
                         'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration',
@@ -135,6 +123,8 @@ def publicApiArtifacts = [
                 publicPackageExceptions: [],
                 publicTypeExceptions : [],
                 infrastructureTypes  : [
+                        'com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration',
+                        'com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration',
                         'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration',
                         'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties'
                 ],
@@ -169,6 +159,18 @@ def publicApiArtifacts = [
                 configurationProperties: []
         ],
         [
+                artifact             : 'com.smbtech:spring-boot-service-framework-project-generator',
+                sourceDirectory      : 'spring-boot-service-framework-project-generator/src/main/java',
+                publicPackageExceptions: ['com.smbtech.serviceframework.project.generator'],
+                publicTypeExceptions : [],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.project.generator.ProjectGeneratorCli'
+                ],
+                buildLogic           : false,
+                propertyReference    : null,
+                configurationProperties: []
+        ],
+        [
                 artifact             : 'Gradle plugin com.smbtech.service-framework.openapi-generator',
                 sourceDirectory      : 'build-logic/openapi-generator-plugin/src/main/java',
                 publicPackageExceptions: [],
@@ -176,24 +178,107 @@ def publicApiArtifacts = [
                         'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiExtension',
                         'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiSpec'
                 ],
-                infrastructureTypes  : [],
+                infrastructureTypes  : [
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiBreakingChangeTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiBuildLogicCheckTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiConsumerCompatibilityTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGenerateTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGeneratorPlugin',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMetadataTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMigrationReportTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMockContractTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiReproducibilityTask',
+                        'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiValidateSpecsTask'
+                ],
                 buildLogic           : true,
                 propertyReference    : null,
                 configurationProperties: [
                         'smbtechOpenApi.groupId',
+                        'smbtechOpenApi.baselineDirectory',
+                        'smbtechOpenApi.failOnBreakingChanges',
                         'smbtechOpenApi.outputDirectory',
                         'smbtechOpenApi.repositoryDirectory',
+                        'smbtechOpenApi.requireBaseline',
+                        'smbtechOpenApi.publicationRepositoryUrl',
+                        'smbtechOpenApi.publishClient',
+                        'smbtechOpenApi.publishModels',
+                        'smbtechOpenApi.publishServerApi',
                         'smbtechOpenApi.specs.<name>.artifactBaseName',
                         'smbtechOpenApi.specs.<name>.basePackage',
+                        'smbtechOpenApi.specs.<name>.clientPackage',
                         'smbtechOpenApi.specs.<name>.groupId',
                         'smbtechOpenApi.specs.<name>.input',
+                        'smbtechOpenApi.specs.<name>.modelPackage',
+                        'smbtechOpenApi.specs.<name>.publishClient',
+                        'smbtechOpenApi.specs.<name>.publishModels',
+                        'smbtechOpenApi.specs.<name>.publishServerApi',
+                        'smbtechOpenApi.specs.<name>.serverApiPackage',
                         'smbtechOpenApi.specs.<name>.version'
                 ]
         ]
 ]
 
 def supportedPackageSegments = ['domain', 'port', 'api'] as Set
-def implementationPackageSegments = ['adapter', 'autoconfigure', 'serialization', 'internal'] as Set
+def implementationPackageSegments = [
+        'adapter',
+        'application',
+        'autoconfigure',
+        'internal',
+        'serialization',
+        'service'
+] as Set
+
+def technicalInfrastructureReasonGroups = [
+        'Spring Boot discovers these auto-configurations by class name and may reflectively instantiate them.': [
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorAutoConfiguration',
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorEndpointAutoConfiguration',
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorHealthAutoConfiguration',
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorInfoAutoConfiguration',
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorIntegrationsAutoConfiguration',
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorMetricsAutoConfiguration',
+                'com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingAutoConfiguration',
+                'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingAutoConfiguration',
+                'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingMetricsAutoConfiguration',
+                'com.smbtech.serviceframework.starter.mock.autoconfigure.MockAutoConfiguration',
+                'com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAuthenticationAutoConfiguration',
+                'com.smbtech.serviceframework.starter.restclient.autoconfigure.OAuth2RestClientAutoConfiguration',
+                'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientAutoConfiguration'
+        ],
+        'Spring Boot configuration binding and metadata generation require these property containers.': [
+                'com.smbtech.serviceframework.starter.actuator.autoconfigure.ActuatorProperties',
+                'com.smbtech.serviceframework.starter.errorhandling.autoconfigure.ErrorHandlingProperties',
+                'com.smbtech.serviceframework.starter.logging.autoconfigure.LoggingProperties',
+                'com.smbtech.serviceframework.starter.mock.autoconfigure.MockProperties',
+                'com.smbtech.serviceframework.starter.restclient.autoconfigure.RestClientProperties'
+        ],
+        'Logback creates these configured classes reflectively from XML resources.': [
+                'com.smbtech.serviceframework.starter.logging.adapter.out.logback.PolicyAwareAsyncAppender',
+                'com.smbtech.serviceframework.starter.logging.adapter.out.logback.ServiceFrameworkStructuredLogFormatter'
+        ],
+        'Gradle instantiates plugin and task implementations through its public managed-type mechanism.': [
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiBreakingChangeTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiBuildLogicCheckTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiConsumerCompatibilityTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGenerateTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiGeneratorPlugin',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMetadataTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMigrationReportTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiMockContractTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiReproducibilityTask',
+                'com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiValidateSpecsTask'
+        ],
+        'The command-line launcher is a public Java application entry point.': [
+                'com.smbtech.serviceframework.project.generator.ProjectGeneratorCli'
+        ]
+]
+def technicalInfrastructureReasons = [:]
+technicalInfrastructureReasonGroups.each { reason, types ->
+    types.each { type ->
+        if (technicalInfrastructureReasons.put(type, reason) != null) {
+            throw new GradleException("Duplicate technical infrastructure reason for ${type}")
+        }
+    }
+}
 
 def publicTypePattern = ~/(?m)^public\s+(?:(?:final|abstract|sealed|non-sealed)\s+)*(class|interface|record|enum|@interface)\s+([A-Za-z_$][A-Za-z0-9_$]*)/
 def packagePattern = ~/(?m)^package\s+([A-Za-z_$][A-Za-z0-9_$.]*)\s*;/
@@ -254,6 +339,14 @@ def markdownTypeList = { Collection<Map<String, String>> types ->
             : types.collect { "- `${it.qualifiedName}` (${it.kind})" }.join('\n')
 }
 
+def markdownInfrastructureTypeList = { Collection<Map<String, String>> types ->
+    types.isEmpty()
+            ? '- None.'
+            : types.collect {
+                "- `${it.qualifiedName}` (${it.kind}): ${technicalInfrastructureReasons[it.qualifiedName]}"
+            }.join('\n')
+}
+
 def hasPackageSegment = { String packageName, Set<String> segments ->
     packageName.split(/\./).any { segments.contains(it) }
 }
@@ -264,30 +357,147 @@ def isConventionPublicPackage = { Map artifact, String packageName ->
             hasPackageSegment(packageName, supportedPackageSegments)
 }
 
+def classifyPublicType = { Map artifact, Map type ->
+    if (artifact.infrastructureTypes.contains(type.qualifiedName)) {
+        return 'TECHNICAL_INFRASTRUCTURE'
+    }
+    boolean supported =
+            isConventionPublicPackage(artifact, type.packageName) ||
+                    artifact.publicPackageExceptions.contains(type.packageName) ||
+                    artifact.publicTypeExceptions.contains(type.qualifiedName)
+    if (supported) {
+        return type.kind in ['interface', 'annotation']
+                ? 'SUPPORTED_EXTENSION_POINT'
+                : 'SUPPORTED_API'
+    }
+    'INTERNAL_IMPLEMENTATION'
+}
+
 ext.serviceFrameworkPublicApiModel = [
         artifacts                  : publicApiArtifacts,
         scanPublicTypes            : scanPublicTypes,
         readConfigurationProperties: readConfigurationProperties,
-        isConventionPublicPackage  : isConventionPublicPackage
+        isConventionPublicPackage  : isConventionPublicPackage,
+        classifyPublicType         : classifyPublicType
 ]
 
 def discoverPublicInternalTypes = {
     publicApiArtifacts.collectMany { artifact ->
         scanPublicTypes(artifact).findAll { type ->
-            boolean supported =
-                    isConventionPublicPackage(artifact, type.packageName) ||
-                            artifact.publicPackageExceptions.contains(type.packageName) ||
-                            artifact.publicTypeExceptions.contains(type.qualifiedName)
-            !supported && !artifact.infrastructureTypes.contains(type.qualifiedName)
+            classifyPublicType(artifact, type) == 'INTERNAL_IMPLEMENTATION'
         }.collect { type -> "${artifact.artifact}|${type.kind}|${type.qualifiedName}" }
     }.toSet().sort()
 }
 
+def findPublicBeanMethods = { String source ->
+    def methods = []
+    boolean beanAnnotationFound = false
+    int annotationDepth = 0
+    int declarationLine = 0
+    def signature = new StringBuilder()
+
+    source.readLines().eachWithIndex { line, index ->
+        def trimmed = line.trim()
+        if (annotationDepth > 0) {
+            annotationDepth += trimmed.count('(') - trimmed.count(')')
+            return
+        }
+        if (trimmed.startsWith('@')) {
+            def annotationMatcher = trimmed =~ /^@(?:[A-Za-z_$][A-Za-z0-9_$.]*\.)?([A-Za-z_$][A-Za-z0-9_$]*)/
+            if (annotationMatcher.find() && annotationMatcher.group(1) == 'Bean') {
+                beanAnnotationFound = true
+                declarationLine = index + 1
+            }
+            annotationDepth = trimmed.count('(') - trimmed.count(')')
+            return
+        }
+        if (!beanAnnotationFound || trimmed.isEmpty() || trimmed.startsWith('//') ||
+                trimmed.startsWith('/*') || trimmed.startsWith('*')) {
+            return
+        }
+
+        signature.append(' ').append(trimmed)
+        if (!signature.toString().contains('(')) {
+            if (trimmed.contains('{') || trimmed.contains(';')) {
+                beanAnnotationFound = false
+                signature.setLength(0)
+            }
+            return
+        }
+
+        def methodMatcher = signature.toString().trim() =~ /^(public|protected)\s+(?:(?:static|final|synchronized|abstract|native)\s+)*(?:<[^>]+>\s+)?[A-Za-z_$][^()=;{}]*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/
+        if (methodMatcher.find()) {
+            methods << [
+                    line      : declarationLine,
+                    visibility: methodMatcher.group(1),
+                    method    : methodMatcher.group(2)
+            ]
+        }
+        beanAnnotationFound = false
+        signature.setLength(0)
+    }
+    methods
+}
+
+def autoConfigurationImportViolations = {
+    Collection<String> imports,
+    Set<String> publicTypes,
+    Set<String> infrastructureTypes,
+    Set<String> annotatedTypes ->
+    def failures = []
+    imports.groupBy { it }.findAll { type, occurrences -> occurrences.size() > 1 }.keySet()
+            .sort().each { type ->
+        failures << "${type}: duplicate auto-configuration import"
+    }
+    imports.toSet().sort().each { type ->
+        if (!publicTypes.contains(type)) {
+            failures << "${type}: imported auto-configuration must be a public top-level type"
+        }
+        if (!infrastructureTypes.contains(type)) {
+            failures << "${type}: imported auto-configuration must be explicitly allowlisted as technical infrastructure"
+        }
+        if (!annotatedTypes.contains(type)) {
+            failures << "${type}: imported type must declare @AutoConfiguration"
+        }
+    }
+    (infrastructureTypes.findAll { it.endsWith('AutoConfiguration') }.toSet() - imports.toSet())
+            .sort().each { type ->
+        failures << "${type}: allowlisted auto-configuration is missing from AutoConfiguration.imports"
+    }
+    failures
+}
+
+def isImplementationTypeReference = { String qualifiedName ->
+    hasPackageSegment(qualifiedName, implementationPackageSegments)
+}
+
+def discoverPublicTypeClassifications = {
+    publicApiArtifacts.collectMany { artifact ->
+        scanPublicTypes(artifact).collect { type ->
+            "${artifact.artifact}|${classifyPublicType(artifact, type)}|${type.kind}|${type.qualifiedName}"
+        }
+    }.toSet().sort()
+}
+
 def renderPublicInternalTypeBaseline = {
+    def publicInternalTypes = discoverPublicInternalTypes()
     def output = new StringBuilder()
     output << '# Generated by ./gradlew generatePublicInternalTypeBaseline. Do not edit manually.\n'
     output << '# Public implementation types are not supported API; this baseline prevents accidental growth.\n'
-    discoverPublicInternalTypes().each { type -> output << "${type}\n" }
+    output << "# Reviewed public implementation type count: ${publicInternalTypes.size()}\n"
+    publicInternalTypes.each { type -> output << "${type}\n" }
+    output.toString()
+}
+
+def unreviewedBaselineAdditions = { Collection<String> discovered, Collection<String> reviewed ->
+    (discovered.toSet() - reviewed.toSet()).sort()
+}
+
+def renderPublicTypeClassificationBaseline = {
+    def output = new StringBuilder()
+    output << '# Generated by ./gradlew generatePublicTypeClassificationBaseline. Do not edit manually.\n'
+    output << '# Categories: SUPPORTED_API, SUPPORTED_EXTENSION_POINT, TECHNICAL_INFRASTRUCTURE, INTERNAL_IMPLEMENTATION.\n'
+    discoverPublicTypeClassifications().each { type -> output << "${type}\n" }
     output.toString()
 }
 
@@ -312,14 +522,13 @@ def renderPublicApiInventory = {
             isConventionPublicPackage(artifact, it.packageName)
         }.collect { it.packageName }.toSet().sort()
         def publicTypes = types.findAll {
-            isConventionPublicPackage(artifact, it.packageName) ||
-                    artifact.publicPackageExceptions.contains(it.packageName) ||
-                    artifact.publicTypeExceptions.contains(it.qualifiedName)
+            classifyPublicType(artifact, it) in ['SUPPORTED_API', 'SUPPORTED_EXTENSION_POINT']
         }
-        def infrastructureTypes = types.findAll { artifact.infrastructureTypes.contains(it.qualifiedName) }
+        def infrastructureTypes = types.findAll {
+            classifyPublicType(artifact, it) == 'TECHNICAL_INFRASTRUCTURE'
+        }
         def internalPublicTypes = types.findAll {
-            !publicTypes.contains(it) &&
-                    !artifact.infrastructureTypes.contains(it.qualifiedName)
+            classifyPublicType(artifact, it) == 'INTERNAL_IMPLEMENTATION'
         }
         def discoveredNames = types.collect { it.qualifiedName } as Set
         def missingTypeDefinitions = (artifact.publicTypeExceptions + artifact.infrastructureTypes)
@@ -369,7 +578,7 @@ def renderPublicApiInventory = {
     output << 'This file freezes the currently visible source-level contract per published artifact using '
     output << 'the [Public API Boundaries](public-api-boundaries.md). '
     output << 'Packages containing `domain`, `port`, `api`, or descendants of those segments are supported by convention. '
-    output << '`adapter`, `autoconfigure`, `serialization`, `internal`, and build logic are implementation by default. '
+    output << '`adapter`, `application`, `autoconfigure`, `internal`, `serialization`, `service`, and build logic are implementation by default. '
     output << 'Documented package and type exceptions are consumer API. Infrastructure types are public for framework wiring. '
     output << 'Public internal types require review and are not supported extension points.\n\n'
     output << '## Summary\n\n'
@@ -399,7 +608,7 @@ def renderPublicApiInventory = {
         output << '### Supported Public Exceptions\n\n'
         output << markdownList(inventory.exceptions) << '\n\n'
         output << '### Public Infrastructure Types\n\n'
-        output << markdownTypeList(inventory.infrastructureTypes) << '\n\n'
+        output << markdownInfrastructureTypeList(inventory.infrastructureTypes) << '\n\n'
         output << '### Public Internal Types To Review\n\n'
         output << markdownTypeList(inventory.internalPublicTypes) << '\n'
     }
@@ -409,6 +618,10 @@ def renderPublicApiInventory = {
     output << '```bash\n./gradlew generatePublicApiInventory\n```\n\n'
     output << 'Validate that the checked-in baseline matches the source and property references:\n\n'
     output << '```bash\n./gradlew validatePublicApiInventory\n```\n'
+    output << '\nValidate the reviewed classification of every top-level public type:\n\n'
+    output << '```bash\n./gradlew validatePublicTypeClassificationBaseline\n```\n'
+    output << '\nValidate that replaceable beans do not introduce concrete return types:\n\n'
+    output << '```bash\n./gradlew validateConcreteReplaceableBeans\n```\n'
     output.toString()
 }
 
@@ -420,6 +633,141 @@ def inventoryInputs = files(publicApiArtifacts.collectMany { artifact ->
     paths
 })
 def inventoryOutput = file('docs/public-api-inventory.md')
+
+def externalReplaceableBeanContracts = [
+        'io.micrometer.core.instrument.binder.MeterBinder',
+        'jakarta.servlet.Filter',
+        'org.springframework.beans.factory.SmartInitializingSingleton',
+        'org.springframework.boot.actuate.health.HealthIndicator',
+        'org.springframework.boot.actuate.info.InfoContributor',
+        'org.springframework.boot.health.contributor.HealthIndicator',
+        'org.springframework.http.client.ClientHttpRequestInterceptor',
+        'org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager',
+        'org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider',
+        'org.springframework.security.oauth2.client.OAuth2AuthorizedClientService',
+        'org.springframework.security.web.AuthenticationEntryPoint',
+        'org.springframework.security.web.access.AccessDeniedHandler'
+] as Set
+
+def supportedReplaceableBeanContracts = {
+    def contracts = publicApiArtifacts.collectMany { artifact ->
+        scanPublicTypes(artifact).findAll { type ->
+            classifyPublicType(artifact, type) == 'SUPPORTED_EXTENSION_POINT'
+        }.collect { it.qualifiedName }
+    }.toSet()
+    contracts.addAll(externalReplaceableBeanContracts)
+    contracts
+}
+
+def resolveSourceType = { String returnType, String packageName, Map<String, String> imports ->
+    def normalized = returnType.replaceAll(/<.*>/, '').replace('[]', '').trim()
+    def firstSegment = normalized.contains('.') ? normalized.substring(0, normalized.indexOf('.')) : normalized
+    def imported = imports[firstSegment]
+    if (imported != null) {
+        return imported + normalized.substring(firstSegment.length())
+    }
+    if (normalized.contains('.') && Character.isLowerCase(normalized.charAt(0))) {
+        return normalized
+    }
+    "${packageName}.${normalized}"
+}
+
+def scanReplaceableBeanMethods = {
+    def supportedContracts = supportedReplaceableBeanContracts()
+    publicApiArtifacts.findAll { !it.buildLogic }.collectMany { artifact ->
+        fileTree(artifact.sourceDirectory) { include '**/*.java' }.files.sort().collectMany { source ->
+            def text = source.getText('UTF-8')
+            def packageMatcher = text =~ packagePattern
+            if (!packageMatcher.find()) {
+                return []
+            }
+            def packageName = packageMatcher.group(1)
+            def imports = [:]
+            (text =~ /(?m)^import\s+(?!static\s)([A-Za-z_$][A-Za-z0-9_$.]*)\s*;/).each { match ->
+                def importedType = match[1].toString()
+                imports[importedType.substring(importedType.lastIndexOf('.') + 1)] = importedType
+            }
+            def annotations = []
+            int annotationDepth = 0
+            def signature = new StringBuilder()
+            def methods = []
+            text.readLines().each { line ->
+                def trimmed = line.trim()
+                if (annotationDepth > 0) {
+                    annotationDepth += trimmed.count('(') - trimmed.count(')')
+                    return
+                }
+                if (trimmed.startsWith('@')) {
+                    if (signature.length() > 0) {
+                        signature.setLength(0)
+                    }
+                    def annotationMatcher = trimmed =~ /^@(?:[A-Za-z_$][A-Za-z0-9_$.]*\.)?([A-Za-z_$][A-Za-z0-9_$]*)/
+                    if (annotationMatcher.find()) {
+                        annotations << annotationMatcher.group(1)
+                    }
+                    annotationDepth = trimmed.count('(') - trimmed.count(')')
+                    return
+                }
+                if (annotations.isEmpty() || trimmed.isEmpty() || trimmed.startsWith('//') ||
+                        trimmed.startsWith('/*') || trimmed.startsWith('*')) {
+                    return
+                }
+                signature.append(' ').append(trimmed)
+                if (!signature.toString().contains('(')) {
+                    if (trimmed.contains('{')) {
+                        annotations.clear()
+                        signature.setLength(0)
+                    }
+                    return
+                }
+                def methodMatcher = signature.toString().trim() =~ /^(?:(?:public|protected|private|static|final|synchronized|abstract|native|default)\s+)*(?:<[^>]+>\s+)?([A-Za-z_$][^()=;{}]*?)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/
+                if (methodMatcher.find() && annotations.contains('Bean') &&
+                        annotations.contains('ConditionalOnMissingBean')) {
+                    def returnType = methodMatcher.group(1).replaceAll(/\s+/, ' ').trim()
+                    def resolvedReturnType = resolveSourceType(returnType, packageName, imports)
+                    methods << [
+                            artifact: artifact.artifact,
+                            owner: "${packageName}.${source.name.replaceFirst(/\.java$/, '')}",
+                            method: methodMatcher.group(2),
+                            returnType: resolvedReturnType,
+                            supportedContract: supportedContracts.contains(resolvedReturnType)
+                    ]
+                }
+                annotations.clear()
+                signature.setLength(0)
+            }
+            methods
+        }
+    }
+}
+
+def discoverConcreteReplaceableBeans = {
+    scanReplaceableBeanMethods().findAll { !it.supportedContract }.collect { bean ->
+        "${bean.artifact}|${bean.owner}#${bean.method}|${bean.returnType}"
+    }.toSet().sort()
+}
+
+def discoverReplaceableBeanContracts = {
+    scanReplaceableBeanMethods().findAll { it.supportedContract }.collect { bean ->
+        "${bean.artifact}|${bean.returnType}"
+    }.toSet().sort()
+}
+
+def renderConcreteReplaceableBeanBaseline = {
+    def output = new StringBuilder()
+    output << '# Generated by ./gradlew generateConcreteReplaceableBeanBaseline. Do not edit manually.\n'
+    output << '# Existing @ConditionalOnMissingBean methods returning concrete types; this baseline may only shrink.\n'
+    discoverConcreteReplaceableBeans().each { bean -> output << "${bean}\n" }
+    output.toString()
+}
+
+def renderReplaceableBeanContractBaseline = {
+    def output = new StringBuilder()
+    output << '# Generated by ./gradlew generateReplaceableBeanContractBaseline. Do not edit manually.\n'
+    output << '# Supported contracts exposed by at least one @ConditionalOnMissingBean method.\n'
+    discoverReplaceableBeanContracts().each { contract -> output << "${contract}\n" }
+    output.toString()
+}
 
 tasks.register('generatePublicApiInventory') {
     group = 'documentation'
@@ -460,6 +808,19 @@ tasks.register('generatePublicInternalTypeBaseline') {
     outputs.file(publicInternalTypeBaseline)
 
     doLast {
+        if (!publicInternalTypeBaseline.isFile()) {
+            throw new GradleException(
+                    'Missing reviewed public internal type baseline. Restore it before generating a reduction.')
+        }
+        def reviewed = publicInternalTypeBaseline.readLines('UTF-8')
+                .findAll { !it.isBlank() && !it.startsWith('#') }
+                .toSet()
+        def discovered = discoverPublicInternalTypes().toSet()
+        def additions = unreviewedBaselineAdditions(discovered, reviewed)
+        if (!additions.isEmpty()) {
+            throw new GradleException(
+                    "New public implementation types are prohibited. Keep them package-private or classify a justified technical requirement:\n${additions.join('\n')}")
+        }
         publicInternalTypeBaseline.parentFile.mkdirs()
         publicInternalTypeBaseline.setText(renderPublicInternalTypeBaseline(), 'UTF-8')
     }
@@ -482,6 +843,293 @@ tasks.register('validatePublicInternalTypeBaseline') {
         if (actual != expected) {
             throw new GradleException(
                     'Public implementation surface changed. Run ./gradlew generatePublicInternalTypeBaseline and review the diff.')
+        }
+    }
+}
+
+tasks.register('validateNoPublicImplementationTypes') {
+    group = 'verification'
+    description = 'Rejects every public top-level type classified as internal implementation.'
+    inputs.files(inventoryInputs)
+
+    doLast {
+        def violations = discoverPublicInternalTypes()
+        if (!violations.isEmpty()) {
+            throw new GradleException(
+                    "Public implementation types are prohibited. Keep them package-private or add a justified technical infrastructure classification:\n${violations.join('\n')}")
+        }
+    }
+}
+
+tasks.register('validateAutoConfigurationEncapsulation') {
+    group = 'verification'
+    description = 'Validates Spring Boot auto-configuration discovery and bean method visibility.'
+    inputs.files(inventoryInputs)
+    inputs.files(fileTree('spring-boot-service-framework-starters') {
+        include '*/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports'
+    })
+
+    doLast {
+        def failures = []
+        publicApiArtifacts.findAll { artifact ->
+            artifact.sourceDirectory.startsWith('spring-boot-service-framework-starters/')
+        }.each { artifact ->
+            def importsPath = artifact.sourceDirectory.replace(
+                    '/src/main/java',
+                    '/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports')
+            def importsFile = file(importsPath)
+            if (!importsFile.isFile()) {
+                failures << "${artifact.artifact}: missing AutoConfiguration.imports"
+                return
+            }
+
+            def imports = importsFile.readLines('UTF-8')
+                    .collect { it.trim() }
+                    .findAll { !it.isEmpty() && !it.startsWith('#') }
+            def publicTypes = scanPublicTypes(artifact).collect { it.qualifiedName }.toSet()
+            def infrastructureTypes = artifact.infrastructureTypes.toSet()
+            def annotatedTypes = imports.findAll { type ->
+                def source = new File(
+                        file(artifact.sourceDirectory),
+                        "${type.replace('.', '/')}.java")
+                source.isFile() && (source.getText('UTF-8') =~ /@AutoConfiguration\b/).find()
+            }.toSet()
+
+            autoConfigurationImportViolations(
+                    imports,
+                    publicTypes,
+                    infrastructureTypes,
+                    annotatedTypes).each { violation ->
+                failures << "${artifact.artifact}: ${violation}"
+            }
+
+            fileTree(artifact.sourceDirectory) { include '**/*.java' }.files.sort().each { source ->
+                def text = source.getText('UTF-8')
+                if (!(text =~ /@AutoConfiguration\b/).find() ||
+                        !(text =~ publicTypePattern).find()) {
+                    return
+                }
+                findPublicBeanMethods(text).each { method ->
+                    failures << "${rootDir.toPath().relativize(source.toPath())}:${method.line}: " +
+                            "@Bean method '${method.method}' must be package-private"
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Auto-configuration encapsulation failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+tasks.register('validateSupportedApiDependencyBoundaries') {
+    group = 'verification'
+    description = 'Prevents supported API types from importing framework implementation packages.'
+    inputs.files(inventoryInputs)
+
+    doLast {
+        def failures = []
+        publicApiArtifacts.findAll { !it.buildLogic }.each { artifact ->
+            scanPublicTypes(artifact).findAll { type ->
+                classifyPublicType(artifact, type) in
+                        ['SUPPORTED_API', 'SUPPORTED_EXTENSION_POINT']
+            }.each { type ->
+                def source = new File(
+                        file(artifact.sourceDirectory),
+                        "${type.qualifiedName.replace('.', '/')}.java")
+                def importPattern = ~/(?m)^import\s+(?:static\s+)?(com\.smbtech\.serviceframework\.[A-Za-z0-9_$.]+)\s*;/
+                (source.getText('UTF-8') =~ importPattern).each { match ->
+                    def importedType = match[1].toString()
+                    if (isImplementationTypeReference(importedType)) {
+                        failures << "${rootDir.toPath().relativize(source.toPath())}: " +
+                                "supported API must not import implementation type ${importedType}"
+                    }
+                }
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Supported API dependency boundary failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+tasks.register('validateEncapsulationRuleFixtures') {
+    group = 'verification'
+    description = 'Verifies public visibility and auto-configuration rules against representative fixtures.'
+
+    doLast {
+        def failures = []
+        def artifact = [
+                buildLogic: false,
+                publicPackageExceptions: [],
+                publicTypeExceptions: [],
+                infrastructureTypes: []
+        ]
+        def internalType = [
+                packageName: 'com.example.internal',
+                qualifiedName: 'com.example.internal.AccidentalService',
+                kind: 'class'
+        ]
+        if (classifyPublicType(artifact, internalType) != 'INTERNAL_IMPLEMENTATION') {
+            failures << 'a public implementation type must be classified as forbidden internal implementation'
+        }
+        if (findPublicBeanMethods('@Bean\npublic Object exposedBean() { return null; }').isEmpty()) {
+            failures << 'a public @Bean method must be rejected'
+        }
+        if (!findPublicBeanMethods('@Bean\nObject internalBean() { return null; }').isEmpty()) {
+            failures << 'a package-private @Bean method must be accepted'
+        }
+        if (!isImplementationTypeReference(
+                'com.example.adapter.out.spring.DefaultService')) {
+            failures << 'an adapter dependency must be classified as implementation'
+        }
+        if (isImplementationTypeReference('com.example.api.Service')) {
+            failures << 'an API dependency must not be classified as implementation'
+        }
+        def validAutoConfiguration = 'com.example.autoconfigure.ValidAutoConfiguration'
+        if (!autoConfigurationImportViolations(
+                [validAutoConfiguration],
+                [validAutoConfiguration] as Set,
+                [validAutoConfiguration] as Set,
+                [validAutoConfiguration] as Set).isEmpty()) {
+            failures << 'a fully classified auto-configuration import must be accepted'
+        }
+        if (autoConfigurationImportViolations(
+                [validAutoConfiguration, validAutoConfiguration],
+                [validAutoConfiguration] as Set,
+                [validAutoConfiguration] as Set,
+                [validAutoConfiguration] as Set).isEmpty()) {
+            failures << 'a duplicate auto-configuration import must be rejected'
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException("Encapsulation rule fixture failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+def publicTypeClassificationBaseline = file('gradle/compatibility/public-type-classification.txt')
+
+tasks.register('generatePublicTypeClassificationBaseline') {
+    group = 'build setup'
+    description = 'Generates the reviewed classification baseline for every top-level public type.'
+    inputs.files(inventoryInputs)
+    outputs.file(publicTypeClassificationBaseline)
+
+    doLast {
+        publicTypeClassificationBaseline.parentFile.mkdirs()
+        publicTypeClassificationBaseline.setText(
+                renderPublicTypeClassificationBaseline(),
+                'UTF-8')
+    }
+}
+
+tasks.register('validatePublicTypeClassificationBaseline') {
+    group = 'verification'
+    description = 'Fails when a public type is added, removed, or reclassified without review.'
+    mustRunAfter tasks.named('generatePublicTypeClassificationBaseline')
+    inputs.files(inventoryInputs)
+    inputs.file(publicTypeClassificationBaseline)
+
+    doLast {
+        if (!publicTypeClassificationBaseline.isFile()) {
+            throw new GradleException(
+                    'Missing public type classification baseline. Run ./gradlew generatePublicTypeClassificationBaseline.')
+        }
+        def expected = renderPublicTypeClassificationBaseline().replace('\r\n', '\n')
+        def actual = publicTypeClassificationBaseline.getText('UTF-8').replace('\r\n', '\n')
+        if (actual != expected) {
+            throw new GradleException(
+                    'Public type classification changed. Run ./gradlew generatePublicTypeClassificationBaseline and review the diff.')
+        }
+    }
+}
+
+def concreteReplaceableBeanBaseline = file('gradle/compatibility/concrete-replaceable-beans.txt')
+
+tasks.register('generateConcreteReplaceableBeanBaseline') {
+    group = 'build setup'
+    description = 'Updates the shrinking baseline of replaceable beans returning concrete types.'
+    inputs.files(inventoryInputs)
+    outputs.file(concreteReplaceableBeanBaseline)
+
+    doLast {
+        if (!concreteReplaceableBeanBaseline.isFile()) {
+            concreteReplaceableBeanBaseline.parentFile.mkdirs()
+            concreteReplaceableBeanBaseline.setText(
+                    renderConcreteReplaceableBeanBaseline(),
+                    'UTF-8')
+            return
+        }
+        def reviewed = concreteReplaceableBeanBaseline.readLines('UTF-8')
+                .findAll { !it.isBlank() && !it.startsWith('#') }
+                .toSet()
+        def discovered = discoverConcreteReplaceableBeans().toSet()
+        def additions = unreviewedBaselineAdditions(discovered, reviewed)
+        if (!additions.isEmpty()) {
+            throw new GradleException(
+                    "New replaceable beans must return supported interfaces or contracts:\n${additions.join('\n')}")
+        }
+        concreteReplaceableBeanBaseline.setText(renderConcreteReplaceableBeanBaseline(), 'UTF-8')
+    }
+}
+
+tasks.register('validateConcreteReplaceableBeans') {
+    group = 'verification'
+    description = 'Prevents new replaceable @Bean methods from returning concrete implementation types.'
+    mustRunAfter tasks.named('generateConcreteReplaceableBeanBaseline')
+    inputs.files(inventoryInputs)
+    inputs.file(concreteReplaceableBeanBaseline)
+
+    doLast {
+        if (!concreteReplaceableBeanBaseline.isFile()) {
+            throw new GradleException(
+                    'Missing concrete replaceable bean baseline. Run ./gradlew generateConcreteReplaceableBeanBaseline.')
+        }
+        def expected = renderConcreteReplaceableBeanBaseline().replace('\r\n', '\n')
+        def actual = concreteReplaceableBeanBaseline.getText('UTF-8').replace('\r\n', '\n')
+        if (actual != expected) {
+            throw new GradleException(
+                    'Replaceable bean contract surface changed. Existing concrete returns may only be removed; new beans must return supported contracts.')
+        }
+    }
+}
+
+def replaceableBeanContractBaseline = file('gradle/compatibility/replaceable-bean-contracts.txt')
+
+tasks.register('generateReplaceableBeanContractBaseline') {
+    group = 'build setup'
+    description = 'Generates the supported replaceable bean contract baseline.'
+    inputs.files(inventoryInputs)
+    outputs.file(replaceableBeanContractBaseline)
+
+    doLast {
+        replaceableBeanContractBaseline.parentFile.mkdirs()
+        replaceableBeanContractBaseline.setText(
+                renderReplaceableBeanContractBaseline(),
+                'UTF-8')
+    }
+}
+
+tasks.register('validateReplaceableBeanContracts') {
+    group = 'verification'
+    description = 'Prevents supported replaceable bean contracts from changing without review.'
+    mustRunAfter tasks.named('generateReplaceableBeanContractBaseline')
+    inputs.files(inventoryInputs)
+    inputs.file(replaceableBeanContractBaseline)
+
+    doLast {
+        if (!replaceableBeanContractBaseline.isFile()) {
+            throw new GradleException(
+                    'Missing replaceable bean contract baseline. Run ./gradlew generateReplaceableBeanContractBaseline.')
+        }
+        def expected = renderReplaceableBeanContractBaseline().replace('\r\n', '\n')
+        def actual = replaceableBeanContractBaseline.getText('UTF-8').replace('\r\n', '\n')
+        if (actual != expected) {
+            throw new GradleException(
+                    'Replaceable bean contracts changed. Run ./gradlew generateReplaceableBeanContractBaseline and review the diff.')
         }
     }
 }
@@ -523,8 +1171,10 @@ tasks.register('validatePublicApiBoundaryRules') {
                 'com.example.adapter.out'   : false,
                 'com.example.adapter.api'   : false,
                 'com.example.autoconfigure' : false,
+                'com.example.application'   : false,
                 'com.example.serialization' : false,
-                'com.example.internal'      : false
+                'com.example.internal'      : false,
+                'com.example.service'       : false
         ]
         def failures = expectations.findAll { packageName, expected ->
             isConventionPublicPackage(standardArtifact, packageName) != expected
@@ -533,8 +1183,105 @@ tasks.register('validatePublicApiBoundaryRules') {
         if (isConventionPublicPackage(buildLogicArtifact, 'com.example.api')) {
             failures << 'build logic must remain implementation even when its package contains api'
         }
+        def classificationFixtures = [
+                [
+                        artifact: [
+                                buildLogic: false,
+                                publicPackageExceptions: [],
+                                publicTypeExceptions: [],
+                                infrastructureTypes: []
+                        ],
+                        type: [
+                                packageName: 'com.example.api',
+                                qualifiedName: 'com.example.api.Extension',
+                                kind: 'interface'
+                        ],
+                        expected: 'SUPPORTED_EXTENSION_POINT'
+                ],
+                [
+                        artifact: [
+                                buildLogic: false,
+                                publicPackageExceptions: [],
+                                publicTypeExceptions: [],
+                                infrastructureTypes: []
+                        ],
+                        type: [
+                                packageName: 'com.example.domain',
+                                qualifiedName: 'com.example.domain.Value',
+                                kind: 'record'
+                        ],
+                        expected: 'SUPPORTED_API'
+                ],
+                [
+                        artifact: [
+                                buildLogic: false,
+                                publicPackageExceptions: [],
+                                publicTypeExceptions: [],
+                                infrastructureTypes: ['com.example.adapter.FrameworkAdapter']
+                        ],
+                        type: [
+                                packageName: 'com.example.adapter',
+                                qualifiedName: 'com.example.adapter.FrameworkAdapter',
+                                kind: 'class'
+                        ],
+                        expected: 'TECHNICAL_INFRASTRUCTURE'
+                ],
+                [
+                        artifact: [
+                                buildLogic: false,
+                                publicPackageExceptions: [],
+                                publicTypeExceptions: [],
+                                infrastructureTypes: []
+                        ],
+                        type: [
+                                packageName: 'com.example.internal',
+                                qualifiedName: 'com.example.internal.DefaultService',
+                                kind: 'class'
+                        ],
+                        expected: 'INTERNAL_IMPLEMENTATION'
+                ]
+        ]
+        classificationFixtures.each { fixture ->
+            def actual = classifyPublicType(fixture.artifact, fixture.type)
+            if (actual != fixture.expected) {
+                failures << "${fixture.type.qualifiedName}: expected classification=${fixture.expected}, actual=${actual}"
+            }
+        }
+        if (unreviewedBaselineAdditions(['new'], []).toList() != ['new']) {
+            failures << 'a new implementation must be detected as baseline growth'
+        }
+        if (!unreviewedBaselineAdditions([], ['removed']).isEmpty()) {
+            failures << 'removing reviewed implementation debt must not be treated as baseline growth'
+        }
         if (!failures.isEmpty()) {
             throw new GradleException("Public API boundary rule failures:\n${failures.join('\n')}")
+        }
+    }
+}
+
+tasks.register('validateTechnicalInfrastructureAllowlist') {
+    group = 'verification'
+    description = 'Requires every technically public infrastructure type to have an explicit reason.'
+    inputs.files(inventoryInputs)
+
+    doLast {
+        def configured = publicApiArtifacts.collectMany { it.infrastructureTypes }.toSet()
+        def documented = technicalInfrastructureReasons.keySet().toSet()
+        def failures = []
+        (configured - documented).sort().each { type ->
+            failures << "${type}: missing technical visibility reason"
+        }
+        (documented - configured).sort().each { type ->
+            failures << "${type}: reason exists but type is not allowlisted as infrastructure"
+        }
+        technicalInfrastructureReasons.findAll { type, reason ->
+            reason == null || reason.toString().isBlank()
+        }.keySet().sort().each { type ->
+            failures << "${type}: technical visibility reason must not be blank"
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    "Technical infrastructure allowlist failures:\n${failures.join('\n')}")
         }
     }
 }
@@ -548,8 +1295,6 @@ def frameworkMainSources = fileTree(rootDir) {
 def moduleBoundaryDocuments = files(
         'spring-boot-service-framework-error-core/src/main/java/com/smbtech/serviceframework/error/package-info.java',
         'spring-boot-service-framework-error-core/README.md',
-        'spring-boot-service-framework-openapi-generator/src/main/java/com/smbtech/serviceframework/openapi/generator/package-info.java',
-        'spring-boot-service-framework-openapi-generator/README.md',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/src/main/java/com/smbtech/serviceframework/starter/errorhandling/package-info.java',
         'spring-boot-service-framework-starters/spring-boot-service-framework-starter-error-handling/README.md'
 )
@@ -576,13 +1321,23 @@ tasks.register('validateNoMarkerModuleTypes') {
     }
 }
 
-tasks.matching { it.name in ['documentationCheck', 'check', 'baseline'] }.configureEach {
+tasks.matching {
+    it.name in ['documentationCheck', 'codeQualityCheck', 'compatibilityCheck', 'check', 'baseline']
+}.configureEach {
     dependsOn(
+            tasks.named('validateAutoConfigurationEncapsulation'),
+            tasks.named('validateEncapsulationRuleFixtures'),
             tasks.named('validateNoMarkerModuleTypes'),
+            tasks.named('validateNoPublicImplementationTypes'),
+            tasks.named('validateConcreteReplaceableBeans'),
+            tasks.named('validateReplaceableBeanContracts'),
             tasks.named('validatePublicApiNullability'),
+            tasks.named('validateSupportedApiDependencyBoundaries'),
             tasks.named('validatePublicApiBoundaryRules'),
             tasks.named('validatePublicApiInventory'),
-            tasks.named('validatePublicInternalTypeBaseline')
+            tasks.named('validatePublicInternalTypeBaseline'),
+            tasks.named('validatePublicTypeClassificationBaseline'),
+            tasks.named('validateTechnicalInfrastructureAllowlist')
     )
 }
 

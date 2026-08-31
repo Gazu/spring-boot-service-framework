@@ -12,10 +12,10 @@ import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
 
 /** Adds bounded Service Framework module information to Spring Boot Actuator info. */
-public final class ServiceFrameworkInfoContributor implements InfoContributor {
+final class ServiceFrameworkInfoContributor implements InfoContributor {
 
     /** Stable key used in the Actuator info response. */
-    public static final String INFO_KEY = "serviceFramework";
+    static final String INFO_KEY = "serviceFramework";
 
     private final FrameworkDiagnostics diagnostics;
 
@@ -24,7 +24,7 @@ public final class ServiceFrameworkInfoContributor implements InfoContributor {
      *
      * @param diagnostics framework diagnostics use case
      */
-    public ServiceFrameworkInfoContributor(FrameworkDiagnostics diagnostics) {
+    ServiceFrameworkInfoContributor(FrameworkDiagnostics diagnostics) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 

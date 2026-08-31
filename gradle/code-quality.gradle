@@ -6,6 +6,32 @@ def maintainedJavaSources = fileTree(rootDir) {
     exclude '**/generated/**'
 }
 
+def maintainedJavaTestSources = fileTree(rootDir) {
+    include '**/src/test/java/**/*.java'
+    exclude '**/build/**'
+    exclude '**/.gradle/**'
+    exclude '**/generated/**'
+}
+
+def maintainedJavaMainSources = fileTree(rootDir) {
+    include '**/src/main/java/**/*.java'
+    exclude '**/build/**'
+    exclude '**/.gradle/**'
+    exclude '**/generated/**'
+}
+
+def managedRootBuildFiles = fileTree(rootDir) {
+    include 'spring-boot-service-framework-*/build.gradle'
+    include 'spring-boot-service-framework-starters/*/build.gradle'
+    include 'examples/quality-pilot/build.gradle'
+    exclude '**/build/**'
+}
+
+def buildLogicProjectFiles = fileTree(file('build-logic')) {
+    include '*/build.gradle'
+    exclude '**/build/**'
+}
+
 def stripJavaCommentsAndLiterals = { String source ->
     def output = new StringBuilder(source.length())
     def state = 'code'
@@ -312,6 +338,195 @@ tasks.register('validateCodeQualityRuleFixtures') {
     }
 }
 
+tasks.register('testSourceConventionsCheck') {
+    group = 'verification'
+    description = 'Validates test source paths, type names, executable-test suffixes, and retired test names.'
+    inputs.files(maintainedJavaTestSources)
+
+    doLast {
+        def failures = []
+        def testSourceMarker = '/src/test/java/'
+        def executableTestAnnotation = ~/@(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b/
+        def retiredTestNames = [
+                'HttpClientErrorHandlingBaseTest',
+                'OpenApiBreakingChangeDetectorTest',
+                'OpenApiContractMetadataTest',
+                'OpenApiGeneratorStructureTest',
+                'OpenApiJarPackagerTest',
+                'OpenApiMetadataGeneratorTest',
+                'OpenApiNameNormalizerTest',
+                'OpenApiSemanticVersionTest',
+                'OpenApiSpecInfoTest',
+                'OpenApiSpecReaderTest',
+                'StructuredLoggingServiceTest'
+        ] as Set
+
+        maintainedJavaTestSources.files.sort().each { source ->
+            def relativeSource = relativePath(source).replace('\\', '/')
+            def markerIndex = relativeSource.indexOf(testSourceMarker)
+            if (markerIndex < 0 || source.name == 'package-info.java') {
+                return
+            }
+
+            def sourceText = source.getText('UTF-8')
+            def javaPath = relativeSource.substring(markerIndex + testSourceMarker.length())
+            def packageSeparator = javaPath.lastIndexOf('/')
+            if (packageSeparator < 0) {
+                failures << "${relativeSource}: test sources must declare a named package"
+                return
+            }
+            def packagePath = javaPath.substring(0, packageSeparator)
+            def expectedPackage = packagePath.replace('/', '.')
+            def packageMatcher = sourceText =~ /(?m)^\s*package\s+([A-Za-z_$][A-Za-z0-9_$.]*)\s*;/
+            def declaredPackage = packageMatcher.find() ? packageMatcher.group(1) : ''
+            if (declaredPackage != expectedPackage) {
+                failures << "${relativeSource}: package '${declaredPackage}' must match '${expectedPackage}'"
+            }
+
+            def typeMatcher = sourceText =~ /(?m)^\s*(?:public\s+)?(?:(?:abstract|final|sealed|non-sealed)\s+)*(?:class|interface|record|enum)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/
+            def declaredType = typeMatcher.find() ? typeMatcher.group(1) : ''
+            def expectedType = source.name.substring(0, source.name.length() - '.java'.length())
+            if (declaredType != expectedType) {
+                failures << "${relativeSource}: top-level type '${declaredType}' must match file name '${expectedType}'"
+            }
+
+            if (retiredTestNames.contains(expectedType)) {
+                failures << "${relativeSource}: test name refers to a retired production type"
+            }
+
+            def containsExecutableTest = (sourceText =~ executableTestAnnotation).find()
+            if (containsExecutableTest && !expectedType.endsWith('Test')) {
+                failures << "${relativeSource}: executable JUnit test types must end in 'Test'"
+            }
+            if (!containsExecutableTest
+                    && !expectedType.endsWith('Test')
+                    && !expectedType.endsWith('TestFixtures')
+                    && !expectedType.endsWith('Baseline')) {
+                failures << "${relativeSource}: test support types must end in 'TestFixtures' or 'Baseline'"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Test source convention violations found:\n" + failures.join('\n'))
+        }
+    }
+}
+
+tasks.register('projectStructureCheck') {
+    group = 'verification'
+    description = 'Validates module registration, source layout, unique production types, and retired paths.'
+    inputs.files(
+            file('settings.gradle'),
+            file('build-logic/settings.gradle'),
+            managedRootBuildFiles,
+            buildLogicProjectFiles,
+            maintainedJavaMainSources
+    )
+
+    doLast {
+        def failures = []
+        def settingsSource = file('settings.gradle').getText('UTF-8')
+        def includedProjects = [] as Set
+        def includeMatcher = settingsSource =~ /(?m)^\s*include\s+['"]([^'"]+)['"]\s*$/
+        while (includeMatcher.find()) {
+            includedProjects.add(':' + includeMatcher.group(1))
+        }
+
+        includedProjects.sort().each { projectPath ->
+            def projectDirectory = file(projectPath.substring(1).replace(':', '/'))
+            if (!new File(projectDirectory, 'build.gradle').isFile()) {
+                failures << "${projectPath}: included project must provide build.gradle"
+            }
+        }
+
+        managedRootBuildFiles.files.sort().each { buildFile ->
+            def projectDirectory = relativePath(buildFile.parentFile).replace('\\', '/')
+            def projectPath = ':' + projectDirectory.replace('/', ':')
+            if (!includedProjects.contains(projectPath)) {
+                failures << "${relativePath(buildFile)}: managed module is not included in settings.gradle"
+            }
+        }
+
+        def buildLogicSettings = file('build-logic/settings.gradle').getText('UTF-8')
+        buildLogicProjectFiles.files.sort().each { buildFile ->
+            def directoryName = buildFile.parentFile.name
+            def includeToken = "include '${directoryName}'"
+            def projectDirectoryToken = "file('${directoryName}')"
+            if (!buildLogicSettings.contains(includeToken)
+                    && !buildLogicSettings.contains(projectDirectoryToken)) {
+                failures << "${relativePath(buildFile)}: build-logic project is not registered"
+            }
+        }
+
+        def productionTypes = [:].withDefault { [] }
+        maintainedJavaMainSources.files.sort().each { source ->
+            def relativeSource = relativePath(source).replace('\\', '/')
+            def sourceMarker = '/src/main/java/'
+            def markerIndex = relativeSource.indexOf(sourceMarker)
+            if (markerIndex < 0 || source.name == 'module-info.java') {
+                return
+            }
+
+            def javaPath = relativeSource.substring(markerIndex + sourceMarker.length())
+            def packageSeparator = javaPath.lastIndexOf('/')
+            if (packageSeparator < 0) {
+                failures << "${relativeSource}: production sources must declare a named package"
+                return
+            }
+
+            def sourceText = source.getText('UTF-8')
+            def expectedPackage = javaPath.substring(0, packageSeparator).replace('/', '.')
+            def packageMatcher = sourceText =~ /(?m)^\s*package\s+([A-Za-z_$][A-Za-z0-9_$.]*)\s*;/
+            def declaredPackage = packageMatcher.find() ? packageMatcher.group(1) : ''
+            if (declaredPackage != expectedPackage) {
+                failures << "${relativeSource}: package '${declaredPackage}' must match '${expectedPackage}'"
+            }
+
+            if (source.name != 'package-info.java') {
+                def simpleName = source.name.substring(0, source.name.length() - '.java'.length())
+                productionTypes[declaredPackage + '.' + simpleName] << relativeSource
+            }
+        }
+
+        productionTypes.findAll { ignored, sources -> sources.size() > 1 }.each { type, sources ->
+            failures << "${type}: duplicate production type in ${sources.sort().join(', ')}"
+        }
+
+        def supportedSourceSets = ['main', 'test'] as Set
+        fileTree(rootDir) {
+            include '**/src/*/**/*'
+            exclude '**/build/**'
+            exclude '**/.gradle/**'
+            exclude '**/generated/**'
+        }.files.sort().each { sourceFile ->
+            def relativeSource = relativePath(sourceFile).replace('\\', '/')
+            def sourcePath = relativeSource.split('/src/', 2)
+            def sourceSet = sourcePath.size() == 2 ? sourcePath[1].split('/', 2)[0] : ''
+            if (!sourceSet.isEmpty() && !supportedSourceSets.contains(sourceSet)) {
+                failures << "${relativeSource}: unsupported source set '${sourceSet}'"
+            }
+        }
+
+        def retiredPaths = [
+                'build-logic/openapi-generator-plugin/src/main/resources/com/smbtech/serviceframework/gradle/openapi/openapi-generator.gradle',
+                'docs/openapi-breaking-changes.md',
+                'docs/openapi-evolution.md',
+                'docs/openapi/spec-versions.properties',
+                'gradle/compatibility/contracts/openApiGenerator.txt',
+                'spring-boot-service-framework-openapi-generator'
+        ]
+        retiredPaths.each { retiredPath ->
+            if (file(retiredPath).exists()) {
+                failures << "${retiredPath}: retired path must remain removed"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("Project structure violations found:\n" + failures.sort().join('\n'))
+        }
+    }
+}
+
 def publicApiJavadocTasks = [
         ':spring-boot-service-framework-commons:javadoc',
         ':spring-boot-service-framework-logging-core:javadoc',
@@ -319,8 +534,8 @@ def publicApiJavadocTasks = [
         ':spring-boot-service-framework-mock-core:javadoc',
         ':spring-boot-service-framework-actuator-core:javadoc',
         ':spring-boot-service-framework-error-core:javadoc',
-        ':spring-boot-service-framework-openapi-generator:javadoc',
         ':spring-boot-service-framework-openapi-contract-testing:javadoc',
+        ':spring-boot-service-framework-project-generator:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-logging:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-actuator:javadoc',
         ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:javadoc',
@@ -332,7 +547,7 @@ tasks.register('publicApiJavadocCheck') {
     group = 'verification'
     description = 'Generates public API Javadocs with warnings treated as errors.'
     dependsOn(publicApiJavadocTasks)
-    dependsOn gradle.includedBuild('build-logic').task(':openapi-generator-plugin:javadoc')
+    dependsOn gradle.includedBuild('build-logic').task(':spring-boot-service-framework-openapi-gradle-plugin:javadoc')
 }
 
 tasks.register('validatePublicPackageInfo') {
@@ -350,7 +565,9 @@ tasks.register('codeQualityCheck') {
             tasks.named('validatePublicPackageInfo'),
             tasks.named('validateForbiddenCodeNames'),
             tasks.named('validateNoCommentedOutCode'),
-            tasks.named('validateCodeQualityRuleFixtures')
+            tasks.named('validateCodeQualityRuleFixtures'),
+            tasks.named('testSourceConventionsCheck'),
+            tasks.named('projectStructureCheck')
     )
 }
 
