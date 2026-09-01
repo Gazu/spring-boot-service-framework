@@ -10,7 +10,10 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
-No unreleased changes.
+### Fixed
+
+- Declare the centralized GitHub Packages registry in `distributionManagement`
+  for every framework, OpenAPI build tool, and Gradle plugin marker POM.
 
 ## 0.5.1 - 2026-08-31
 
