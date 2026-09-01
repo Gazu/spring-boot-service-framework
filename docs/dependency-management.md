@@ -18,7 +18,7 @@ repositories {
 
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
     )
 
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
@@ -33,7 +33,7 @@ artifact. For example, test-only modules require a test platform:
 ```groovy
 dependencies {
     testImplementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
     )
     testImplementation 'com.smbtech:spring-boot-service-framework-openapi-contract-testing'
 }
@@ -65,7 +65,7 @@ dependencies without versions:
         <dependency>
             <groupId>com.smbtech</groupId>
             <artifactId>spring-boot-service-framework-platform</artifactId>
-            <version>0.5.0</version>
+            <version>0.5.1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

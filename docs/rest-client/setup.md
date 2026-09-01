@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
 }
@@ -28,7 +28,7 @@ OAuth2 support is opt-in. Applications using `CLIENT_CREDENTIALS`,
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'

@@ -16,7 +16,7 @@ generate and publish models, server APIs, or clients.
 ## Dependency
 
 ```groovy
-implementation 'com.smbtech:spring-boot-service-framework-project-generator:0.5.0'
+implementation 'com.smbtech:spring-boot-service-framework-project-generator:0.5.1'
 ```
 
 The CLI can also be executed from this repository without adding it to an

@@ -23,7 +23,7 @@ It applies to private and internal distributions of the repository artifacts.
 The framework artifact version is defined in `gradle.properties`:
 
 ```properties
-frameworkVersion=0.5.0
+frameworkVersion=0.5.1
 ```
 
 The root build applies that version to every framework artifact. The supported
@@ -122,7 +122,7 @@ Verify the downloaded archive before extracting it:
 
 ```bash
 cd build/distributions
-shasum -a 256 -c spring-boot-service-framework-0.5.0.zip.sha256
+shasum -a 256 -c spring-boot-service-framework-0.5.1.zip.sha256
 ```
 
 When preparing a release, update every consumer-facing version example that
@@ -140,13 +140,13 @@ mentions the framework version. At minimum, check:
 1. Create a release branch:
 
 ```bash
-git checkout -b release/v0.5.0
+git checkout -b release/v0.5.1
 ```
 
 2. Confirm the target version and update `gradle.properties` if needed:
 
 ```properties
-frameworkVersion=0.5.0
+frameworkVersion=0.5.1
 ```
 
 3. Refresh generated property references after configuration changes:
@@ -270,13 +270,13 @@ git diff
 
 ```bash
 git add .
-git commit -m "chore(release): prepare v0.5.0"
+git commit -m "chore(release): prepare v0.5.1"
 ```
 
 10. Push the release branch and open a pull request:
 
 ```bash
-git push --set-upstream origin release/v0.5.0
+git push --set-upstream origin release/v0.5.1
 ```
 
 Wait for `Pull Request / Policy`, `Pull Request / Quality`, and
@@ -293,14 +293,14 @@ git pull --ff-only origin main
 12. Create the signed release tag on the merged commit:
 
 ```bash
-git tag -s v0.5.0 -m "Release v0.5.0"
-git verify-tag v0.5.0
+git tag -s v0.5.1 -m "Release v0.5.1"
+git verify-tag v0.5.1
 ```
 
 13. Push the approved tag:
 
 ```bash
-git push origin v0.5.0
+git push origin v0.5.1
 ```
 
 ## Publishing Locally
@@ -370,11 +370,14 @@ steps that sign or publish artifacts.
 
 Required `release` environment secrets are:
 
-- `PRIVATE_MAVEN_URL`
-- `PRIVATE_MAVEN_USERNAME`
-- `PRIVATE_MAVEN_PASSWORD`
+- `PACKAGES_USERNAME`
+- `PACKAGES_TOKEN`, a classic personal access token with `write:packages`
 - `SIGNING_KEY`
 - `SIGNING_PASSWORD`
+
+The release workflow publishes to the private GitHub Packages repository at
+`https://maven.pkg.github.com/gazu/service-framework-packages`. It maps the
+package credentials to the generic `PRIVATE_MAVEN_*` Gradle interface.
 
 ## Breaking Changes
 
@@ -408,6 +411,6 @@ After the release is published:
 Useful checks:
 
 ```bash
-git show --stat v0.5.0
+git show --stat v0.5.1
 ./gradlew publishLocalArtifacts consumerSmoke
 ```

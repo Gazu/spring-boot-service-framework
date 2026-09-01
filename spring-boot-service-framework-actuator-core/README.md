@@ -15,7 +15,7 @@ depend on Spring Boot Actuator.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.0'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
     )
     implementation 'com.smbtech:spring-boot-service-framework-actuator-core'
 }
