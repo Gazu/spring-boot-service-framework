@@ -370,14 +370,16 @@ steps that sign or publish artifacts.
 
 Required `release` environment secrets are:
 
-- `PACKAGES_USERNAME`
-- `PACKAGES_TOKEN`, a classic personal access token with `write:packages`
+- `PRIVATE_MAVEN_URL`, set to
+  `https://maven.pkg.github.com/gazu/service-framework-packages`
+- `PRIVATE_MAVEN_USERNAME`, the GitHub username that owns the token
+- `PRIVATE_MAVEN_PASSWORD`, a classic personal access token with
+  `write:packages`
 - `SIGNING_KEY`
 - `SIGNING_PASSWORD`
 
 The release workflow publishes to the private GitHub Packages repository at
-`https://maven.pkg.github.com/gazu/service-framework-packages`. It maps the
-package credentials to the generic `PRIVATE_MAVEN_*` Gradle interface.
+the URL configured in `PRIVATE_MAVEN_URL`.
 
 ## Breaking Changes
 
