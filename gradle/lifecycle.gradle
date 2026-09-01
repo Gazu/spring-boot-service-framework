@@ -370,6 +370,17 @@ tasks.register('releaseLifecycleCheck') {
         if (workflowText.contains('secrets: inherit')) {
             failures.add('release workflow must use environment-scoped publisher secrets')
         }
+        [
+                'PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}',
+                'PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}',
+                'PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}',
+                'SIGNING_KEY: ${{ secrets.SIGNING_KEY }}',
+                'SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}'
+        ].each { secretMapping ->
+            if (!workflowText.contains(secretMapping)) {
+                failures.add("release workflow must explicitly grant ${secretMapping}")
+            }
+        }
 
         def reusableWorkflowText = reusablePublicationWorkflowFile.asFile.getText('UTF-8')
         [
@@ -383,6 +394,19 @@ tasks.register('releaseLifecycleCheck') {
         ].each { reusableMarker ->
             if (!reusableWorkflowText.contains(reusableMarker)) {
                 failures.add("reusable publication must contain ${reusableMarker}")
+            }
+        }
+        [
+                'PRIVATE_MAVEN_URL',
+                'PRIVATE_MAVEN_USERNAME',
+                'PRIVATE_MAVEN_PASSWORD',
+                'SIGNING_KEY',
+                'SIGNING_PASSWORD'
+        ].each { secretName ->
+            def declarationPattern =
+                    "(?m)^      ${secretName}:\\n        description: .+\\n        required: true"
+            if (!(reusableWorkflowText =~ declarationPattern)) {
+                failures.add("reusable publication must require ${secretName}")
             }
         }
         if (reusableWorkflowText =~ /(?m)^  (push|pull_request|workflow_dispatch):/) {
