@@ -404,14 +404,15 @@ Required `release` environment secrets are:
   `https://maven.pkg.github.com/gazu/service-framework-packages`
 - `PRIVATE_MAVEN_USERNAME`, the GitHub username that owns the token
 - `PRIVATE_MAVEN_PASSWORD`, a classic personal access token with
-  `read:packages` and `write:packages`
+  `write:packages` (`read:packages` is selected implicitly by GitHub)
 - `SIGNING_KEY`
 - `SIGNING_PASSWORD`
 
 The release workflow publishes to the private GitHub Packages repository at
 the URL configured in `PRIVATE_MAVEN_URL`. Before the build starts, it verifies
-the canonical registry URL, authenticates the declared GitHub user, confirms
-the classic PAT scopes, and checks read access to an existing private package.
+the canonical registry URL, authenticates the declared GitHub user, checks PAT
+scope metadata when GitHub returns it, and verifies actual read access to an
+existing private package.
 
 Publication, consumption, administration, and signing use separate identities:
 
