@@ -48,6 +48,71 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
 
+      - name: Validate publishing identity
+        shell: bash
+        env:
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          expected_url="https://maven.pkg.github.com/gazu/service-framework-packages"
+          for variable in PRIVATE_MAVEN_URL PRIVATE_MAVEN_USERNAME \
+            PRIVATE_MAVEN_PASSWORD SIGNING_KEY SIGNING_PASSWORD; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "Required release secret ${variable} is empty." >&2
+              exit 1
+            fi
+          done
+          if [[ "${PRIVATE_MAVEN_URL}" != "${expected_url}" ]]; then
+            echo "PRIVATE_MAVEN_URL must be ${expected_url}." >&2
+            exit 1
+          fi
+
+          headers="$(mktemp)"
+          response="$(mktemp)"
+          trap 'rm -f "${headers}" "${response}"' EXIT
+          status="$(curl --silent --show-error --location \
+            --dump-header "${headers}" --output "${response}" --write-out '%{http_code}' \
+            --user "${PRIVATE_MAVEN_USERNAME}:${PRIVATE_MAVEN_PASSWORD}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            https://api.github.com/user)"
+          if [[ "${status}" != "200" ]]; then
+            echo "Publishing identity authentication failed with HTTP ${status}." >&2
+            exit 1
+          fi
+
+          authenticated_user="$(jq -r '.login // empty' "${response}")"
+          if [[ "${authenticated_user,,}" != "${PRIVATE_MAVEN_USERNAME,,}" ]]; then
+            echo "PRIVATE_MAVEN_USERNAME does not own PRIVATE_MAVEN_PASSWORD." >&2
+            exit 1
+          fi
+
+          oauth_scopes="$(awk -F': *' 'tolower($1) == "x-oauth-scopes" {
+            gsub("\\r", "", $2); print tolower($2)
+          }' "${headers}")"
+          for required_scope in read:packages write:packages; do
+            if [[ ",${oauth_scopes// /}," != *",${required_scope},"* ]]; then
+              echo "Publishing PAT must be classic and include ${required_scope}." >&2
+              exit 1
+            fi
+          done
+
+          package_status="$(curl --silent --show-error --location \
+            --output "${response}" --write-out '%{http_code}' \
+            --user "${PRIVATE_MAVEN_USERNAME}:${PRIVATE_MAVEN_PASSWORD}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            https://api.github.com/users/Gazu/packages/maven/com.smbtech.spring-boot-service-framework-platform)"
+          if [[ "${package_status}" != "200" ]]; then
+            echo "Publishing identity cannot read the private Maven registry (HTTP ${package_status})." >&2
+            exit 1
+          fi
+          echo "Publishing identity and private Maven registry access are valid."
+
       - name: Install Gitleaks
         run: .github/scripts/install-gitleaks.sh
 

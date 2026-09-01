@@ -349,6 +349,9 @@ tasks.register('releaseLifecycleCheck') {
         }
         [
                 'artifact-metadata: write',
+                'Validate publishing identity',
+                'https://maven.pkg.github.com/gazu/service-framework-packages',
+                'read:packages write:packages',
                 'sha256sum --check',
                 'build/distributions/*.zip.sha256',
                 'build/release/documentation/RELEASE_NOTES.md',

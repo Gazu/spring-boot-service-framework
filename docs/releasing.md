@@ -374,12 +374,29 @@ Required `release` environment secrets are:
   `https://maven.pkg.github.com/gazu/service-framework-packages`
 - `PRIVATE_MAVEN_USERNAME`, the GitHub username that owns the token
 - `PRIVATE_MAVEN_PASSWORD`, a classic personal access token with
-  `write:packages`
+  `read:packages` and `write:packages`
 - `SIGNING_KEY`
 - `SIGNING_PASSWORD`
 
 The release workflow publishes to the private GitHub Packages repository at
-the URL configured in `PRIVATE_MAVEN_URL`.
+the URL configured in `PRIVATE_MAVEN_URL`. Before the build starts, it verifies
+the canonical registry URL, authenticates the declared GitHub user, confirms
+the classic PAT scopes, and checks read access to an existing private package.
+
+Publication, consumption, administration, and signing use separate identities:
+
+- producer workflows use only the five `release` environment secrets above;
+- consumer repositories use their own classic PAT with `read:packages` only;
+- package cleanup uses the registry repository's ephemeral `github.token` and
+  never receives the publisher PAT;
+- OpenPGP signing secrets are never exposed to consumers or cleanup workflows.
+
+Rotate the publisher PAT at least every 90 days. Create the replacement with
+only `read:packages` and `write:packages`, replace
+`PRIVATE_MAVEN_USERNAME` and `PRIVATE_MAVEN_PASSWORD` in the `release`
+environment, run the release identity check, and revoke the previous token.
+`PACKAGES_USERNAME` and `PACKAGES_TOKEN` are legacy duplicate names and must not
+be used by this repository.
 
 Failed publications can be retried from **Actions > Publish Release > Run
 workflow** by entering the existing signed tag. The workflow checks out and
