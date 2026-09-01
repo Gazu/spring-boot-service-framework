@@ -12,6 +12,19 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 No unreleased changes.
 
+## 0.5.1 - 2026-08-31
+
+### Highlights
+
+- Deliver the complete framework and OpenAPI toolchain through an authenticated
+  private Maven registry.
+
+### Changed
+
+- Publish signed framework and OpenAPI build artifacts to the private GitHub
+  Packages Maven registry.
+- Verify every declared release coordinate after remote publication.
+
 ## 0.5.0 - 2026-08-31
 
 **Migration required:** This pre-1.0 release intentionally removes accidental

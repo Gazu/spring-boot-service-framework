@@ -1,7 +1,7 @@
 # OpenAPI Current Behavior Inventory
 
 This inventory freezes the OpenAPI behavior implemented by framework version
-`0.5.0`. It is a compatibility reference for maintainers, not a getting-started
+`0.5.1`. It is a compatibility reference for maintainers, not a getting-started
 guide. The executable sources of truth are the OpenAPI Gradle plugin, its module
 compatibility contract, and the generated-artifact compatibility lifecycle.
 It records only values protected by automated checks; canonical references own
@@ -120,7 +120,7 @@ known comparison limits are documented in
 
 | Component | Current value | Version source |
 |---|---|---|
-| Framework | `0.5.0` | `frameworkVersion` |
+| Framework | `0.5.1` | `frameworkVersion` |
 | Spring Boot | `4.1.0` | `springBootVersion` |
 | OpenAPI Generator | `7.24.0` | `openApiGeneratorVersion` |
 | OpenAPI Diff | `2.1.7` | `openApiDiffVersion` |

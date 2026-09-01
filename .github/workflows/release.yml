@@ -10,6 +10,7 @@ permissions:
   attestations: write
   contents: read
   id-token: write
+  packages: write
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -130,9 +131,28 @@ jobs:
 
       - name: Publish signed Maven artifacts
         env:
-          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
-          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
-          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          PRIVATE_MAVEN_URL: https://maven.pkg.github.com/gazu/service-framework-packages
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PACKAGES_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PACKAGES_TOKEN }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: ./gradlew publishRelease -PreleaseBuild=true --no-daemon --stacktrace
+
+      - name: Verify published Maven artifacts
+        shell: bash
+        env:
+          PACKAGES_URL: https://maven.pkg.github.com/gazu/service-framework-packages
+          PACKAGES_USERNAME: ${{ secrets.PACKAGES_USERNAME }}
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        run: |
+          set -euo pipefail
+          release_version="${GITHUB_REF_NAME#v}"
+          while IFS='|' read -r kind group_id artifact_id; do
+            [[ -z "${kind}" || "${kind}" == \#* ]] && continue
+            group_path="${group_id//./\/}"
+            artifact_url="${PACKAGES_URL}/${group_path}/${artifact_id}/${release_version}/${artifact_id}-${release_version}.pom"
+            curl --fail --silent --show-error --retry 5 --retry-all-errors \
+              --user "${PACKAGES_USERNAME}:${PACKAGES_TOKEN}" \
+              --output /dev/null \
+              "${artifact_url}"
+          done < gradle/release-artifacts.txt

@@ -4,7 +4,7 @@
 
 | Component | Supported version | Policy |
 |---|---:|---|
-| Framework platform | 0.5.0 | Import `com.smbtech:spring-boot-service-framework-platform` and omit versions from managed modules |
+| Framework platform | 0.5.1 | Import `com.smbtech:spring-boot-service-framework-platform` and omit versions from managed modules |
 | Java | 21 | Framework toolchain and bytecode target |
 | Gradle | Wrapper-provided Gradle, currently 9.3.1 in generated reports | Use the repository wrapper when available |
 | Spring Boot | 4.1.0 | Controlled by `springBootVersion` in the root `gradle.properties` |
