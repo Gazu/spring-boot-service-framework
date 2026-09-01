@@ -381,6 +381,10 @@ Required `release` environment secrets are:
 The release workflow publishes to the private GitHub Packages repository at
 the URL configured in `PRIVATE_MAVEN_URL`.
 
+Failed publications can be retried from **Actions > Publish Release > Run
+workflow** by entering the existing signed tag. The workflow checks out and
+verifies that tag before publishing it with the current release configuration.
+
 ## Breaking Changes
 
 For any breaking change:
