@@ -30,7 +30,7 @@ concurrency:
 jobs:
   publish:
     name: Verify and publish signed release
-    uses: Gazu/service-framework-packages/.github/workflows/publish-gradle-maven.yml@1c8a70d8c0cb264202d62c23fa07a83a1354e49e
+    uses: ./.github/workflows/publish-gradle-maven.yml
     with:
       tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       java_version: "21"

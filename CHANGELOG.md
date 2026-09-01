@@ -12,8 +12,8 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ### Changed
 
-- Delegate signed Maven releases to the commit-pinned reusable publication
-  workflow maintained by the central package registry repository.
+- Delegate signed Maven releases to a validated reusable publication workflow;
+  public producers can pin the public workflow by commit SHA.
 
 ### Fixed
 
