@@ -46,7 +46,7 @@ tasks.register('buildLogicPublicationIntegrationCheck') {
         def supplyChainText = supplyChainScript.asFile.getText('UTF-8')
         def documentationText = releaseDocumentation.asFile.getText('UTF-8')
 
-        if (!workflowText.contains('./gradlew publishRelease -PreleaseBuild=true')) {
+        if (!workflowText.contains('publish_task: publishRelease')) {
             failures.add('release workflow must publish the included build-logic artifacts')
         }
         if (!lifecycleText.contains(

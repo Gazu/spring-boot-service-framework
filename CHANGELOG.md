@@ -10,6 +10,11 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
+### Changed
+
+- Delegate signed Maven releases to the commit-pinned reusable publication
+  workflow maintained by the central package registry repository.
+
 ### Fixed
 
 - Declare the centralized GitHub Packages registry in `distributionManagement`
