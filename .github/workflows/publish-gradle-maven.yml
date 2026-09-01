@@ -1,0 +1,355 @@
+name: Publish Gradle Maven Release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing signed release tag to publish
+        required: true
+        type: string
+      java_version:
+        description: Java toolchain version
+        required: false
+        default: "21"
+        type: string
+      version_property:
+        description: Property in gradle.properties containing the release version
+        required: false
+        default: frameworkVersion
+        type: string
+      artifact_manifest:
+        description: Pipe-delimited kind, groupId, and artifactId manifest
+        required: false
+        default: gradle/release-artifacts.txt
+        type: string
+      prepare_task:
+        description: Gradle task that prepares and verifies the signed release
+        required: false
+        default: prepareRelease
+        type: string
+      publish_task:
+        description: Gradle task that publishes every release artifact
+        required: false
+        default: publishRelease
+        type: string
+      bundle_directory:
+        description: Directory containing the release ZIP and checksum
+        required: false
+        default: build/distributions
+        type: string
+      bundle_basename:
+        description: Release ZIP basename without version
+        required: true
+        type: string
+      artifact_name:
+        description: Name assigned to the uploaded release evidence
+        required: true
+        type: string
+      artifact_paths:
+        description: Newline-delimited release evidence paths
+        required: true
+        type: string
+      release_environment:
+        description: Caller environment containing publishing and signing secrets
+        required: false
+        default: release
+        type: string
+      dry_run:
+        description: Validate the reusable publication without publishing artifacts
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      version:
+        description: Validated release version
+        value: ${{ jobs.publish.outputs.version }}
+      artifact_count:
+        description: Number of Maven coordinates verified after publication
+        value: ${{ jobs.publish.outputs.artifact_count }}
+
+permissions:
+  artifact-metadata: write
+  attestations: write
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  publish:
+    name: Verify and publish signed Maven release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.release_environment }}
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      artifact_count: ${{ steps.verify.outputs.artifact_count || '0' }}
+
+    steps:
+      - name: Check out signed tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag }}
+
+      - name: Validate publication inputs
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          JAVA_VERSION: ${{ inputs.java_version }}
+          VERSION_PROPERTY: ${{ inputs.version_property }}
+          ARTIFACT_MANIFEST: ${{ inputs.artifact_manifest }}
+          PREPARE_TASK: ${{ inputs.prepare_task }}
+          PUBLISH_TASK: ${{ inputs.publish_task }}
+          BUNDLE_DIRECTORY: ${{ inputs.bundle_directory }}
+          BUNDLE_BASENAME: ${{ inputs.bundle_basename }}
+        run: |
+          set -euo pipefail
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "${JAVA_VERSION}" =~ ^[0-9]+$ ]]
+          [[ "${VERSION_PROPERTY}" =~ ^[A-Za-z][A-Za-z0-9_.-]*$ ]]
+          [[ "${PREPARE_TASK}" =~ ^[A-Za-z][A-Za-z0-9:_-]*$ ]]
+          [[ "${PUBLISH_TASK}" =~ ^[A-Za-z][A-Za-z0-9:_-]*$ ]]
+          [[ "${ARTIFACT_MANIFEST}" =~ ^[A-Za-z0-9_./-]+$ ]]
+          [[ "${BUNDLE_DIRECTORY}" =~ ^[A-Za-z0-9_./-]+$ ]]
+          [[ "${ARTIFACT_MANIFEST}" != *..* ]]
+          [[ "${BUNDLE_DIRECTORY}" != *..* ]]
+          [[ "${BUNDLE_BASENAME}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
+          test -f gradle.properties
+          test -f "${ARTIFACT_MANIFEST}"
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java_version }}
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Validate publishing identity
+        shell: bash
+        env:
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          expected_url="https://maven.pkg.github.com/gazu/service-framework-packages"
+          for variable in PRIVATE_MAVEN_URL PRIVATE_MAVEN_USERNAME \
+            PRIVATE_MAVEN_PASSWORD SIGNING_KEY SIGNING_PASSWORD; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "Required release secret ${variable} is empty." >&2
+              exit 1
+            fi
+          done
+          if [[ "${PRIVATE_MAVEN_URL}" != "${expected_url}" ]]; then
+            echo "PRIVATE_MAVEN_URL must be ${expected_url}." >&2
+            exit 1
+          fi
+
+          headers="$(mktemp)"
+          response="$(mktemp)"
+          trap 'rm -f "${headers}" "${response}"' EXIT
+          status="$(curl --silent --show-error --location \
+            --dump-header "${headers}" --output "${response}" --write-out '%{http_code}' \
+            --user "${PRIVATE_MAVEN_USERNAME}:${PRIVATE_MAVEN_PASSWORD}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            https://api.github.com/user)"
+          if [[ "${status}" != "200" ]]; then
+            echo "Publishing identity authentication failed with HTTP ${status}." >&2
+            exit 1
+          fi
+
+          authenticated_user="$(jq -r '.login // empty' "${response}")"
+          if [[ "${authenticated_user,,}" != "${PRIVATE_MAVEN_USERNAME,,}" ]]; then
+            echo "PRIVATE_MAVEN_USERNAME does not own PRIVATE_MAVEN_PASSWORD." >&2
+            exit 1
+          fi
+
+          oauth_scopes="$(awk -F': *' 'tolower($1) == "x-oauth-scopes" {
+            gsub("\\r", "", $2); print tolower($2)
+          }' "${headers}")"
+          for required_scope in read:packages write:packages; do
+            if [[ ",${oauth_scopes// /}," != *",${required_scope},"* ]]; then
+              echo "Publishing PAT must be classic and include ${required_scope}." >&2
+              exit 1
+            fi
+          done
+
+          packages_status="$(curl --silent --show-error --location \
+            --output "${response}" --write-out '%{http_code}' \
+            --user "${PRIVATE_MAVEN_USERNAME}:${PRIVATE_MAVEN_PASSWORD}" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/users/Gazu/packages?package_type=maven&per_page=1')"
+          if [[ "${packages_status}" != "200" ]] ||
+              [[ "$(jq 'length' "${response}")" == "0" ]]; then
+            echo "Publishing identity cannot read the private Maven registry." >&2
+            exit 1
+          fi
+          echo "Publishing identity and private Maven registry access are valid."
+
+      - name: Verify release tag and signing key
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          VERSION_PROPERTY: ${{ inputs.version_property }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          release_version="$(awk -F= -v property="${VERSION_PROPERTY}" \
+            '$1 == property {print substr($0, index($0, "=") + 1)}' gradle.properties)"
+          test -n "${release_version}"
+          test "${RELEASE_TAG}" = "v${release_version}"
+          printf '%s' "${SIGNING_KEY}" | gpg --batch --import
+          git verify-tag "${RELEASE_TAG}"
+          echo "version=${release_version}" >>"${GITHUB_OUTPUT}"
+
+      - name: Validate Gradle publication contract
+        if: ${{ inputs.dry_run }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          PREPARE_TASK: ${{ inputs.prepare_task }}
+          PUBLISH_TASK: ${{ inputs.publish_task }}
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          GITHUB_REF_NAME="${RELEASE_TAG}" ./gradlew \
+            "${PREPARE_TASK}" "${PUBLISH_TASK}" \
+            -PreleaseBuild=true --dry-run --no-daemon --stacktrace
+
+      - name: Install Gitleaks
+        if: ${{ !inputs.dry_run }}
+        run: .github/scripts/install-gitleaks.sh
+
+      - name: Scan committed secrets
+        if: ${{ !inputs.dry_run }}
+        env:
+          SECURITY_EXECUTION_PROFILE: release
+        run: .ci/security/scan.sh secrets
+
+      - name: Upload release secret evidence
+        if: ${{ !inputs.dry_run && always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-secret-scan-${{ github.run_id }}
+          path: |
+            build/reports/security/gitleaks.sarif
+            build/reports/security/security-scan-secrets-summary.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Build signed release bundle
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          PREPARE_TASK: ${{ inputs.prepare_task }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          GITHUB_REF_NAME="${RELEASE_TAG}" ./gradlew clean "${PREPARE_TASK}" \
+            -PreleaseBuild=true --no-daemon --stacktrace
+
+      - name: Verify release bundle checksum
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          BUNDLE_DIRECTORY: ${{ inputs.bundle_directory }}
+          BUNDLE_BASENAME: ${{ inputs.bundle_basename }}
+        run: |
+          set -euo pipefail
+          cd "${BUNDLE_DIRECTORY}"
+          sha256sum --check "${BUNDLE_BASENAME}-${RELEASE_VERSION}.zip.sha256"
+
+      - name: Install Trivy
+        if: ${{ !inputs.dry_run }}
+        run: .github/scripts/install-trivy.sh
+
+      - name: Scan dependencies and misconfigurations
+        if: ${{ !inputs.dry_run }}
+        env:
+          SECURITY_EXECUTION_PROFILE: release
+        run: .ci/security/scan.sh trivy
+
+      - name: Upload release Trivy evidence
+        if: ${{ !inputs.dry_run && always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-trivy-scan-${{ github.run_id }}
+          path: |
+            build/reports/security/trivy-*.sarif
+            build/reports/security/security-scan-trivy-summary.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Attest release bundle provenance
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4
+        with:
+          subject-path: ${{ inputs.bundle_directory }}/*.zip
+          create-storage-record: false
+
+      - name: Upload release bundle and SBOM
+        if: ${{ !inputs.dry_run }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_paths }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish signed Maven artifacts
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          PUBLISH_TASK: ${{ inputs.publish_task }}
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          GITHUB_REF_NAME="${RELEASE_TAG}" ./gradlew "${PUBLISH_TASK}" \
+            -PreleaseBuild=true --no-daemon --stacktrace
+
+      - name: Verify published Maven artifacts
+        id: verify
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          ARTIFACT_MANIFEST: ${{ inputs.artifact_manifest }}
+          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          artifact_count=0
+          while IFS='|' read -r kind group_id artifact_id; do
+            [[ -z "${kind}" || "${kind}" == \#* ]] && continue
+            group_path="${group_id//./\/}"
+            artifact_url="${PRIVATE_MAVEN_URL}/${group_path}/${artifact_id}/${RELEASE_VERSION}/${artifact_id}-${RELEASE_VERSION}.pom"
+            curl --fail --silent --show-error --retry 5 --retry-all-errors \
+              --user "${PRIVATE_MAVEN_USERNAME}:${PRIVATE_MAVEN_PASSWORD}" \
+              --output /dev/null \
+              "${artifact_url}"
+            ((artifact_count += 1))
+          done <"${ARTIFACT_MANIFEST}"
+          if (( artifact_count == 0 )); then
+            echo "Artifact manifest does not contain Maven coordinates." >&2
+            exit 1
+          fi
+          echo "artifact_count=${artifact_count}" >>"${GITHUB_OUTPUT}"
+          echo "Verified ${artifact_count} Maven coordinates at version ${RELEASE_VERSION}."

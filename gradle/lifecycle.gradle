@@ -15,9 +15,10 @@ def releaseArtifactManifest = layout.projectDirectory.file(
 )
 def releaseWorkflow = layout.projectDirectory.file('.github/workflows/release.yml')
 def releaseDocumentation = layout.projectDirectory.file('docs/releasing.md')
-def reusablePublicationWorkflow =
-        'Gazu/service-framework-packages/.github/workflows/publish-gradle-maven.yml@' +
-        '1c8a70d8c0cb264202d62c23fa07a83a1354e49e'
+def reusablePublicationWorkflow = './.github/workflows/publish-gradle-maven.yml'
+def reusablePublicationWorkflowFile = layout.projectDirectory.file(
+        '.github/workflows/publish-gradle-maven.yml'
+)
 def releaseBuild = providers.gradleProperty('releaseBuild')
         .map { it.toBoolean() }
         .orElse(false)
@@ -308,6 +309,7 @@ tasks.register('releaseLifecycleCheck') {
             releaseLifecycleContract,
             releaseArtifactManifest,
             releaseWorkflow,
+            reusablePublicationWorkflowFile,
             releaseDocumentation,
             layout.projectDirectory.file('gradle/lifecycle.gradle')
     )
@@ -344,7 +346,7 @@ tasks.register('releaseLifecycleCheck') {
 
         def workflowText = releaseWorkflow.asFile.getText('UTF-8')
         if (!workflowText.contains("uses: ${reusablePublicationWorkflow}")) {
-            failures.add('release workflow must pin the reusable publication by commit SHA')
+            failures.add('release workflow must call the repository-local reusable publication')
         }
         [
                 'artifact-metadata: write',
@@ -367,6 +369,32 @@ tasks.register('releaseLifecycleCheck') {
         }
         if (workflowText.contains('secrets: inherit')) {
             failures.add('release workflow must use environment-scoped publisher secrets')
+        }
+
+        def reusableWorkflowText = reusablePublicationWorkflowFile.asFile.getText('UTF-8')
+        [
+                'workflow_call:',
+                'environment: ${{ inputs.release_environment }}',
+                'https://maven.pkg.github.com/gazu/service-framework-packages',
+                'for required_scope in read:packages write:packages; do',
+                'git verify-tag "${RELEASE_TAG}"',
+                './gradlew "${PUBLISH_TASK}"',
+                'done <"${ARTIFACT_MANIFEST}"'
+        ].each { reusableMarker ->
+            if (!reusableWorkflowText.contains(reusableMarker)) {
+                failures.add("reusable publication must contain ${reusableMarker}")
+            }
+        }
+        if (reusableWorkflowText =~ /(?m)^  (push|pull_request|workflow_dispatch):/) {
+            failures.add('reusable publication must expose workflow_call only')
+        }
+        if (reusableWorkflowText.contains('secrets: inherit')) {
+            failures.add('reusable publication must use release environment secrets')
+        }
+        (reusableWorkflowText =~ /(?m)^\s+uses:\s+(\S+)/).each { match ->
+            if (!(match[1] ==~ /.+@[0-9a-f]{40}/)) {
+                failures.add("reusable action must be pinned by commit SHA: ${match[1]}")
+            }
         }
 
         def documentationText = releaseDocumentation.asFile.getText('UTF-8')

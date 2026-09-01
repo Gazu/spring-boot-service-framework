@@ -380,18 +380,20 @@ framework module. The lifecycle starts the included `build-logic` publication
 only after release preparation has passed.
 
 The producer entry point is `.github/workflows/release.yml`. It delegates the
-release to the reusable workflow in `Gazu/service-framework-packages`, pinned to
-the reviewed commit `1c8a70d8c0cb264202d62c23fa07a83a1354e49e`. The reusable
-workflow verifies that the tag matches `frameworkVersion`, cryptographically
+release to the repository-local `.github/workflows/publish-gradle-maven.yml`.
+The reusable workflow verifies that the tag matches `frameworkVersion`, cryptographically
 verifies the tag, runs the release gate, creates a reproducible release bundle
 with signed Maven artifacts and SBOMs, verifies the archive checksum, records
 GitHub build provenance, publishes, and resolves every manifest POM. Release
 credentials remain in this repository's `release` environment and are exposed
 only to the reusable job steps that consume them.
 
-Changes to reusable publication require two pull requests: first update and
-merge `service-framework-packages`; then pin its new full commit SHA in this
-repository. Branch references such as `@main` are not allowed.
+GitHub does not allow this public repository to call a reusable workflow from
+the private registry repository. The registry maintains the same workflow for
+private producers; this public copy is required for this producer and is
+reviewed by `releaseLifecycleCheck`. Other public producers must reference this
+workflow using a full commit SHA. Branch references such as `@main` are not
+allowed.
 
 Required `release` environment secrets are:
 
