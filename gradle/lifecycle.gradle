@@ -15,6 +15,9 @@ def releaseArtifactManifest = layout.projectDirectory.file(
 )
 def releaseWorkflow = layout.projectDirectory.file('.github/workflows/release.yml')
 def releaseDocumentation = layout.projectDirectory.file('docs/releasing.md')
+def reusablePublicationWorkflow =
+        'Gazu/service-framework-packages/.github/workflows/publish-gradle-maven.yml@' +
+        '1c8a70d8c0cb264202d62c23fa07a83a1354e49e'
 def releaseBuild = providers.gradleProperty('releaseBuild')
         .map { it.toBoolean() }
         .orElse(false)
@@ -308,6 +311,7 @@ tasks.register('releaseLifecycleCheck') {
             releaseDocumentation,
             layout.projectDirectory.file('gradle/lifecycle.gradle')
     )
+    inputs.property('reusablePublicationWorkflow', reusablePublicationWorkflow)
 
     doLast {
         def contract = new Properties()
@@ -339,24 +343,20 @@ tasks.register('releaseLifecycleCheck') {
         }
 
         def workflowText = releaseWorkflow.asFile.getText('UTF-8')
-        if (!workflowText.contains(
-                './gradlew clean prepareRelease -PreleaseBuild=true'
-        )) {
-            failures.add('release workflow must invoke prepareRelease')
-        }
-        if (!workflowText.contains('./gradlew publishRelease -PreleaseBuild=true')) {
-            failures.add('release workflow must invoke publishRelease')
+        if (!workflowText.contains("uses: ${reusablePublicationWorkflow}")) {
+            failures.add('release workflow must pin the reusable publication by commit SHA')
         }
         [
                 'artifact-metadata: write',
-                'Validate publishing identity',
-                'https://maven.pkg.github.com/gazu/service-framework-packages',
-                'read:packages write:packages',
-                'sha256sum --check',
+                'prepare_task: prepareRelease',
+                'publish_task: publishRelease',
+                'artifact_manifest: gradle/release-artifacts.txt',
+                'bundle_basename: spring-boot-service-framework',
                 'build/distributions/*.zip.sha256',
                 'build/release/documentation/RELEASE_NOTES.md',
                 'build/reports/release/lifecycle.txt',
-                'create-storage-record: false'
+                'release_environment: release',
+                'dry_run:'
         ].each { workflowMarker ->
             if (!workflowText.contains(workflowMarker)) {
                 failures.add("release workflow must contain ${workflowMarker}")
@@ -364,6 +364,9 @@ tasks.register('releaseLifecycleCheck') {
         }
         if (workflowText =~ /(?m)^    env:\s*$/) {
             failures.add('release secrets must be scoped to the steps that consume them')
+        }
+        if (workflowText.contains('secrets: inherit')) {
+            failures.add('release workflow must use environment-scoped publisher secrets')
         }
 
         def documentationText = releaseDocumentation.asFile.getText('UTF-8')

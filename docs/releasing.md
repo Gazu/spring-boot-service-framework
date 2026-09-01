@@ -379,12 +379,19 @@ plugin marker, and the versioned OpenAPI templates in addition to every
 framework module. The lifecycle starts the included `build-logic` publication
 only after release preparation has passed.
 
-The canonical remote path is `.github/workflows/release.yml`. It verifies that
-the tag matches `frameworkVersion`, cryptographically verifies the tag, runs
-the release gate, creates a reproducible release bundle with signed Maven
-artifacts and SBOMs, verifies the archive checksum, records GitHub build
-provenance, and then publishes. Release credentials are exposed only to the
-steps that sign or publish artifacts.
+The producer entry point is `.github/workflows/release.yml`. It delegates the
+release to the reusable workflow in `Gazu/service-framework-packages`, pinned to
+the reviewed commit `1c8a70d8c0cb264202d62c23fa07a83a1354e49e`. The reusable
+workflow verifies that the tag matches `frameworkVersion`, cryptographically
+verifies the tag, runs the release gate, creates a reproducible release bundle
+with signed Maven artifacts and SBOMs, verifies the archive checksum, records
+GitHub build provenance, publishes, and resolves every manifest POM. Release
+credentials remain in this repository's `release` environment and are exposed
+only to the reusable job steps that consume them.
+
+Changes to reusable publication require two pull requests: first update and
+merge `service-framework-packages`; then pin its new full commit SHA in this
+repository. Branch references such as `@main` are not allowed.
 
 Required `release` environment secrets are:
 
@@ -416,9 +423,11 @@ environment, run the release identity check, and revoke the previous token.
 `PACKAGES_USERNAME` and `PACKAGES_TOKEN` are legacy duplicate names and must not
 be used by this repository.
 
-Failed publications can be retried from **Actions > Publish Release > Run
-workflow** by entering the existing signed tag. The workflow checks out and
-verifies that tag before publishing it with the current release configuration.
+Reusable publication can be checked without writing packages from **Actions >
+Publish Release > Run workflow** by entering an existing signed tag and leaving
+`dry_run` enabled. Failed publications can be retried by entering the tag and
+disabling `dry_run`; the workflow checks out and verifies that tag before
+publishing it with the current release configuration.
 
 ## Breaking Changes
 
