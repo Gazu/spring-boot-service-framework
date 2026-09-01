@@ -10,6 +10,9 @@ def jspecifyVersion = providers.gradleProperty('jspecifyVersion').get()
 def jacocoVersion = providers.gradleProperty('jacocoVersion').get()
 def minimumLineCoverage = providers.gradleProperty('minimumLineCoverage').get()
 def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+def distributionRepositoryId = 'github'
+def distributionRepositoryName = 'SMB Tech GitHub Packages'
+def distributionRepositoryUrl = 'https://maven.pkg.github.com/gazu/service-framework-packages'
 
 java {
     toolchain {
@@ -121,6 +124,13 @@ publishing {
                 issueManagement {
                     system = 'GitHub Issues'
                     url = "${projectUrl}/issues"
+                }
+                withXml {
+                    def distributionManagement = asNode().appendNode('distributionManagement')
+                    def repository = distributionManagement.appendNode('repository')
+                    repository.appendNode('id', distributionRepositoryId)
+                    repository.appendNode('name', distributionRepositoryName)
+                    repository.appendNode('url', distributionRepositoryUrl)
                 }
             }
         }

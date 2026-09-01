@@ -10,6 +10,9 @@ import org.gradle.api.publish.maven.tasks.GenerateMavenPom
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
 def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+def distributionRepositoryId = 'github'
+def distributionRepositoryName = 'SMB Tech GitHub Packages'
+def distributionRepositoryUrl = 'https://maven.pkg.github.com/gazu/service-framework-packages'
 def releaseBuild = providers.gradleProperty('releaseBuild')
         .map { it.toBoolean() }
         .getOrElse(false)
@@ -648,6 +651,7 @@ tasks.register('validatePublishedPomMetadata') {
         generatedPomTasks.get().each { pomTask ->
             def pomFile = pomTask.destination
             def pom = new XmlSlurper().parse(pomFile)
+            def coordinate = "${pom.groupId.text()}:${pom.artifactId.text()}"
             def requiredValues = [
                     name              : pom.name.text(),
                     description       : pom.description.text(),
@@ -663,9 +667,28 @@ tasks.register('validatePublishedPomMetadata') {
             requiredValues.findAll { !it.value?.trim() }.each { entry ->
                 failures.add("${pomTask.path}: missing ${entry.key}")
             }
+            def releaseCoordinate = releaseArtifactEntries().any { entry ->
+                "${entry.groupId}:${entry.artifactId}" == coordinate
+            }
+            if (releaseCoordinate) {
+                def distributionManagement = pom.distributionManagement
+                def repositories = distributionManagement.repository
+                def distributionChildren = distributionManagement.children().collect {
+                    it.name()
+                }
+                if (repositories.size() != 1 ||
+                        repositories.id.text() != distributionRepositoryId ||
+                        repositories.name.text() != distributionRepositoryName ||
+                        repositories.url.text() != distributionRepositoryUrl ||
+                        distributionChildren != ['repository']) {
+                    failures.add(
+                            "${pomTask.path}: invalid distributionManagement for ${coordinate}"
+                    )
+                }
+            }
         }
         if (!failures.isEmpty()) {
-            throw new GradleException('Incomplete Maven POM metadata found:\n' + failures.sort().join('\n'))
+            throw new GradleException('Invalid Maven POM metadata found:\n' + failures.sort().join('\n'))
         }
     }
 }

@@ -47,6 +47,24 @@ The manifest covers the platform, libraries, starters, OpenAPI Gradle plugin,
 OpenAPI templates, and Gradle plugin marker. Any added, removed, or renamed Maven
 publication requires an explicit manifest review.
 
+Every release POM keeps its project URL, SCM, and issue tracker pointed at the
+producer repository. Its deployment target is declared separately with the
+canonical registry metadata:
+
+```xml
+<distributionManagement>
+  <repository>
+    <id>github</id>
+    <name>SMB Tech GitHub Packages</name>
+    <url>https://maven.pkg.github.com/gazu/service-framework-packages</url>
+  </repository>
+</distributionManagement>
+```
+
+Snapshot repository metadata is forbidden because snapshot publication is not
+part of the registry contract. `validatePublishedPomMetadata` and the included
+build-logic publication check validate the effective generated POM XML.
+
 Validate the manifest against the publications exposed by the main build and
 the included `build-logic` build:
 

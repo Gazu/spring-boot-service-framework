@@ -2,8 +2,10 @@ plugins {
     id 'base'
 }
 
+import groovy.xml.XmlSlurper
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.GenerateMavenPom
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.plugins.signing.SigningExtension
 
@@ -11,6 +13,9 @@ def frameworkProperties = new Properties()
 rootProject.file('../gradle.properties').withInputStream { frameworkProperties.load(it) }
 def frameworkVersion = frameworkProperties.getProperty('frameworkVersion')
 def projectUrl = 'https://github.com/Gazu/spring-boot-service-framework'
+def distributionRepositoryId = 'github'
+def distributionRepositoryName = 'SMB Tech GitHub Packages'
+def distributionRepositoryUrl = 'https://maven.pkg.github.com/gazu/service-framework-packages'
 def privateRepositoryUrl = providers.gradleProperty('privateMavenUrl')
         .orElse(providers.environmentVariable('PRIVATE_MAVEN_URL'))
 def privateRepositoryUsername = providers.gradleProperty('privateMavenUsername')
@@ -96,6 +101,13 @@ subprojects { publishedProject ->
                     system = 'GitHub Issues'
                     url = "${projectUrl}/issues"
                 }
+                withXml {
+                    def distributionManagement = asNode().appendNode('distributionManagement')
+                    def repository = distributionManagement.appendNode('repository')
+                    repository.appendNode('id', distributionRepositoryId)
+                    repository.appendNode('name', distributionRepositoryName)
+                    repository.appendNode('url', distributionRepositoryUrl)
+                }
             }
         }
 
@@ -154,6 +166,11 @@ def releaseArtifactCoordinates = providers.provider {
         }
     }.toSorted()
 }
+def generatedPomTasks = providers.provider {
+    subprojects.collectMany { candidate ->
+        candidate.tasks.withType(GenerateMavenPom).toList()
+    }
+}
 
 tasks.register('writeReleaseArtifactCoordinates') {
     group = 'verification'
@@ -171,7 +188,7 @@ tasks.register('writeReleaseArtifactCoordinates') {
 tasks.register('buildLogicPublicationCheck') {
     group = 'verification'
     description = 'Validates the build-logic publications included in a framework release.'
-    dependsOn tasks.named('writeReleaseArtifactCoordinates')
+    dependsOn tasks.named('writeReleaseArtifactCoordinates'), generatedPomTasks
 
     doLast {
         def expectedCoordinates = [
@@ -190,6 +207,23 @@ tasks.register('buildLogicPublicationCheck') {
                             expectedCoordinates.join('\n') +
                             '\nactual: ' + actualCoordinates.join('\n')
             )
+        }
+
+        generatedPomTasks.get().each { pomTask ->
+            def pom = new XmlSlurper().parse(pomTask.destination)
+            def repositories = pom.distributionManagement.repository
+            def distributionChildren = pom.distributionManagement.children().collect {
+                it.name()
+            }
+            if (repositories.size() != 1 ||
+                    repositories.id.text() != distributionRepositoryId ||
+                    repositories.name.text() != distributionRepositoryName ||
+                    repositories.url.text() != distributionRepositoryUrl ||
+                    distributionChildren != ['repository']) {
+                failures.add(
+                        "${pomTask.path}: canonical distributionManagement is required"
+                )
+            }
         }
 
         subprojects.each { candidate ->
