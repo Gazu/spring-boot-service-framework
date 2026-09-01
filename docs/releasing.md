@@ -410,9 +410,9 @@ Required `release` environment secrets are:
 
 The release workflow publishes to the private GitHub Packages repository at
 the URL configured in `PRIVATE_MAVEN_URL`. Before the build starts, it verifies
-the canonical registry URL, authenticates the declared GitHub user, checks PAT
-scope metadata when GitHub returns it, and verifies actual read access to an
-existing private package.
+the canonical registry URL, authenticates the declared GitHub user, reports PAT
+scope metadata discrepancies, and verifies actual read access to an existing
+private package.
 
 Publication, consumption, administration, and signing use separate identities:
 

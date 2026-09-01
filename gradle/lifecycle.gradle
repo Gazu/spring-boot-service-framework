@@ -387,7 +387,7 @@ tasks.register('releaseLifecycleCheck') {
                 'workflow_call:',
                 'environment: ${{ inputs.release_environment }}',
                 'https://maven.pkg.github.com/gazu/service-framework-packages',
-                'for required_scope in write:packages; do',
+                'validating registry access directly.',
                 'git verify-tag "${RELEASE_TAG}"',
                 './gradlew "${PUBLISH_TASK}"',
                 'done <"${ARTIFACT_MANIFEST}"'
