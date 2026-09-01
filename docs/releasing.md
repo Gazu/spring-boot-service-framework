@@ -386,7 +386,10 @@ verifies the tag, runs the release gate, creates a reproducible release bundle
 with signed Maven artifacts and SBOMs, verifies the archive checksum, records
 GitHub build provenance, publishes, and resolves every manifest POM. Release
 credentials remain in this repository's `release` environment and are exposed
-only to the reusable job steps that consume them.
+only to the reusable job steps that consume them. The caller grants the five
+secret names explicitly; `secrets: inherit` is prohibited.
+The reusable workflow enforces the canonical registry endpoint before any PAT
+is used, so `PRIVATE_MAVEN_URL` cannot redirect publisher credentials.
 
 GitHub does not allow this public repository to call a reusable workflow from
 the private registry repository. The registry maintains the same workflow for

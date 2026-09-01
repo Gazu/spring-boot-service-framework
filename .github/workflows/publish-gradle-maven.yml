@@ -2,6 +2,22 @@ name: Publish Gradle Maven Release
 
 on:
   workflow_call:
+    secrets:
+      PRIVATE_MAVEN_URL:
+        description: Maven registry URL selected by the release environment
+        required: true
+      PRIVATE_MAVEN_USERNAME:
+        description: GitHub Packages publisher username
+        required: true
+      PRIVATE_MAVEN_PASSWORD:
+        description: Classic PAT with read:packages and write:packages
+        required: true
+      SIGNING_KEY:
+        description: ASCII-armored private key used to sign Maven artifacts
+        required: true
+      SIGNING_PASSWORD:
+        description: Passphrase for the signing key
+        required: true
     inputs:
       tag:
         description: Existing signed release tag to publish
@@ -147,10 +163,16 @@ jobs:
               exit 1
             fi
           done
-          if [[ "${PRIVATE_MAVEN_URL}" != "${expected_url}" ]]; then
-            echo "PRIVATE_MAVEN_URL must be ${expected_url}." >&2
-            exit 1
+          normalized_url="$(printf '%s' "${PRIVATE_MAVEN_URL}" | tr -d '\r\n')"
+          normalized_url="${normalized_url#"${normalized_url%%[![:space:]]*}"}"
+          normalized_url="${normalized_url%"${normalized_url##*[![:space:]]}"}"
+          normalized_url="${normalized_url#\"}"
+          normalized_url="${normalized_url%\"}"
+          normalized_url="${normalized_url%/}"
+          if [[ "${normalized_url,,}" != "${expected_url}" ]]; then
+            echo "::warning::PRIVATE_MAVEN_URL differs from the enforced registry endpoint."
           fi
+          echo "PRIVATE_MAVEN_URL=${expected_url}" >>"${GITHUB_ENV}"
 
           headers="$(mktemp)"
           response="$(mktemp)"
@@ -219,7 +241,6 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           PREPARE_TASK: ${{ inputs.prepare_task }}
           PUBLISH_TASK: ${{ inputs.publish_task }}
-          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
           PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
           PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
@@ -315,7 +336,6 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           PUBLISH_TASK: ${{ inputs.publish_task }}
-          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
           PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
           PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
@@ -331,7 +351,6 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           ARTIFACT_MANIFEST: ${{ inputs.artifact_manifest }}
-          PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
           PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
           PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
         run: |

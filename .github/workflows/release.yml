@@ -52,3 +52,9 @@ jobs:
         build/reports/security/security-scan-*-summary.json
       release_environment: release
       dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    secrets:
+      PRIVATE_MAVEN_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+      PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+      PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
