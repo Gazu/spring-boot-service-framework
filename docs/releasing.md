@@ -191,6 +191,8 @@ implementation even though JVM wiring requires public visibility.
 - group entries under `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, and
   `Security` when those groups apply;
 - call out breaking changes clearly.
+- replace the `Unreleased` content with the exact text
+  `No unreleased changes.` before creating the release candidate.
 
 Generate and inspect the standalone notes that will accompany the release:
 

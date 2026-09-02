@@ -10,6 +10,8 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
+No unreleased changes.
+
 ## 0.5.2 - 2026-09-01
 
 ### Highlights

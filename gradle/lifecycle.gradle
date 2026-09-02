@@ -444,10 +444,27 @@ tasks.register('releaseLifecycleCheck') {
     }
 }
 
+tasks.register('validateReleaseChangelogFinalized') {
+    group = 'verification'
+    description = 'Validates that the release changelog has no pending entries.'
+    dependsOn tasks.named('validateReleaseNotes')
+
+    doLast {
+        def changelog = file('CHANGELOG.md').getText('UTF-8')
+        def unreleasedMatcher = (changelog =~ /(?s)## Unreleased\s+(.*?)\s+## /)
+        if (!unreleasedMatcher.find() ||
+                unreleasedMatcher.group(1).trim() != 'No unreleased changes.') {
+            throw new GradleException(
+                    'Release changelog must contain an empty Unreleased section.'
+            )
+        }
+    }
+}
+
 tasks.register('validateReleasePreparation') {
     group = 'verification'
     description = 'Validates version and signing inputs required to prepare a release.'
-    dependsOn tasks.named('validateReleaseNotes')
+    dependsOn tasks.named('validateReleaseChangelogFinalized')
 
     doLast {
         def failures = []
@@ -464,12 +481,6 @@ tasks.register('validateReleasePreparation') {
                 "## ${project.version} -"
         )) {
             failures.add("CHANGELOG.md must contain a ${project.version} release section")
-        }
-        def changelog = file('CHANGELOG.md').getText('UTF-8')
-        def unreleasedMatcher = (changelog =~ /(?s)## Unreleased\s+(.*?)\s+## /)
-        if (!unreleasedMatcher.find() ||
-                unreleasedMatcher.group(1).trim() != 'No unreleased changes.') {
-            failures.add('prepareRelease requires an empty Unreleased changelog section')
         }
         if (!failures.isEmpty()) {
             throw new GradleException(
@@ -765,7 +776,10 @@ tasks.register('verifyReleaseBundle') {
 tasks.register('releaseCandidate') {
     group = 'publishing'
     description = 'Builds and verifies an unpublished release candidate for review.'
-    dependsOn tasks.named('verifyReleaseBundle')
+    dependsOn(
+            tasks.named('validateReleaseChangelogFinalized'),
+            tasks.named('verifyReleaseBundle')
+    )
 
     def archive = layout.buildDirectory.file(
             "distributions/${project.name}-${project.version}.zip"
