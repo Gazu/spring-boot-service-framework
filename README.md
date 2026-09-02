@@ -173,7 +173,7 @@ repositories {
 
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
@@ -214,7 +214,7 @@ includeBuild('../spring-boot-service-framework')
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-logging'
 }
@@ -248,7 +248,7 @@ final class ProjectService {
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-rest-client'
 }
@@ -517,6 +517,6 @@ diagnostics, error handling, mock, and logging issues.
 
 ## Current status
 
-The framework is in `0.5.1`. APIs can still evolve before `1.0.0`.
+The framework is in `0.5.2`. APIs can still evolve before `1.0.0`.
 Private publication should happen only after ownership and provenance have been
 confirmed for all included components.

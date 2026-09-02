@@ -23,7 +23,7 @@ framework-neutral adapter or test helper.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-mock'
 }

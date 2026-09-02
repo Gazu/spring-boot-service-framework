@@ -21,7 +21,7 @@ or custom clients that should not depend on Spring, Jackson, Servlet, or
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-mock-core'
 }

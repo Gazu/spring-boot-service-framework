@@ -9,7 +9,7 @@ first time.
 
 | Contract | Value |
 |---|---|
-| Plugin artifact | `com.smbtech:spring-boot-service-framework-openapi-gradle-plugin:0.5.1` |
+| Plugin artifact | `com.smbtech:spring-boot-service-framework-openapi-gradle-plugin:0.5.2` |
 | Plugin ID | `com.smbtech.service-framework.openapi-generator` |
 | Extension | `smbtechOpenApi` |
 | Extension type | `com.smbtech.serviceframework.gradle.openapi.SmbtechOpenApiExtension` |
@@ -23,7 +23,7 @@ names are internal.
 
 ```groovy
 plugins {
-    id 'com.smbtech.service-framework.openapi-generator' version '0.5.1'
+    id 'com.smbtech.service-framework.openapi-generator' version '0.5.2'
 }
 ```
 

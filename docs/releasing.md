@@ -23,7 +23,7 @@ It applies to private and internal distributions of the repository artifacts.
 The framework artifact version is defined in `gradle.properties`:
 
 ```properties
-frameworkVersion=0.5.1
+frameworkVersion=0.5.2
 ```
 
 The root build applies that version to every framework artifact. The supported
@@ -140,7 +140,7 @@ Verify the downloaded archive before extracting it:
 
 ```bash
 cd build/distributions
-shasum -a 256 -c spring-boot-service-framework-0.5.1.zip.sha256
+shasum -a 256 -c spring-boot-service-framework-0.5.2.zip.sha256
 ```
 
 When preparing a release, update every consumer-facing version example that
@@ -158,13 +158,13 @@ mentions the framework version. At minimum, check:
 1. Create a release branch:
 
 ```bash
-git checkout -b release/v0.5.1
+git checkout -b release/v0.5.2
 ```
 
 2. Confirm the target version and update `gradle.properties` if needed:
 
 ```properties
-frameworkVersion=0.5.1
+frameworkVersion=0.5.2
 ```
 
 3. Refresh generated property references after configuration changes:
@@ -288,13 +288,13 @@ git diff
 
 ```bash
 git add .
-git commit -m "chore(release): prepare v0.5.1"
+git commit -m "chore(release): prepare v0.5.2"
 ```
 
 10. Push the release branch and open a pull request:
 
 ```bash
-git push --set-upstream origin release/v0.5.1
+git push --set-upstream origin release/v0.5.2
 ```
 
 Wait for `Pull Request / Policy`, `Pull Request / Quality`, and
@@ -311,14 +311,14 @@ git pull --ff-only origin main
 12. Create the signed release tag on the merged commit:
 
 ```bash
-git tag -s v0.5.1 -m "Release v0.5.1"
-git verify-tag v0.5.1
+git tag -s v0.5.2 -m "Release v0.5.2"
+git verify-tag v0.5.2
 ```
 
 13. Push the approved tag:
 
 ```bash
-git push origin v0.5.1
+git push origin v0.5.2
 ```
 
 ## Publishing Locally
@@ -384,7 +384,9 @@ release to the repository-local `.github/workflows/publish-gradle-maven.yml`.
 The reusable workflow verifies that the tag matches `frameworkVersion`, cryptographically
 verifies the tag, runs the release gate, creates a reproducible release bundle
 with signed Maven artifacts and SBOMs, verifies the archive checksum, records
-GitHub build provenance, publishes, and resolves every manifest POM. Release
+GitHub build provenance, publishes, resolves every manifest POM, and resolves
+`com.smbtech:spring-boot-service-framework-commons` from an isolated Gradle
+consumer with refreshed dependencies. Release
 credentials remain in this repository's `release` environment and are exposed
 only to the reusable job steps that consume them. The caller grants the five
 secret names explicitly; `secrets: inherit` is prohibited.
@@ -467,6 +469,6 @@ After the release is published:
 Useful checks:
 
 ```bash
-git show --stat v0.5.1
+git show --stat v0.5.2
 ./gradlew publishLocalArtifacts consumerSmoke
 ```

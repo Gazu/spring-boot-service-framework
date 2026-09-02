@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.smbtech.examples'
-version = '0.5.1'
+version = '0.5.2'
 
 java {
     toolchain {
@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    implementation platform('com.smbtech:spring-boot-service-framework-platform:0.5.1')
+    implementation platform('com.smbtech:spring-boot-service-framework-platform:0.5.2')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
