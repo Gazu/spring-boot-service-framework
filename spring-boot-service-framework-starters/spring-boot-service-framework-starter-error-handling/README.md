@@ -17,7 +17,7 @@ framework-neutral contracts or custom adapters.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }

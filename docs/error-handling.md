@@ -9,7 +9,7 @@ HTTP client errors, unexpected failures, and Spring Security 401/403 responses.
 ```groovy
 dependencies {
     implementation platform(
-            'com.smbtech:spring-boot-service-framework-platform:0.5.1'
+            'com.smbtech:spring-boot-service-framework-platform:0.5.2'
     )
     implementation 'com.smbtech:spring-boot-service-framework-starter-error-handling'
 }

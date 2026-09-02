@@ -41,6 +41,7 @@ jobs:
       bundle_directory: build/distributions
       bundle_basename: spring-boot-service-framework
       artifact_name: spring-boot-service-framework-${{ inputs.tag || github.ref_name }}
+      consumer_coordinate: com.smbtech:spring-boot-service-framework-commons
       artifact_paths: |
         build/distributions/*.zip
         build/distributions/*.zip.sha256

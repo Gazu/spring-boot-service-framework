@@ -7,7 +7,7 @@ server API, and HTTP client artifacts. It uses only plugin defaults and the
 ## Before You Start
 
 You need Java 21, a Gradle 9 wrapper, and a Maven repository containing
-framework version `0.5.1` and its Gradle plugin marker. Configure that repository
+framework version `0.5.2` and its Gradle plugin marker. Configure that repository
 through your normal organization-level Gradle credentials; do not place
 credentials in the project.
 
@@ -92,7 +92,7 @@ Create `build.gradle`:
 ```groovy
 plugins {
     id 'base'
-    id 'com.smbtech.service-framework.openapi-generator' version '0.5.1'
+    id 'com.smbtech.service-framework.openapi-generator' version '0.5.2'
 }
 
 repositories {

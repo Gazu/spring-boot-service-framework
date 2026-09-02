@@ -10,10 +10,19 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
+## 0.5.2 - 2026-09-01
+
+### Highlights
+
+- Centralize signed framework and OpenAPI artifacts in the private package
+  registry and verify a clean Gradle consumer after publication.
+
 ### Changed
 
 - Delegate signed Maven releases to a validated reusable publication workflow;
   public producers can pin the public workflow by commit SHA.
+- Resolve a published framework library from an isolated Gradle build after
+  every release to prove private-registry consumption.
 
 ### Fixed
 

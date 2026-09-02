@@ -65,6 +65,11 @@ on:
         description: Newline-delimited release evidence paths
         required: true
         type: string
+      consumer_coordinate:
+        description: Maven groupId:artifactId resolved from a clean Gradle consumer
+        required: false
+        default: ""
+        type: string
       release_environment:
         description: Caller environment containing publishing and signing secrets
         required: false
@@ -118,6 +123,7 @@ jobs:
           PUBLISH_TASK: ${{ inputs.publish_task }}
           BUNDLE_DIRECTORY: ${{ inputs.bundle_directory }}
           BUNDLE_BASENAME: ${{ inputs.bundle_basename }}
+          CONSUMER_COORDINATE: ${{ inputs.consumer_coordinate }}
         run: |
           set -euo pipefail
           [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
@@ -130,6 +136,9 @@ jobs:
           [[ "${ARTIFACT_MANIFEST}" != *..* ]]
           [[ "${BUNDLE_DIRECTORY}" != *..* ]]
           [[ "${BUNDLE_BASENAME}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
+          if [[ -n "${CONSUMER_COORDINATE}" ]]; then
+            [[ "${CONSUMER_COORDINATE}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]
+          fi
           test -f gradle.properties
           test -f "${ARTIFACT_MANIFEST}"
 
@@ -371,3 +380,67 @@ jobs:
           fi
           echo "artifact_count=${artifact_count}" >>"${GITHUB_OUTPUT}"
           echo "Verified ${artifact_count} Maven coordinates at version ${RELEASE_VERSION}."
+
+      - name: Verify clean Gradle consumer
+        if: ${{ !inputs.dry_run && inputs.consumer_coordinate != '' }}
+        shell: bash
+        env:
+          CONSUMER_COORDINATE: ${{ inputs.consumer_coordinate }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PRIVATE_MAVEN_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PRIVATE_MAVEN_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          pilot_directory="${RUNNER_TEMP}/private-maven-consumer"
+          rm -rf "${pilot_directory}"
+          mkdir -p "${pilot_directory}"
+          cat >"${pilot_directory}/settings.gradle" <<'GRADLE'
+          rootProject.name = 'private-maven-consumer'
+          GRADLE
+          cat >"${pilot_directory}/build.gradle" <<'GRADLE'
+          repositories {
+              mavenCentral()
+              maven {
+                  url = uri(System.getenv('PRIVATE_MAVEN_URL'))
+                  credentials {
+                      username = System.getenv('PRIVATE_MAVEN_USERNAME')
+                      password = System.getenv('PRIVATE_MAVEN_PASSWORD')
+                  }
+              }
+          }
+
+          configurations {
+              pilot {
+                  canBeConsumed = false
+                  canBeResolved = true
+              }
+          }
+
+          def coordinate = System.getenv('CONSUMER_COORDINATE')
+          def releaseVersion = System.getenv('RELEASE_VERSION')
+
+          dependencies {
+              pilot "${coordinate}:${releaseVersion}"
+          }
+
+          tasks.register('verifyPilot') {
+              doLast {
+                  def expected = "${coordinate}:${releaseVersion}"
+                  def resolvedComponents = configurations.pilot.incoming.resolutionResult
+                          .allComponents
+                          .collect { it.moduleVersion }
+                          .findAll { it != null }
+                          .collect { "${it.group}:${it.name}:${it.version}" }
+                  if (!resolvedComponents.contains(expected)) {
+                      throw new GradleException("Clean consumer did not resolve ${expected}")
+                  }
+                  def resolvedFiles = configurations.pilot.resolve()
+                  if (resolvedFiles.isEmpty()) {
+                      throw new GradleException("Clean consumer resolved no files for ${expected}")
+                  }
+                  logger.lifecycle("Clean consumer resolved ${expected} with ${resolvedFiles.size()} files.")
+              }
+          }
+          GRADLE
+          ./gradlew -p "${pilot_directory}" verifyPilot \
+            --refresh-dependencies --no-daemon --stacktrace
