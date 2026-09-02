@@ -197,15 +197,10 @@ jobs:
           oauth_scopes="$(awk -F': *' 'tolower($1) == "x-oauth-scopes" {
             gsub("\\r", "", $2); print tolower($2)
           }' "${headers}")"
-          if [[ -n "${oauth_scopes}" ]]; then
-            for required_scope in write:packages; do
-              if [[ ",${oauth_scopes// /}," != *",${required_scope},"* ]]; then
-                echo "Publishing PAT must be classic and include ${required_scope}." >&2
-                exit 1
-              fi
-            done
-          else
+          if [[ -z "${oauth_scopes}" ]]; then
             echo "::warning::GitHub did not return OAuth scope metadata; validating registry access directly."
+          elif [[ ",${oauth_scopes// /}," != *",write:packages,"* ]]; then
+            echo "::warning::GitHub scope metadata omitted write:packages; validating registry access directly."
           fi
 
           packages_status="$(curl --silent --show-error --location \
