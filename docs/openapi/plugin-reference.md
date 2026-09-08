@@ -32,6 +32,9 @@ repository in `pluginManagement.repositories` in `settings.gradle`. Do not add
 repository credentials to the build script or source control.
 
 The plugin applies `maven-publish` and creates the `smbtechOpenApi` extension.
+Contracts in the conventional directories defined by
+[OpenAPI Validation](validation.md) are registered automatically. Use the DSL
+only for a non-conventional path or when a contract needs explicit overrides.
 
 ## DSL
 
@@ -71,7 +74,7 @@ Remote repository configuration and credential providers are defined in
 | `smbtechOpenApi.failOnBreakingChanges` | `Property<Boolean>` | `false` | Reject every breaking diff, including one with a major version increment. |
 | `smbtechOpenApi.publishModels` | `Property<Boolean>` | `true` | Generate and publish models by default. |
 | `smbtechOpenApi.publishServerApi` | `Property<Boolean>` | `true` | Generate and publish server APIs by default. |
-| `smbtechOpenApi.publishClient` | `Property<Boolean>` | `true` | Generate and publish HTTP clients by default. |
+| `smbtechOpenApi.publishClient` | `Property<Boolean>` | `true` | Generate and publish both HTTP Interface and OpenFeign clients by default. |
 
 ## Specification Properties
 
@@ -80,19 +83,33 @@ name must be unique in the project.
 
 | Property | Gradle type | Default | Purpose |
 |---|---|---|---|
-| `smbtechOpenApi.specs.<name>.input` | `RegularFileProperty` | Required | OpenAPI YAML or JSON document. |
+| `smbtechOpenApi.specs.<name>.input` | `RegularFileProperty` | Required for explicit entries | OpenAPI YAML or JSON document. |
 | `smbtechOpenApi.specs.<name>.groupId` | `Property<String>` | Global `groupId` | Maven group override. |
-| `smbtechOpenApi.specs.<name>.artifactBaseName` | `Property<String>` | Normalized `info.title` | Base name before `-models`, `-server-api`, or `-client`. |
-| `smbtechOpenApi.specs.<name>.version` | `Property<String>` | `info.version` | Maven artifact version override. |
-| `smbtechOpenApi.specs.<name>.basePackage` | `Property<String>` | `com.smbtech.contracts.<normalized-title-without-hyphens>` | Base Java package. |
-| `smbtechOpenApi.specs.<name>.modelPackage` | `Property<String>` | `<basePackage>.model` | Models package override. |
-| `smbtechOpenApi.specs.<name>.serverApiPackage` | `Property<String>` | `<basePackage>.api` | Server API package override. |
-| `smbtechOpenApi.specs.<name>.clientPackage` | `Property<String>` | `<basePackage>.client` | HTTP client package override. |
+| `smbtechOpenApi.specs.<name>.artifactBaseName` | `Property<String>` | Normalized `info.title` | Base name before `-jdk21-model`, `-jdk21-api`, or `-jdk21-client`. |
+| `smbtechOpenApi.specs.<name>.version` | `Property<String>` | `info.version` | Compatibility input; when configured, it must equal `info.version`. |
+| `smbtechOpenApi.specs.<name>.basePackage` | `Property<String>` | `com.smbtech.contracts.<normalized-title-without-hyphens>` | Unversioned Java package root. |
+| `smbtechOpenApi.specs.<name>.modelPackage` | `Property<String>` | `<basePackage>.v<major>.model` | Compatibility override; must equal the derived model package. |
+| `smbtechOpenApi.specs.<name>.serverApiPackage` | `Property<String>` | `<basePackage>.v<major>.api` | Compatibility override; must equal the derived API package. |
+| `smbtechOpenApi.specs.<name>.clientPackage` | `Property<String>` | `<basePackage>.v<major>.client` | Compatibility override for the client namespace root; generators own its subpackages. |
 | `smbtechOpenApi.specs.<name>.publishModels` | `Property<Boolean>` | Global `publishModels` | Models switch for this contract. |
 | `smbtechOpenApi.specs.<name>.publishServerApi` | `Property<Boolean>` | Global `publishServerApi` | Server API switch for this contract. |
-| `smbtechOpenApi.specs.<name>.publishClient` | `Property<Boolean>` | Global `publishClient` | HTTP client switch for this contract. |
+| `smbtechOpenApi.specs.<name>.publishClient` | `Property<Boolean>` | Global `publishClient` | Shared switch for both client interface variants for this contract. |
 
-All optional identity and package properties can be combined:
+Configure `basePackage` when the default root is not suitable. The package
+major and boundary suffixes remain framework-owned:
+
+```text
+<basePackage>.v<major>.model
+<basePackage>.v<major>.api
+<basePackage>.v<major>.client.httpinterface
+<basePackage>.v<major>.client.openfeign
+```
+
+For new contracts, avoid kind-specific package overrides. Existing builds may
+retain them only when they equal the package derived from `basePackage` and the
+major component of `info.version`.
+
+Identity, package root, and artifact switches can be combined:
 
 ```groovy
 smbtechOpenApi {
@@ -101,11 +118,7 @@ smbtechOpenApi {
             input.set(file('src/main/openapi/warehouse-inventory-catalog.yaml'))
             groupId.set('com.example.contracts')
             artifactBaseName.set('inventory-catalog')
-            version.set('2.0.0')
             basePackage.set('com.example.inventory')
-            modelPackage.set('com.example.inventory.model')
-            serverApiPackage.set('com.example.inventory.api')
-            clientPackage.set('com.example.inventory.client')
             publishModels.set(true)
             publishServerApi.set(true)
             publishClient.set(false)
@@ -129,10 +142,12 @@ defined in [OpenAPI Validation](validation.md).
 | `smbtechOpenApiValidateSpecs` | Validates contracts and effective Maven coordinates. |
 | `smbtechOpenApiGenerateModels` | Generates models for all enabled contracts. |
 | `smbtechOpenApiGenerateServerApi` | Generates Spring MVC APIs for all enabled contracts. |
-| `smbtechOpenApiGenerateClient` | Generates Spring HTTP interfaces for all enabled contracts. |
+| `smbtechOpenApiGenerateClient` | Generates Spring HTTP Interface and OpenFeign interfaces for all enabled client artifacts. |
 | `smbtechOpenApiAssemble` | Generates, compiles, adds metadata, and packages all enabled artifacts. |
 | `smbtechOpenApiPublishToLocalRepository` | Publishes generated artifacts to `repositoryDirectory`. |
 | `smbtechOpenApiPublish` | Publishes generated artifacts to `publicationRepositoryUrl`. |
+| `smbtechOpenApiPublishContractToLocalRepository` | Publishes only the contract selected by `-PopenApiContract=<path>` to `repositoryDirectory`. |
+| `smbtechOpenApiPublishContract` | Publishes only the contract selected by `-PopenApiContract=<path>` to `publicationRepositoryUrl`. |
 | `smbtechOpenApiBreakingChangeCheck` | Runs OpenAPI Diff and enforces baseline and SemVer policy. |
 | `smbtechOpenApiReproducibilityCheck` | Verifies archives and writes SHA-256 evidence. |
 | `smbtechOpenApiMigrationReport` | Writes legacy coordinate and task mappings. |
@@ -151,9 +166,10 @@ When the consuming project applies Gradle's `base` plugin:
 - `check` depends on `smbtechOpenApiValidateSpecs`; and
 - `check` depends on `smbtechOpenApiCompatibilityCheck`.
 
-Per-contract generate, compile, metadata, JAR, sources JAR, and publication
-tasks are implementation details. Automation should invoke the public aggregate
-tasks listed above.
+Per-contract generate, compile, metadata, JAR, sources JAR, and Maven
+publication tasks are implementation details. Automation selects a canonical
+contract input through `-PopenApiContract=<project-relative-path>` and invokes a
+public contract publication task; it must not invoke generated task names.
 
 ## Publication Integration
 
@@ -164,7 +180,15 @@ security, CI sequencing, and immutable release rules are documented in
 
 ## Multiple Contracts
 
-Register every contract under a stable name:
+Conventional folders need no per-contract DSL. For example, both contracts are
+discovered automatically:
+
+```text
+ms-kyc-profile/swagger/openapi.yaml
+ms-payments/openapi/payments.yaml
+```
+
+Register a contract explicitly when it needs overrides:
 
 ```groovy
 smbtechOpenApi {

@@ -1,8 +1,16 @@
 package com.smbtech.serviceframework.gradle.openapi;
 
-import java.util.List;
+import java.io.File;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
+import org.gradle.api.Action;
+import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.component.SoftwareComponentFactory;
@@ -44,12 +52,17 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
         generationConfigurer.configureLifecycleAndRepositories();
         compatibilityConfigurer.configureLifecycle();
 
-        extension.getSpecs().configureEach(spec -> configureSpecConventions(extension, spec));
-        extension.onSpecConfigured(
+        Set<SmbtechOpenApiSpec> configuredSpecs =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+        Action<SmbtechOpenApiSpec> configureSpec =
                 spec -> {
-                    generationConfigurer.configure(spec);
-                    compatibilityConfigurer.configure(spec);
-                });
+                    if (configuredSpecs.add(spec)) {
+                        generationConfigurer.configure(spec);
+                        compatibilityConfigurer.configure(spec);
+                    }
+                };
+        extension.getSpecs().configureEach(spec -> configureSpecConventions(extension, spec));
+        extension.onSpecConfigured(configureSpec);
 
         project.getTasks()
                 .register(
@@ -126,27 +139,7 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                                                                                     ::specConfiguration)
                                                                     .collect(Collectors.toList())));
                             task.getSpecFiles()
-                                    .from(
-                                            project.fileTree(
-                                                    project.getRootDir(),
-                                                    patterns -> {
-                                                        patterns.include(
-                                                                List.of(
-                                                                        "**/src/main/openapi/*.yaml",
-                                                                        "**/src/main/openapi/*.yml",
-                                                                        "**/src/main/openapi/*.json",
-                                                                        "**/openapi/*.yaml",
-                                                                        "**/openapi/*.yml",
-                                                                        "**/openapi/*.json",
-                                                                        "**/swagger/*.yaml",
-                                                                        "**/swagger/*.yml",
-                                                                        "**/swagger/*.json"));
-                                                        patterns.exclude(
-                                                                List.of(
-                                                                        "**/.git/**",
-                                                                        "**/.gradle/**",
-                                                                        "**/build/**"));
-                                                    }))
+                                    .from(OpenApiSpecDiscovery.candidates(project))
                                     .from(
                                             project.provider(
                                                     () ->
@@ -162,6 +155,70 @@ public final class SmbtechOpenApiGeneratorPlugin implements Plugin<Project> {
                                                                                             .getAsFile())
                                                                     .collect(Collectors.toList())));
                         });
+
+        project.afterEvaluate(
+                ignored -> {
+                    registerDiscoveredSpecs(project, extension, configureSpec);
+                    extension.getSpecs().stream()
+                            .filter(spec -> spec.getInput().isPresent())
+                            .forEach(configureSpec::execute);
+                });
+    }
+
+    private static void registerDiscoveredSpecs(
+            Project project,
+            SmbtechOpenApiExtension extension,
+            Action<SmbtechOpenApiSpec> configureSpec) {
+        Map<Path, SmbtechOpenApiSpec> configuredByPath = new LinkedHashMap<>();
+        extension.getSpecs().stream()
+                .filter(spec -> spec.getInput().isPresent())
+                .forEach(
+                        spec -> {
+                            Path path =
+                                    OpenApiSpecDiscovery.normalizedPath(
+                                            spec.getInput().get().getAsFile());
+                            SmbtechOpenApiSpec previous = configuredByPath.putIfAbsent(path, spec);
+                            if (previous != null) {
+                                throw new GradleException(
+                                        "OpenAPI input "
+                                                + path
+                                                + " is configured by both smbtechOpenApi.specs."
+                                                + previous.getName()
+                                                + " and smbtechOpenApi.specs."
+                                                + spec.getName());
+                            }
+                        });
+
+        for (File source : OpenApiSpecDiscovery.discover(project)) {
+            Path sourcePath = OpenApiSpecDiscovery.normalizedPath(source);
+            if (configuredByPath.containsKey(sourcePath)) {
+                continue;
+            }
+            try {
+                OpenApiContractReader.read(source);
+            } catch (IllegalArgumentException exception) {
+                continue;
+            }
+            String name = OpenApiSpecDiscovery.registrationName(project, source);
+            SmbtechOpenApiSpec conflicting = extension.getSpecs().findByName(name);
+            if (conflicting != null) {
+                String conflictingInput =
+                        conflicting.getInput().isPresent()
+                                ? conflicting.getInput().get().getAsFile().getPath()
+                                : "<not configured>";
+                throw new GradleException(
+                        "Cannot auto-register OpenAPI contract "
+                                + source.getPath()
+                                + " as smbtechOpenApi.specs."
+                                + name
+                                + "; that name is already used by "
+                                + conflictingInput);
+            }
+            SmbtechOpenApiSpec discovered = extension.getSpecs().create(name);
+            discovered.getInput().set(source);
+            configuredByPath.put(sourcePath, discovered);
+            configureSpec.execute(discovered);
+        }
     }
 
     static String specConfiguration(SmbtechOpenApiSpec spec) {

@@ -123,6 +123,23 @@ extensions.
 
 ## Validation
 
+The repository includes a standalone published-artifact consumer at
+`examples/openapi-contract-consumer`. It resolves the generated API and client
+JARs, their transitive model, and this module from local Maven repositories.
+The consumer starts the generated Spring MVC API, runs `verifyAll(...)`, calls
+the same runtime through both generated client variants, and inspects the
+resolved artifacts for model, snapshot, wrapper, and dependency isolation.
+
+Run that integration contract after publishing the current checkout locally:
+
+```bash
+./gradlew openApiContractConsumerSmoke
+```
+
+`contractTestingCompatibilityCheck`, `consumerSmoke`, `releaseGate`, and the
+pull-request quality gate include this published-artifact validation. Contract
+publication CI also runs it before any matrix publication job.
+
 Run the module tests:
 
 ```bash

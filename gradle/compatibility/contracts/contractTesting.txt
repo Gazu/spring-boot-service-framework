@@ -23,3 +23,10 @@ properties:
 auto-configuration-imports:
 
 gradle-plugin-ids:
+
+runtime-contracts:
+- consumer-dependency-mode=published-maven-artifacts
+- consumer-smoke-task=openApiContractConsumerSmoke
+- generated-api=warehouse-inventory-catalog-jdk21-api:1.0.0
+- generated-client=warehouse-inventory-catalog-jdk21-client:1.0.0
+- generated-model=warehouse-inventory-catalog-jdk21-model:1.0.0

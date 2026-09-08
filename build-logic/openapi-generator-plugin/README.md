@@ -46,9 +46,15 @@ are implemented inside this build-logic boundary.
 
 ```groovy
 plugins {
-    id 'com.smbtech.service-framework.openapi-generator' version '0.5.0'
+    id 'com.smbtech.service-framework.openapi-generator' version '0.5.2'
 }
+```
 
+Valid contracts below a conventional `src/main/openapi`, `openapi`, or
+`swagger` directory are registered automatically. Use an explicit entry only
+for overrides or another location:
+
+```groovy
 smbtechOpenApi {
     specs {
         register('merchantOrderStatus') {

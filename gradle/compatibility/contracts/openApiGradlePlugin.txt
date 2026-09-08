@@ -40,6 +40,7 @@ gradle-plugin-ids:
 - Gradle plugin com.smbtech.service-framework.openapi-generator|com.smbtech.service-framework.openapi-generator
 
 runtime-contracts:
+- selector-property=openApiContract
 - task=smbtechOpenApiAssemble
 - task=smbtechOpenApiBreakingChangeCheck
 - task=smbtechOpenApiBuildLogicCheck
@@ -51,6 +52,8 @@ runtime-contracts:
 - task=smbtechOpenApiMigrationReport
 - task=smbtechOpenApiMockContractCheck
 - task=smbtechOpenApiPublish
+- task=smbtechOpenApiPublishContract
+- task=smbtechOpenApiPublishContractToLocalRepository
 - task=smbtechOpenApiPublishToLocalRepository
 - task=smbtechOpenApiReproducibilityCheck
 - task=smbtechOpenApiValidateSpecs

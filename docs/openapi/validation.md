@@ -25,8 +25,9 @@ Run all three explicitly in CI:
   smbtechOpenApiCompatibilityCheck
 ```
 
-The tasks are separate contracts. `smbtechOpenApiCompatibilityCheck` does not
-directly aggregate the configuration and spec validation tasks.
+The tasks remain separate contracts, but `smbtechOpenApiCompatibilityCheck`
+directly depends on configuration and spec validation so an invalid discovered
+contract cannot bypass the compatibility gate.
 
 ## Configuration Validation
 
@@ -52,15 +53,14 @@ For every named specification, it rejects:
 - disabling every artifact for that specification; and
 - enabling server API or client while models are disabled.
 
-Package overrides must contain dot-separated Java identifiers. Configuration
-validation confirms shape and internal dependency rules; it does not parse the
-OpenAPI document.
+Package overrides must contain dot-separated Java identifiers. `basePackage` is
+the unversioned package root. Contract-aware package and version equality are
+validated after the OpenAPI document is parsed.
 
 ## Spec Discovery
 
-`smbtechOpenApiValidateSpecs` validates every configured `input` plus YAML,
-YML, and JSON files directly below these conventional directories anywhere in
-the project:
+The plugin automatically registers every valid YAML, YML, and JSON contract
+directly below these conventional directories anywhere in the project:
 
 ```text
 src/main/openapi/
@@ -83,6 +83,12 @@ smbtechOpenApi {
 }
 ```
 
+An automatically registered contract participates in validation, generation,
+compatibility checks, assembly, and publication. If a DSL entry points to the
+same canonical file, that explicit entry wins and supplies its overrides.
+Malformed candidates remain validation inputs, so generation and publication
+fail through `smbtechOpenApiValidateSpecs` with the project-relative path.
+
 Diagnostics use project-relative paths and process files in stable path order.
 
 ## Document Validation
@@ -98,7 +104,9 @@ accepts OpenAPI `3.0.x` and `3.1.x` and rejects:
 - missing, blank, or invalid `info.version`;
 - missing paths or a document without operations;
 - an operation without `operationId`;
-- duplicate `operationId` values; and
+- duplicate `operationId` values;
+- blank operation tags or distinct tags that normalize to the same generated
+  `*Api` family; and
 - a title that cannot normalize to a valid artifact base name.
 
 The accepted contract version shape and title normalization rules are defined
@@ -114,16 +122,35 @@ coordinates that generation would create:
 for generated coordinates when configured.
 
 ```text
-<group>:<artifact-base-name>-models:<version>
-<group>:<artifact-base-name>-server-api:<version>
-<group>:<artifact-base-name>-client:<version>
+<group>:<artifact-base-name>-jdk21-model:<info.version>
+<group>:<artifact-base-name>-jdk21-api:<info.version>
+<group>:<artifact-base-name>-jdk21-client:<info.version>
 ```
+
+It also derives these fixed package boundaries, where `<major>` is the numeric
+major component of `info.version`:
+
+```text
+<basePackage>.v<major>.model
+<basePackage>.v<major>.api
+<basePackage>.v<major>.client.httpinterface
+<basePackage>.v<major>.client.openfeign
+```
+
+When the compatibility properties are present, `modelPackage` must equal the
+model package, `serverApiPackage` must equal the API package, and
+`clientPackage` must equal the shared `<basePackage>.v<major>.client` root. The
+framework derives both client subpackages from that root.
 
 The task rejects:
 
 - an artifact base name outside `[a-z0-9]+(-[a-z0-9]+)*`;
 - a version outside the supported SemVer/Maven-compatible shape;
-- duplicate effective coordinates across contracts; and
+- a configured version that does not equal `info.version`;
+- a configured kind-specific package outside the derived package boundary;
+- duplicate effective coordinates across contracts;
+- duplicate normalized contract identities or physical artifact file names
+  across contracts; and
 - generated artifact IDs that collide with protected framework artifacts.
 
 Protected artifact IDs currently include the framework Commons, Logging, HTTP
@@ -161,6 +188,11 @@ smbtechOpenApiBuildLogicCheck
 smbtechOpenApiValidateSpecs
 smbtechOpenApiCompatibilityCheck
 ```
+
+The public generation, assembly, publication, and compatibility aggregates also
+depend on `smbtechOpenApiBuildLogicCheck` and `smbtechOpenApiValidateSpecs`.
+This keeps an invalid discovered file from being silently skipped when those
+tasks are invoked directly.
 
 Therefore this command runs the complete OpenAPI validation model together with
 the project's other verification tasks:

@@ -22,10 +22,14 @@ For effective identity `<group>:<name>:<version>`, the published coordinates
 are:
 
 ```text
-<group>:<name>-models:<version>
-<group>:<name>-server-api:<version>
-<group>:<name>-client:<version>
+<group>:<name>-jdk21-model:<version>
+<group>:<name>-jdk21-api:<version>
+<group>:<name>-jdk21-client:<version>
 ```
+
+`<version>` is always the contract's `info.version`. The API and client POMs
+declare the matching `-jdk21-model` coordinate as a transitive dependency.
+The client POM does not expose Spring Cloud OpenFeign transitively.
 
 The `publishModels`, `publishServerApi`, and `publishClient` global and
 per-contract flags control generation and publication together. A disabled
@@ -59,6 +63,18 @@ Publish all enabled generated artifacts with:
 ./gradlew smbtechOpenApiPublishToLocalRepository
 ```
 
+Publish one contract without building or publishing the artifacts of another
+contract:
+
+```bash
+./gradlew smbtechOpenApiPublishContractToLocalRepository \
+  -PopenApiContract=ms-kyc-profile/swagger/openapi.yaml
+```
+
+`openApiContract` is the canonical project-relative path of an explicitly
+configured or automatically discovered contract. The task fails when the
+selector is absent or does not resolve to exactly one configured input.
+
 The `smbtechOpenApiLocal` repository uses
 `smbtechOpenApi.repositoryDirectory` and defaults to:
 
@@ -78,11 +94,11 @@ With the default group and repository, Maven files follow this layout:
 
 ```text
 build/repository/openapi/
-  com/smbtech/contracts/warehouse-inventory-catalog-models/1.0.0/
-    warehouse-inventory-catalog-models-1.0.0.jar
-    warehouse-inventory-catalog-models-1.0.0-sources.jar
-    warehouse-inventory-catalog-models-1.0.0.pom
-    warehouse-inventory-catalog-models-1.0.0.module
+  com/smbtech/contracts/warehouse-inventory-catalog-jdk21-model/1.0.0/
+    warehouse-inventory-catalog-jdk21-model-1.0.0.jar
+    warehouse-inventory-catalog-jdk21-model-1.0.0-sources.jar
+    warehouse-inventory-catalog-jdk21-model-1.0.0.pom
+    warehouse-inventory-catalog-jdk21-model-1.0.0.module
 ```
 
 Gradle also writes `.md5`, `.sha1`, `.sha256`, and `.sha512` checksums beside
@@ -106,7 +122,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0'
+    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0'
 }
 ```
 
@@ -134,10 +150,20 @@ smbtechOpenApi {
 }
 ```
 
+The plugin also resolves the URL from `openApiRepositoryUrl` and then
+`OPENAPI_REPOSITORY_URL`, so CI does not need to modify the build script.
+
 Then publish every enabled contract artifact:
 
 ```bash
 ./gradlew smbtechOpenApiPublish
+```
+
+Publish only one contract's enabled model, API, and client artifacts with:
+
+```bash
+./gradlew smbtechOpenApiPublishContract \
+  -PopenApiContract=ms-kyc-profile/swagger/openapi.yaml
 ```
 
 The task targets the `smbtechOpenApiRemote` Maven repository. It fails with a
@@ -158,6 +184,7 @@ plugin resolves each value in this order:
 
 | Value | Gradle property | Environment variable |
 |---|---|---|
+| Repository URL | `openApiRepositoryUrl` | `OPENAPI_REPOSITORY_URL` |
 | Username | `openApiRepositoryUsername` | `OPENAPI_REPOSITORY_USERNAME` |
 | Password or token | `openApiRepositoryPassword` | `OPENAPI_REPOSITORY_PASSWORD` |
 
@@ -174,12 +201,25 @@ For CI, use protected secret environment variables. Do not pass passwords with
 
 ## CI Publication
 
-A remote publication job should run only after the compatibility gate succeeds:
+`.github/workflows/publish-openapi-contracts.yml` runs on changes to direct YAML,
+YML, or JSON files in conventional `src/main/openapi`, `openapi`, and `swagger`
+directories on `main`. Its detection job emits canonical project-relative
+paths, the compatibility job runs once, and a matrix publishes each changed
+contract independently.
+
+The workflow can also be dispatched manually with one contract path. Each
+matrix entry invokes:
 
 ```bash
-./gradlew smbtechOpenApiCompatibilityCheck
-./gradlew smbtechOpenApiPublish
+./gradlew contractTestingCompatibilityCheck smbtechOpenApiCompatibilityCheck
+./gradlew smbtechOpenApiPublishContract \
+  -PopenApiContract=ms-kyc-profile/swagger/openapi.yaml
 ```
+
+The first command publishes the current checkout only to disposable local Maven
+repositories, runs the standalone generated-contract consumer, and then runs
+the plugin compatibility suite. The remote matrix job starts only after both
+validations succeed.
 
 Provide these values through the CI secret store:
 
@@ -193,11 +233,24 @@ Restrict the publication job to the repository's approved release branch or tag
 policy. The OpenAPI plugin itself does not infer whether the current Git ref is
 authorized to publish.
 
+The repository workflow uses the `release` environment and maps the existing
+`PRIVATE_MAVEN_URL`, `PRIVATE_MAVEN_USERNAME`, and `PRIVATE_MAVEN_PASSWORD`
+secrets to those OpenAPI variables. Deleted contracts are ignored. A failed
+matrix entry does not cancel publication of another changed contract, while the
+workflow concurrency policy never cancels an in-progress publication.
+
+Each matrix entry stages the selected artifacts into a dedicated local Maven
+repository, records their hashes with `generateOpenApiPilotManifest`, and
+resolves them from an isolated consumer. Before upload it rejects partial or
+conflicting coordinates; after upload it verifies the remote payload and Maven
+dependency graph against the same manifest. The manual protected procedure is
+documented in the [OpenAPI Contract Pilot](../pilot/README.md).
+
 ## Version Immutability
 
-Treat `info.version` and every effective version override as immutable after
-publication. Never replace an existing remote artifact with different contract
-content under the same coordinate.
+Treat `info.version` as immutable after publication. Never replace an existing
+remote artifact with different contract content under the same coordinate. A
+configured version override must equal `info.version`.
 
 When the contract changes:
 
@@ -216,6 +269,8 @@ baseline and versioning rules.
 |---|---|---|
 | `publicationRepositoryUrl is required for remote publication` | `smbtechOpenApiPublish` was invoked without a remote repository. | Configure `smbtechOpenApi.publicationRepositoryUrl` or use the local publication task. |
 | `publicationRepositoryUrl must be an absolute URI` | The configured remote URL is relative or malformed. | Supply an absolute `https://` or supported Maven repository URI. |
+| `Contract publication requires -PopenApiContract` | An independent publication task was called without a selector. | Pass the project-relative path of one configured or discovered contract. |
+| `OpenAPI contract ... is not configured or discovered` | The selector does not match a registered input. | Use an existing direct contract file in a conventional folder or register the path explicitly. |
 | HTTP `401` or `403` | Credentials are absent, invalid, or not authorized for the target path. | Verify the CI secret names, Gradle property precedence, and registry permissions. |
 | Repository rejects an existing version | The registry enforces immutable releases. | Increment the contract version; do not overwrite the published coordinate. |
 | Consumer cannot resolve an artifact | The repository is missing, ordered incorrectly, or publication did not run. | Publish locally or remotely, then declare the matching repository and exact coordinate. |
@@ -228,6 +283,8 @@ Validate publication documentation and behavior with:
 ```bash
 ./gradlew validateOpenApiPublishingDocumentation
 ./gradlew smbtechOpenApiPublishToLocalRepository
+./gradlew smbtechOpenApiPublishContractToLocalRepository \
+  -PopenApiContract=docs/openapi/warehouse-inventory-catalog.yaml
 ./gradlew smbtechOpenApiCompatibilityCheck
 ./gradlew documentationCheck
 ```

@@ -316,7 +316,7 @@ public final class ProjectGenerationRequest {
         /**
          * Overrides the generated server API version.
          *
-         * @param contractVersion server API version
+         * @param contractVersion version assertion that must match contract metadata
          * @return this builder
          */
         public Builder contractVersion(String contractVersion) {

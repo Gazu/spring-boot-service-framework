@@ -23,6 +23,9 @@ import org.openapitools.codegen.config.CodegenConfigurator;
 /** Generates one source set from a validated OpenAPI contract. */
 public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
 
+    private static final String HTTP_INTERFACE_LIBRARY = "spring-http-interface";
+    private static final String OPENFEIGN_LIBRARY = "spring-cloud";
+
     /** Creates the generation task. */
     public SmbtechOpenApiGenerateTask() {}
 
@@ -84,6 +87,14 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
     public abstract Property<String> getApiPackage();
 
     /**
+     * Returns the generated Spring Cloud OpenFeign package.
+     *
+     * @return generated OpenFeign package
+     */
+    @Input
+    public abstract Property<String> getOpenFeignPackage();
+
+    /**
      * Returns the logical client name used by {@code @HttpApiClient}.
      *
      * @return client name
@@ -106,6 +117,25 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
         clean(output.toPath());
 
         OpenApiArtifactKind kind = getArtifactKind().get();
+        if (kind == OpenApiArtifactKind.CLIENT) {
+            generate(output, kind, getApiPackage().get(), HTTP_INTERFACE_LIBRARY);
+            generate(output, kind, getOpenFeignPackage().get(), OPENFEIGN_LIBRARY);
+            Path sourceRoot = output.toPath().resolve("src/main/java");
+            annotateClientInterfaces(
+                    sourceRoot,
+                    getApiPackage().get(),
+                    "/smbtech-openapi/client-interface-annotation.mustache");
+            annotateClientInterfaces(
+                    sourceRoot,
+                    getOpenFeignPackage().get(),
+                    "/smbtech-openapi/openfeign-client-interface-annotation.mustache");
+            return;
+        }
+        generate(output, kind, getApiPackage().get(), null);
+    }
+
+    private void generate(
+            File output, OpenApiArtifactKind kind, String apiPackage, String clientLibrary) {
         CodegenConfigurator configurator =
                 new CodegenConfigurator()
                         .setGeneratorName("spring")
@@ -115,18 +145,15 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
                         .setArtifactId(getArtifactId().get())
                         .setArtifactVersion(getArtifactVersion().get())
                         .setModelPackage(getModelPackage().get())
-                        .setApiPackage(getApiPackage().get())
-                        .setInvokerPackage(getApiPackage().get() + ".support")
+                        .setApiPackage(apiPackage)
+                        .setInvokerPackage(apiPackage + ".support")
                         .setValidateSpec(true)
                         .setSkipOverwrite(false)
                         .setEnableMinimalUpdate(false);
         configureCommon(configurator);
-        configureKind(configurator, kind);
+        configureKind(configurator, kind, clientLibrary);
 
         new DefaultGenerator().opts(configurator.toClientOptInput()).generate();
-        if (kind == OpenApiArtifactKind.CLIENT) {
-            annotateClientInterfaces(output.toPath().resolve("src/main/java"));
-        }
     }
 
     private static void configureCommon(CodegenConfigurator configurator) {
@@ -149,7 +176,9 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
     }
 
     private static void configureKind(
-            CodegenConfigurator configurator, OpenApiArtifactKind artifactKind) {
+            CodegenConfigurator configurator,
+            OpenApiArtifactKind artifactKind,
+            String clientLibrary) {
         switch (artifactKind) {
             case MODELS -> {
                 configurator.setLibrary("spring-boot");
@@ -167,16 +196,22 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
                 configurator.addAdditionalProperty("useResponseEntity", true);
             }
             case CLIENT -> {
-                configurator.setLibrary("spring-http-interface");
+                configurator.setLibrary(clientLibrary);
                 configurator.addGlobalProperty("models", "false");
                 configurator.addGlobalProperty("apis", "");
                 configurator.addAdditionalProperty("interfaceOnly", true);
+                if (OPENFEIGN_LIBRARY.equals(clientLibrary)) {
+                    configurator.addAdditionalProperty("skipDefaultInterface", true);
+                    configurator.addAdditionalProperty("singleContentTypes", true);
+                    configurator.addAdditionalProperty("requestMappingMode", "none");
+                }
             }
         }
     }
 
-    private void annotateClientInterfaces(Path sourceRoot) {
-        String template = readAnnotationTemplate();
+    private void annotateClientInterfaces(
+            Path sourceRoot, String apiPackage, String templateResource) {
+        String template = readAnnotationTemplate(templateResource);
         String annotation =
                 template.lines().filter(line -> line.startsWith("@")).findFirst().orElseThrow();
         String importLine =
@@ -184,19 +219,28 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
                         .filter(line -> line.startsWith("import "))
                         .findFirst()
                         .orElseThrow();
-        try (var files = Files.walk(sourceRoot)) {
+        Path packageRoot = packageRoot(sourceRoot, apiPackage);
+        try (var files = Files.walk(packageRoot)) {
             files.filter(path -> path.getFileName().toString().endsWith("Api.java"))
                     .forEach(path -> annotate(path, importLine, annotation));
         } catch (IOException exception) {
             throw new GradleException(
-                    "Cannot customize generated HTTP client interfaces", exception);
+                    "Cannot customize generated client interfaces in " + apiPackage, exception);
         }
     }
 
     private void annotate(Path source, String importLine, String annotation) {
         try {
             String content = Files.readString(source, StandardCharsets.UTF_8);
-            String resolvedAnnotation = annotation.replace("{{clientName}}", getClientName().get());
+            String interfaceName = source.getFileName().toString().replaceFirst("\\.java$", "");
+            String resolvedAnnotation =
+                    annotation
+                            .replace("{{clientName}}", getClientName().get())
+                            .replace(
+                                    "{{versionSegment}}",
+                                    OpenApiArtifactContract.versionSegment(
+                                            getArtifactVersion().get()))
+                            .replace("{{interfaceName}}", interfaceName);
             if (!content.contains(importLine)) {
                 content = content.replaceFirst("(?m)^import ", importLine + "\n\nimport ");
             }
@@ -212,10 +256,8 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
         }
     }
 
-    private static String readAnnotationTemplate() {
-        try (var input =
-                SmbtechOpenApiGenerateTask.class.getResourceAsStream(
-                        "/smbtech-openapi/client-interface-annotation.mustache")) {
+    private static String readAnnotationTemplate(String templateResource) {
+        try (var input = SmbtechOpenApiGenerateTask.class.getResourceAsStream(templateResource)) {
             if (input == null) {
                 throw new GradleException("Corporate OpenAPI client template is missing");
             }
@@ -223,6 +265,14 @@ public abstract class SmbtechOpenApiGenerateTask extends DefaultTask {
         } catch (IOException exception) {
             throw new GradleException("Cannot read corporate OpenAPI client template", exception);
         }
+    }
+
+    private static Path packageRoot(Path sourceRoot, String packageName) {
+        Path result = sourceRoot;
+        for (String segment : packageName.split("\\.")) {
+            result = result.resolve(segment);
+        }
+        return result;
     }
 
     private static void clean(Path directory) {

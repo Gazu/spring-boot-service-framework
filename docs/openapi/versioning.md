@@ -18,8 +18,8 @@ info:
 ```
 
 `info.version` is the canonical contract version used by baseline selection and
-`smbtechOpenApiBreakingChangeCheck`. By default, it is also the Maven version of
-the generated models, server API, and client artifacts.
+`smbtechOpenApiBreakingChangeCheck`. It is also the Maven version of the
+generated model, API, and client artifacts.
 
 The plugin accepts versions matching:
 
@@ -32,14 +32,14 @@ MAJOR.MINOR.PATCH+BUILD
 The current validation pattern is
 `[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z][0-9A-Za-z.-]*)?`.
 
-## Effective Artifact Version
+## Effective Artifact And Package Version
 
-`smbtechOpenApi.specs.<name>.version` can override the Maven artifact version.
-This override does not change the version read by the breaking-change task,
-which always uses `info.version` from the OpenAPI document.
+`smbtechOpenApi.specs.<name>.version` is a compatibility input. It may be left
+unset or configured with the exact `info.version`; a divergent value is
+invalid. The contract therefore has one version identity for Maven publication,
+baselines, compatibility checks, and embedded metadata.
 
-For version-governed contracts, leave the override unset or keep it exactly
-equal to `info.version`:
+An explicit matching value is valid but unnecessary:
 
 ```groovy
 smbtechOpenApi {
@@ -52,8 +52,19 @@ smbtechOpenApi {
 }
 ```
 
-A divergent override can publish coordinates that do not match the baseline
-version evaluated by CI. The plugin currently does not reject that divergence.
+The major component also selects the generated Java namespace:
+
+| `info.version` | Package segment |
+|---|---|
+| `1.0.0` | `v1` |
+| `1.8.4` | `v1` |
+| `2.1.0` | `v2` |
+
+The segment appears immediately below the unversioned `basePackage`. Minor,
+patch, pre-release, and build metadata never change it. A major version creates
+a disjoint Java namespace, while compatible minor and patch updates preserve
+Java imports. Because all versions retain the same Maven group and artifact ID,
+normal dependency resolution selects one contract version at a time.
 
 ## Contract Identity
 
@@ -70,9 +81,8 @@ For example, `Warehouse Inventory_Catalog` becomes
 `warehouse-inventory-catalog`.
 
 Keep `info.title` stable after the first publication. Changing it creates a new
-contract identity and therefore a new baseline history. As with version
-overrides, an `artifactBaseName` override affects generated coordinates but not
-baseline identity.
+contract identity and therefore a new baseline history. An `artifactBaseName`
+override affects generated coordinates but not baseline identity.
 
 ## Baseline Layout
 
@@ -280,8 +290,8 @@ strict-mode rejection, or the required SemVer level.
   output, so some removals are conservatively breaking.
 - Security schemes and response headers are not currently part of the protected
   comparison surface.
-- Gradle `version` and `artifactBaseName` overrides are not used for baseline
-  identity or SemVer comparison.
+- An `artifactBaseName` override is not used for baseline identity or SemVer
+  comparison. A `version` override cannot diverge from `info.version`.
 
 ## Validation
 

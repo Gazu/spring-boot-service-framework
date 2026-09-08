@@ -1,0 +1,3 @@
+import org.springframework.cloud.openfeign.FeignClient;
+
+@FeignClient(name = "{{clientName}}", contextId = "{{clientName}}-{{versionSegment}}-{{interfaceName}}")

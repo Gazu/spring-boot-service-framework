@@ -164,7 +164,17 @@ def moduleCompatibilityContracts = [
                 artifacts         : ['com.smbtech:spring-boot-service-framework-openapi-contract-testing'],
                 autoConfiguration : [:],
                 pluginIds         : [],
-                verificationTasks : [':spring-boot-service-framework-openapi-contract-testing:check']
+                runtimeContracts  : [
+                        'consumer-dependency-mode=published-maven-artifacts',
+                        'consumer-smoke-task=openApiContractConsumerSmoke',
+                        'generated-api=warehouse-inventory-catalog-jdk21-api:1.0.0',
+                        'generated-client=warehouse-inventory-catalog-jdk21-client:1.0.0',
+                        'generated-model=warehouse-inventory-catalog-jdk21-model:1.0.0'
+                ],
+                verificationTasks : [
+                        ':spring-boot-service-framework-openapi-contract-testing:check',
+                        'openApiContractConsumerSmoke'
+                ]
         ],
         projectGenerator  : [
                 taskName          : 'projectGeneratorCompatibilityCheck',
@@ -200,6 +210,9 @@ def moduleCompatibilityContracts = [
                         'task=smbtechOpenApiAssemble',
                         'task=smbtechOpenApiPublishToLocalRepository',
                         'task=smbtechOpenApiPublish',
+                        'task=smbtechOpenApiPublishContractToLocalRepository',
+                        'task=smbtechOpenApiPublishContract',
+                        'selector-property=openApiContract',
                         'task=smbtechOpenApiBreakingChangeCheck',
                         'task=smbtechOpenApiReproducibilityCheck',
                         'task=smbtechOpenApiMigrationReport',

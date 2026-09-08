@@ -53,12 +53,19 @@ public abstract class SmbtechOpenApiMigrationReportTask extends DefaultTask {
             OpenApiContractIdentity identity = OpenApiContractReader.read(new File(parts[1]));
             String group = parts[2].isBlank() ? getDefaultGroupId().get() : parts[2];
             String artifact = parts[3].isBlank() ? identity.artifactBaseName() : parts[3];
-            String version = parts[4].isBlank() ? identity.version() : parts[4];
+            String version = identity.version();
             boolean models = parts.length <= 9 || Boolean.parseBoolean(parts[9]);
             boolean server = parts.length <= 10 || Boolean.parseBoolean(parts[10]);
             boolean client = parts.length <= 11 || Boolean.parseBoolean(parts[11]);
             if (models) {
-                rows.add(row("models", artifact + "-models", group, artifact + "-models", version));
+                rows.add(
+                        row(
+                                "models",
+                                artifact + "-models",
+                                group,
+                                OpenApiArtifactContract.artifactId(
+                                        artifact, OpenApiArtifactKind.MODELS),
+                                version));
             }
             if (server) {
                 rows.add(
@@ -66,11 +73,19 @@ public abstract class SmbtechOpenApiMigrationReportTask extends DefaultTask {
                                 "server API",
                                 artifact + "-api",
                                 group,
-                                artifact + "-server-api",
+                                OpenApiArtifactContract.artifactId(
+                                        artifact, OpenApiArtifactKind.SERVER_API),
                                 version));
             }
             if (client) {
-                rows.add(row("client", artifact + "-client", group, artifact + "-client", version));
+                rows.add(
+                        row(
+                                "client",
+                                artifact + "-client",
+                                group,
+                                OpenApiArtifactContract.artifactId(
+                                        artifact, OpenApiArtifactKind.CLIENT),
+                                version));
             }
         }
         String report =
@@ -91,8 +106,8 @@ public abstract class SmbtechOpenApiMigrationReportTask extends DefaultTask {
                 | `openApiCompatibilityCheck` | `smbtechOpenApiCompatibilityCheck` |
                 | `publishOpenApiArtifactsToLocalBuildRepository` | `smbtechOpenApiPublishToLocalRepository` |
 
-                The legacy group was `com.smbtech.openapi`. Update dependency declarations and
-                replace the legacy `-api` suffix with `-server-api`.
+                The legacy group was `com.smbtech.openapi`. Update dependency declarations to the
+                Java-versioned `-jdk21-model`, `-jdk21-api`, and `-jdk21-client` coordinates.
                 """
                         .formatted(String.join("\n", rows));
         try {

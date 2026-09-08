@@ -7,11 +7,14 @@ import io.swagger.v3.parser.core.models.ParseOptions;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.openapitools.codegen.languages.SpringCodegen;
 
 final class OpenApiContractReader {
 
@@ -87,6 +90,8 @@ final class OpenApiContractReader {
             return;
         }
         Set<String> operationIds = new HashSet<>();
+        Map<String, String> generatedApiFamilies = new HashMap<>();
+        SpringCodegen codegen = new SpringCodegen();
         contract.getPaths()
                 .forEach(
                         (path, item) ->
@@ -98,6 +103,8 @@ final class OpenApiContractReader {
                                                                 method.name(),
                                                                 operation,
                                                                 operationIds,
+                                                                generatedApiFamilies,
+                                                                codegen,
                                                                 failures)));
     }
 
@@ -106,12 +113,46 @@ final class OpenApiContractReader {
             String method,
             Operation operation,
             Set<String> operationIds,
+            Map<String, String> generatedApiFamilies,
+            SpringCodegen codegen,
             List<String> failures) {
         String operationId = text(operation.getOperationId());
         if (operationId.isEmpty()) {
             failures.add(method + " " + path + ": operationId is required");
         } else if (!operationIds.add(operationId)) {
             failures.add("operationId '" + operationId + "' must be unique");
+        }
+        validateTagFamilies(path, method, operation, generatedApiFamilies, codegen, failures);
+    }
+
+    private static void validateTagFamilies(
+            String path,
+            String method,
+            Operation operation,
+            Map<String, String> generatedApiFamilies,
+            SpringCodegen codegen,
+            List<String> failures) {
+        if (operation.getTags() == null) {
+            return;
+        }
+        for (String value : operation.getTags()) {
+            String tag = text(value);
+            if (tag.isEmpty()) {
+                failures.add(method + " " + path + ": operation tags must not be blank");
+                continue;
+            }
+            String apiFamily = codegen.toApiName(tag);
+            String previous = generatedApiFamilies.putIfAbsent(apiFamily, tag);
+            if (previous != null && !previous.equals(tag)) {
+                failures.add(
+                        "tags '"
+                                + previous
+                                + "' and '"
+                                + tag
+                                + "' normalize to generated API family '"
+                                + apiFamily
+                                + "'");
+            }
         }
     }
 

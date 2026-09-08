@@ -1,0 +1,226 @@
+name: OpenAPI Contract Pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      contract:
+        description: Project-relative path to one configured or discovered OpenAPI contract
+        required: true
+        type: string
+      expected_version:
+        description: Exact info.version expected for the selected contract
+        required: true
+        type: string
+      publish:
+        description: Publish to the release environment after staging validation
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openapi-contract-pilot-${{ github.ref }}-${{ inputs.contract }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate and stage selected contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate pilot inputs
+        shell: bash
+        env:
+          CONTRACT_PATH: ${{ inputs.contract }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          set -euo pipefail
+          [[ -n "${CONTRACT_PATH}" ]]
+          [[ "${EXPECTED_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]
+
+      - name: Set up Java 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-read-only: true
+
+      - name: Run Phase 6 and deployment compatibility gates
+        run: >-
+          ./gradlew clean
+          contractTestingCompatibilityCheck
+          openApiContractConsumerSmoke
+          smbtechOpenApiCompatibilityCheck
+          pilotDeploymentCompatibilityCheck
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Stage exactly one contract publication
+        env:
+          CONTRACT_PATH: ${{ inputs.contract }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          ./gradlew generateOpenApiPilotManifest
+          "-PopenApiContract=${CONTRACT_PATH}"
+          "-PopenApiPilotVersion=${EXPECTED_VERSION}"
+          "-PopenApiPilotCommit=${SOURCE_COMMIT}"
+          -PopenApiRepositoryDirectory=build/pilot/evidence/repository
+          -PopenApiPilotManifest=build/pilot/evidence/publication-manifest.json
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Resolve staged publication from an isolated consumer
+        run: >-
+          ./gradlew -p .ci/openapi-pilot-consumer verifyPilotPublication
+          "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json"
+          "-PpilotRepositoryUrl=file://${GITHUB_WORKSPACE}/build/pilot/evidence/repository"
+          "-PpilotFrameworkRoot=${GITHUB_WORKSPACE}"
+          "-PpilotVerificationReport=${GITHUB_WORKSPACE}/build/pilot/evidence/local-verification.json"
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Upload validated pilot payload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openapi-contract-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/pilot/evidence
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    name: Publish and verify selected contract
+    needs: validate
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out validated revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Download validated pilot payload
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: openapi-contract-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/pilot/evidence
+
+      - name: Set up Java 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Check remote coordinate state
+        id: remote
+        env:
+          PILOT_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PILOT_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PILOT_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew -p .ci/openapi-pilot-consumer checkPilotPublicationState \
+            "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json" \
+            "-PpilotStateReport=${GITHUB_WORKSPACE}/build/pilot/evidence/remote-state.json" \
+            --no-daemon --stacktrace --console=plain
+          state="$(jq -r '.state' build/pilot/evidence/remote-state.json)"
+          echo "state=${state}" >>"${GITHUB_OUTPUT}"
+
+      - name: Publish selected contract artifacts
+        if: steps.remote.outputs.state == 'absent'
+        env:
+          CONTRACT_PATH: ${{ inputs.contract }}
+          OPENAPI_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          OPENAPI_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          OPENAPI_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: >-
+          ./gradlew smbtechOpenApiPublishContract
+          "-PopenApiContract=${CONTRACT_PATH}"
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Verify deployed payload and Maven resolution
+        env:
+          PILOT_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PILOT_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PILOT_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: >-
+          ./gradlew -p .ci/openapi-pilot-consumer verifyPilotPublication
+          "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json"
+          "-PpilotVerificationReport=${GITHUB_WORKSPACE}/build/pilot/evidence/remote-verification.json"
+          --refresh-dependencies
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Record deployment receipt
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq --arg run_url "${RUN_URL}" \
+            '. + {deploymentStatus: "verified", runUrl: $run_url}' \
+            build/pilot/evidence/remote-verification.json \
+            >build/pilot/evidence/deployment-receipt.json
+
+      - name: Upload deployment receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openapi-contract-pilot-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/pilot/evidence/publication-manifest.json
+            build/pilot/evidence/remote-state.json
+            build/pilot/evidence/remote-verification.json
+            build/pilot/evidence/deployment-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record immutable-coordinate recovery instructions
+        if: ${{ failure() }}
+        run: |
+          mkdir -p build/pilot/evidence
+          cat >build/pilot/evidence/RECOVERY.md <<'RECOVERY'
+          The pilot publication failed after validation. Do not delete or overwrite
+          an immutable Maven coordinate. Inspect remote-state.json and the registry,
+          quarantine a partial version, correct the source contract, and publish a
+          new patch version through a new validated pilot run.
+          RECOVERY
+
+      - name: Upload recovery evidence
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openapi-contract-pilot-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/pilot/evidence
+          if-no-files-found: warn
+          retention-days: 90

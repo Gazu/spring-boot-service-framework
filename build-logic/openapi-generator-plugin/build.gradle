@@ -62,7 +62,8 @@ dependencies {
 def openApiToolchainMetadata = [
         frameworkVersion: frameworkProperties.getProperty('frameworkVersion'),
         springBootVersion: frameworkProperties.getProperty('springBootVersion'),
-        openApiGeneratorVersion: frameworkProperties.getProperty('openApiGeneratorVersion')
+        openApiGeneratorVersion: frameworkProperties.getProperty('openApiGeneratorVersion'),
+        springCloudOpenFeignVersion: frameworkProperties.getProperty('springCloudOpenFeignVersion')
 ]
 
 tasks.named('processResources') {

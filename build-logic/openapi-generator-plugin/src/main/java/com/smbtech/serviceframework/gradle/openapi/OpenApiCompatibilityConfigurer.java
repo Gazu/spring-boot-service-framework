@@ -144,6 +144,10 @@ final class OpenApiCompatibilityConfigurer {
                                             migration,
                                             consumerTest,
                                             mockContract);
+                                    task.dependsOn(
+                                            SmbtechOpenApiGeneratorPlugin
+                                                    .BUILD_LOGIC_CHECK_TASK_NAME,
+                                            SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME);
                                 });
         project.getPluginManager()
                 .withPlugin(
@@ -157,41 +161,37 @@ final class OpenApiCompatibilityConfigurer {
     void configure(SmbtechOpenApiSpec spec) {
         OpenApiContractIdentity identity =
                 OpenApiContractReader.read(spec.getInput().get().getAsFile());
-        String artifactBaseName = spec.getArtifactBaseName().getOrElse(identity.artifactBaseName());
-        String version = spec.getVersion().getOrElse(identity.version());
-        String normalizedPackage = artifactBaseName.replace("-", "").toLowerCase(Locale.ROOT);
-        String basePackage =
-                spec.getBasePackage().getOrElse("com.smbtech.contracts." + normalizedPackage);
-        String modelPackage = spec.getModelPackage().getOrElse(basePackage + ".model");
-        String serverPackage = spec.getServerApiPackage().getOrElse(basePackage + ".api");
-        String clientPackage = spec.getClientPackage().getOrElse(basePackage + ".client");
+        OpenApiArtifactContract contract = OpenApiArtifactContract.resolve(spec, identity);
 
         if (spec.getPublishModels().get()) {
             addArtifact(
                     spec,
                     OpenApiArtifactKind.MODELS,
-                    artifactBaseName,
-                    version,
-                    modelPackage,
-                    modelPackage);
+                    contract.artifactBaseName(),
+                    contract.version(),
+                    contract.modelPackage(),
+                    contract.modelPackage(),
+                    contract.openFeignPackage());
         }
         if (spec.getPublishServerApi().get()) {
             addArtifact(
                     spec,
                     OpenApiArtifactKind.SERVER_API,
-                    artifactBaseName,
-                    version,
-                    modelPackage,
-                    serverPackage);
+                    contract.artifactBaseName(),
+                    contract.version(),
+                    contract.modelPackage(),
+                    contract.serverApiPackage(),
+                    contract.openFeignPackage());
         }
         if (spec.getPublishClient().get()) {
             addArtifact(
                     spec,
                     OpenApiArtifactKind.CLIENT,
-                    artifactBaseName,
-                    version,
-                    modelPackage,
-                    clientPackage);
+                    contract.artifactBaseName(),
+                    contract.version(),
+                    contract.modelPackage(),
+                    contract.httpInterfacePackage(),
+                    contract.openFeignPackage());
         }
     }
 
@@ -201,8 +201,9 @@ final class OpenApiCompatibilityConfigurer {
             String artifactBaseName,
             String version,
             String modelPackage,
-            String apiPackage) {
-        String artifactId = artifactBaseName + "-" + kind.artifactSuffix();
+            String apiPackage,
+            String openFeignPackage) {
+        String artifactId = OpenApiArtifactContract.artifactId(artifactBaseName, kind);
         String prefix = spec.getName() + javaName(kind.artifactSuffix());
         TaskProvider<Jar> jar =
                 project.getTasks().named("jar" + javaName(prefix) + "OpenApi", Jar.class);
@@ -227,6 +228,7 @@ final class OpenApiCompatibilityConfigurer {
                                             kind.name(),
                                             modelPackage,
                                             apiPackage,
+                                            openFeignPackage,
                                             artifactBaseName));
                 });
         if (kind == OpenApiArtifactKind.MODELS) {

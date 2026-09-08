@@ -1,11 +1,16 @@
 package com.smbtech.serviceframework.gradle.openapi;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
@@ -27,11 +32,16 @@ final class OpenApiGenerationConfigurer {
     static final String ASSEMBLE_TASK_NAME = "smbtechOpenApiAssemble";
     static final String PUBLISH_LOCAL_TASK_NAME = "smbtechOpenApiPublishToLocalRepository";
     static final String PUBLISH_REMOTE_TASK_NAME = "smbtechOpenApiPublish";
+    static final String PUBLISH_CONTRACT_LOCAL_TASK_NAME =
+            "smbtechOpenApiPublishContractToLocalRepository";
+    static final String PUBLISH_CONTRACT_REMOTE_TASK_NAME = "smbtechOpenApiPublishContract";
+    static final String CONTRACT_SELECTOR_PROPERTY = "openApiContract";
 
     private final Project project;
     private final SoftwareComponentFactory componentFactory;
     private final SmbtechOpenApiExtension extension;
     private final OpenApiToolchainVersions versions;
+    private final Set<Path> configuredContractPaths = new LinkedHashSet<>();
 
     OpenApiGenerationConfigurer(
             Project project,
@@ -48,7 +58,8 @@ final class OpenApiGenerationConfigurer {
         registerLifecycle(
                 GENERATE_SERVER_API_TASK_NAME, "Generates all configured Spring server APIs.");
         registerLifecycle(
-                GENERATE_CLIENT_TASK_NAME, "Generates all configured Spring HTTP clients.");
+                GENERATE_CLIENT_TASK_NAME,
+                "Generates all configured Spring HTTP Interface and OpenFeign clients.");
         registerLifecycle(ASSEMBLE_TASK_NAME, "Builds all configured OpenAPI contract artifacts.");
         registerLifecycle(
                 PUBLISH_LOCAL_TASK_NAME,
@@ -56,19 +67,16 @@ final class OpenApiGenerationConfigurer {
         registerLifecycle(
                 PUBLISH_REMOTE_TASK_NAME,
                 "Publishes all configured OpenAPI contract artifacts to the configured Maven repository.");
-        project.getTasks()
-                .named(PUBLISH_REMOTE_TASK_NAME)
-                .configure(
-                        task ->
-                                task.doLast(
-                                        ignored -> {
-                                            if (!extension
-                                                    .getPublicationRepositoryUrl()
-                                                    .isPresent()) {
-                                                throw new GradleException(
-                                                        "smbtechOpenApi.publicationRepositoryUrl is required for remote publication");
-                                            }
-                                        }));
+        registerLifecycle(
+                PUBLISH_CONTRACT_LOCAL_TASK_NAME,
+                "Publishes one OpenAPI contract to the local contract repository.");
+        registerLifecycle(
+                PUBLISH_CONTRACT_REMOTE_TASK_NAME,
+                "Publishes one OpenAPI contract to the configured Maven repository.");
+        configureContractSelection(PUBLISH_CONTRACT_LOCAL_TASK_NAME);
+        configureContractSelection(PUBLISH_CONTRACT_REMOTE_TASK_NAME);
+        configureRemotePublication(PUBLISH_REMOTE_TASK_NAME);
+        configureRemotePublication(PUBLISH_CONTRACT_REMOTE_TASK_NAME);
         project.getPluginManager()
                 .withPlugin(
                         "base",
@@ -96,46 +104,52 @@ final class OpenApiGenerationConfigurer {
                             repository.setName("smbtechOpenApiLocal");
                             repository.setUrl(extension.getRepositoryDirectory());
                         });
-        publishing
-                .getRepositories()
-                .maven(
-                        repository -> {
-                            repository.setName("smbtechOpenApiRemote");
-                            repository.setUrl(
-                                    extension
-                                            .getPublicationRepositoryUrl()
-                                            .orElse(
-                                                    project.getProviders()
-                                                            .provider(
-                                                                    () ->
-                                                                            project.getLayout()
-                                                                                    .getBuildDirectory()
-                                                                                    .dir(
-                                                                                            "repository/openapi-remote-disabled")
-                                                                                    .get()
-                                                                                    .getAsFile()
-                                                                                    .toURI()
-                                                                                    .toString())));
-                            repository.credentials(
-                                    credentials -> {
-                                        credentials.setUsername(
-                                                project.getProviders()
-                                                        .gradleProperty("openApiRepositoryUsername")
-                                                        .orElse(
-                                                                project.getProviders()
-                                                                        .environmentVariable(
-                                                                                "OPENAPI_REPOSITORY_USERNAME"))
-                                                        .getOrElse(""));
-                                        credentials.setPassword(
-                                                project.getProviders()
-                                                        .gradleProperty("openApiRepositoryPassword")
-                                                        .orElse(
-                                                                project.getProviders()
-                                                                        .environmentVariable(
-                                                                                "OPENAPI_REPOSITORY_PASSWORD"))
-                                                        .getOrElse(""));
-                                    });
-                        });
+        MavenArtifactRepository remoteRepository =
+                publishing
+                        .getRepositories()
+                        .maven(
+                                repository -> {
+                                    repository.setName("smbtechOpenApiRemote");
+                                    repository.setUrl(
+                                            extension
+                                                    .getPublicationRepositoryUrl()
+                                                    .orElse(
+                                                            project.getProviders()
+                                                                    .provider(
+                                                                            () ->
+                                                                                    project.getLayout()
+                                                                                            .getBuildDirectory()
+                                                                                            .dir(
+                                                                                                    "repository/openapi-remote-disabled")
+                                                                                            .get()
+                                                                                            .getAsFile()
+                                                                                            .toURI()
+                                                                                            .toString())));
+                                });
+        project.afterEvaluate(
+                ignored -> {
+                    if (!"file".equalsIgnoreCase(remoteRepository.getUrl().getScheme())) {
+                        remoteRepository.credentials(
+                                credentials -> {
+                                    credentials.setUsername(
+                                            project.getProviders()
+                                                    .gradleProperty("openApiRepositoryUsername")
+                                                    .orElse(
+                                                            project.getProviders()
+                                                                    .environmentVariable(
+                                                                            "OPENAPI_REPOSITORY_USERNAME"))
+                                                    .getOrElse(""));
+                                    credentials.setPassword(
+                                            project.getProviders()
+                                                    .gradleProperty("openApiRepositoryPassword")
+                                                    .orElse(
+                                                            project.getProviders()
+                                                                    .environmentVariable(
+                                                                            "OPENAPI_REPOSITORY_PASSWORD"))
+                                                    .getOrElse(""));
+                                });
+                    }
+                });
         project.getTasks()
                 .withType(PublishToMavenRepository.class)
                 .configureEach(
@@ -152,16 +166,12 @@ final class OpenApiGenerationConfigurer {
 
     void configure(SmbtechOpenApiSpec spec) {
         File input = spec.getInput().get().getAsFile();
+        Path inputPath = OpenApiSpecDiscovery.normalizedPath(input);
+        configuredContractPaths.add(inputPath);
+        boolean selected = inputPath.equals(selectedContractPath());
         OpenApiContractIdentity identity = OpenApiContractReader.read(input);
+        OpenApiArtifactContract contract = OpenApiArtifactContract.resolve(spec, identity);
         String groupId = spec.getGroupId().getOrElse(extension.getGroupId().get());
-        String artifactBaseName = spec.getArtifactBaseName().getOrElse(identity.artifactBaseName());
-        String version = spec.getVersion().getOrElse(identity.version());
-        String normalizedPackage = artifactBaseName.replace("-", "").toLowerCase(Locale.ROOT);
-        String basePackage =
-                spec.getBasePackage().getOrElse("com.smbtech.contracts." + normalizedPackage);
-        String modelPackage = spec.getModelPackage().getOrElse(basePackage + ".model");
-        String serverApiPackage = spec.getServerApiPackage().getOrElse(basePackage + ".api");
-        String clientPackage = spec.getClientPackage().getOrElse(basePackage + ".client");
 
         TaskProvider<Jar> modelsJar = null;
         if (spec.getPublishModels().get()) {
@@ -171,11 +181,13 @@ final class OpenApiGenerationConfigurer {
                             identity,
                             OpenApiArtifactKind.MODELS,
                             groupId,
-                            artifactBaseName,
-                            version,
-                            modelPackage,
-                            serverApiPackage,
-                            null);
+                            contract.artifactBaseName(),
+                            contract.version(),
+                            contract.modelPackage(),
+                            contract.serverApiPackage(),
+                            contract.openFeignPackage(),
+                            null,
+                            selected);
         }
         if (spec.getPublishServerApi().get()) {
             registerArtifact(
@@ -183,11 +195,13 @@ final class OpenApiGenerationConfigurer {
                     identity,
                     OpenApiArtifactKind.SERVER_API,
                     groupId,
-                    artifactBaseName,
-                    version,
-                    modelPackage,
-                    serverApiPackage,
-                    modelsJar);
+                    contract.artifactBaseName(),
+                    contract.version(),
+                    contract.modelPackage(),
+                    contract.serverApiPackage(),
+                    contract.openFeignPackage(),
+                    modelsJar,
+                    selected);
         }
         if (spec.getPublishClient().get()) {
             registerArtifact(
@@ -195,11 +209,13 @@ final class OpenApiGenerationConfigurer {
                     identity,
                     OpenApiArtifactKind.CLIENT,
                     groupId,
-                    artifactBaseName,
-                    version,
-                    modelPackage,
-                    clientPackage,
-                    modelsJar);
+                    contract.artifactBaseName(),
+                    contract.version(),
+                    contract.modelPackage(),
+                    contract.httpInterfacePackage(),
+                    contract.openFeignPackage(),
+                    modelsJar,
+                    selected);
         }
     }
 
@@ -212,8 +228,10 @@ final class OpenApiGenerationConfigurer {
             String version,
             String modelPackage,
             String apiPackage,
-            TaskProvider<Jar> modelsJar) {
-        String artifactId = artifactBaseName + "-" + kind.artifactSuffix();
+            String openFeignPackage,
+            TaskProvider<Jar> modelsJar,
+            boolean selected) {
+        String artifactId = OpenApiArtifactContract.artifactId(artifactBaseName, kind);
         String prefix = spec.getName() + javaName(kind.artifactSuffix());
         String generationTaskName = "generate" + javaName(prefix) + "OpenApiSources";
         String compileTaskName = "compile" + javaName(prefix) + "OpenApiJava";
@@ -232,6 +250,8 @@ final class OpenApiGenerationConfigurer {
                                     task.setDescription(
                                             "Generates " + artifactId + " Java sources.");
                                     task.dependsOn(
+                                            SmbtechOpenApiGeneratorPlugin
+                                                    .BUILD_LOGIC_CHECK_TASK_NAME,
                                             SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME);
                                     task.getInputSpec().set(spec.getInput());
                                     task.getArtifactKind().set(kind);
@@ -240,6 +260,7 @@ final class OpenApiGenerationConfigurer {
                                     task.getArtifactVersion().set(version);
                                     task.getModelPackage().set(modelPackage);
                                     task.getApiPackage().set(apiPackage);
+                                    task.getOpenFeignPackage().set(openFeignPackage);
                                     task.getClientName().set(artifactBaseName);
                                     task.getOutputDirectory()
                                             .set(
@@ -292,10 +313,14 @@ final class OpenApiGenerationConfigurer {
                                                                             + kind
                                                                                     .artifactSuffix()));
                                     task.getOptions().setEncoding("UTF-8");
-                                    task.getOptions().getRelease().set(21);
+                                    task.getOptions()
+                                            .getRelease()
+                                            .set(OpenApiArtifactContract.JAVA_RELEASE);
                                     task.getOptions().getCompilerArgs().add("-parameters");
-                                    task.setSourceCompatibility("21");
-                                    task.setTargetCompatibility("21");
+                                    task.setSourceCompatibility(
+                                            Integer.toString(OpenApiArtifactContract.JAVA_RELEASE));
+                                    task.setTargetCompatibility(
+                                            Integer.toString(OpenApiArtifactContract.JAVA_RELEASE));
                                 });
 
         TaskProvider<SmbtechOpenApiMetadataTask> metadata =
@@ -427,7 +452,86 @@ final class OpenApiGenerationConfigurer {
                                         "publish"
                                                 + javaName(publicationName)
                                                 + "PublicationToSmbtechOpenApiRemoteRepository"));
+        if (selected) {
+            project.getTasks()
+                    .named(PUBLISH_CONTRACT_LOCAL_TASK_NAME)
+                    .configure(
+                            task ->
+                                    task.dependsOn(
+                                            "publish"
+                                                    + javaName(publicationName)
+                                                    + "PublicationToSmbtechOpenApiLocalRepository"));
+            project.getTasks()
+                    .named(PUBLISH_CONTRACT_REMOTE_TASK_NAME)
+                    .configure(
+                            task ->
+                                    task.dependsOn(
+                                            "publish"
+                                                    + javaName(publicationName)
+                                                    + "PublicationToSmbtechOpenApiRemoteRepository"));
+        }
         return jar;
+    }
+
+    private void configureContractSelection(String taskName) {
+        project.getTasks()
+                .named(taskName)
+                .configure(task -> task.doFirst(ignored -> validateContractSelection()));
+    }
+
+    private void configureRemotePublication(String taskName) {
+        project.getTasks()
+                .named(taskName)
+                .configure(
+                        task ->
+                                task.doLast(
+                                        ignored -> {
+                                            if (!extension
+                                                    .getPublicationRepositoryUrl()
+                                                    .isPresent()) {
+                                                throw new GradleException(
+                                                        "smbtechOpenApi.publicationRepositoryUrl is required for remote publication");
+                                            }
+                                        }));
+    }
+
+    private void validateContractSelection() {
+        Path selectedPath = selectedContractPath();
+        if (selectedPath == null) {
+            throw new GradleException(
+                    "Contract publication requires -P"
+                            + CONTRACT_SELECTOR_PROPERTY
+                            + "=<project-relative-openapi-path>");
+        }
+        if (!configuredContractPaths.contains(selectedPath)) {
+            String available =
+                    configuredContractPaths.stream()
+                            .map(this::displayPath)
+                            .sorted()
+                            .collect(Collectors.joining(", "));
+            throw new GradleException(
+                    "OpenAPI contract "
+                            + displayPath(selectedPath)
+                            + " is not configured or discovered. Available contracts: "
+                            + (available.isEmpty() ? "<none>" : available));
+        }
+    }
+
+    private Path selectedContractPath() {
+        String selector =
+                project.getProviders()
+                        .gradleProperty(CONTRACT_SELECTOR_PROPERTY)
+                        .getOrElse("")
+                        .trim();
+        return selector.isEmpty()
+                ? null
+                : OpenApiSpecDiscovery.normalizedPath(project.file(selector));
+    }
+
+    private String displayPath(Path path) {
+        Path root = OpenApiSpecDiscovery.normalizedPath(project.getRootDir());
+        Path displayed = path.startsWith(root) ? root.relativize(path) : path;
+        return displayed.toString().replace(File.separatorChar, '/');
     }
 
     private Configuration compileClasspath(String prefix, OpenApiArtifactKind kind) {
@@ -448,6 +552,11 @@ final class OpenApiGenerationConfigurer {
             }
         }
         if (kind == OpenApiArtifactKind.CLIENT) {
+            addDependency(
+                    configuration,
+                    "org.springframework.cloud:spring-cloud-openfeign-core:"
+                            + versions.springCloudOpenFeignVersion()
+                            + "@jar");
             Project starter =
                     project.findProject(
                             ":spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client");
@@ -534,9 +643,7 @@ final class OpenApiGenerationConfigurer {
                 .capability(
                         groupId
                                 + ":"
-                                + artifactBaseName
-                                + "-"
-                                + kind.artifactSuffix()
+                                + OpenApiArtifactContract.artifactId(artifactBaseName, kind)
                                 + ":"
                                 + version);
         addDependency(configuration, "com.fasterxml.jackson.core:jackson-annotations:2.21");
@@ -549,7 +656,14 @@ final class OpenApiGenerationConfigurer {
             if (kind == OpenApiArtifactKind.SERVER_API) {
                 addDependency(configuration, "jakarta.servlet:jakarta.servlet-api:6.1.0");
             }
-            addDependency(configuration, groupId + ":" + artifactBaseName + "-models:" + version);
+            addDependency(
+                    configuration,
+                    groupId
+                            + ":"
+                            + OpenApiArtifactContract.artifactId(
+                                    artifactBaseName, OpenApiArtifactKind.MODELS)
+                            + ":"
+                            + version);
         }
         if (kind == OpenApiArtifactKind.CLIENT) {
             addDependency(
@@ -602,6 +716,9 @@ final class OpenApiGenerationConfigurer {
                         task -> {
                             task.setGroup("openapi generation");
                             task.setDescription(description);
+                            task.dependsOn(
+                                    SmbtechOpenApiGeneratorPlugin.BUILD_LOGIC_CHECK_TASK_NAME,
+                                    SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME);
                         });
     }
 

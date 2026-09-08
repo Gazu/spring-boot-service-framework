@@ -186,6 +186,14 @@ tasks.register('actuatorConsumerSmoke', GradleBuild) {
     tasks = ['clean', 'test', 'processAot', 'validateSecurityDependencyOverrides']
 }
 
+tasks.register('openApiContractConsumerSmoke', GradleBuild) {
+    group = 'verification'
+    description = 'Exercises generated OpenAPI artifacts and contract testing through an isolated published-artifact consumer.'
+    dependsOn rootProject.tasks.named('publishLocalArtifacts')
+    dir = file('examples/openapi-contract-consumer')
+    tasks = ['clean', 'test']
+}
+
 def supportedApiConsumerDirectory = file('gradle/compatibility/consumers/supported-api')
 def supportedApiConsumerSources = fileTree(supportedApiConsumerDirectory) {
     include 'src/**/*.java'
@@ -232,6 +240,7 @@ tasks.register('consumerSmoke') {
             tasks.named('actuatorConsumerSmoke'),
             tasks.named('errorHandlingConsumerSmoke'),
             tasks.named('loggingConsumerSmoke'),
+            tasks.named('openApiContractConsumerSmoke'),
             tasks.named('restClientConsumerSmoke'),
             tasks.named('supportedApiConsumerCompile')
     )
@@ -292,6 +301,7 @@ tasks.register('compatibilityCheck') {
             tasks.named('binaryCompatibilityCheck'),
             tasks.named('moduleCompatibilityCheck'),
             tasks.named('openApiDocumentationCompatibilityCheck'),
+            tasks.named('pilotDeploymentCompatibilityCheck'),
             tasks.named('smbtechOpenApiCompatibilityCheck'),
             tasks.named('platformCompatibilityCheck'),
             tasks.named('pullRequestCiCompatibilityCheck'),
@@ -532,6 +542,7 @@ tasks.register('releaseGate') {
     description = 'Runs every verification required before releasing framework artifacts.'
     dependsOn(
             tasks.named('compatibilityCheck'),
+            tasks.named('contractTestingCompatibilityCheck'),
             tasks.named('nativeAotCheck'),
             tasks.named('platformCompatibilityCheck'),
             tasks.named('releaseLifecycleCheck'),

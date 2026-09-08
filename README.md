@@ -132,8 +132,9 @@ Logback, Servlet, Jackson, or Apache HttpClient APIs.
 | Generate a Spring Boot hexagonal project from a contract | `spring-boot-service-framework-project-generator` | [Project generator README](spring-boot-service-framework-project-generator/README.md) |
 | Shared notifications and notifying exceptions | `spring-boot-service-framework-commons` | [Commons README](spring-boot-service-framework-commons/README.md) |
 | Reusable MVC and security error responses | `spring-boot-service-framework-starter-error-handling` | [Error handling example](examples/error-handling-consumer/README.md) |
-| Standalone consumer smoke tests | `examples/*` | [Actuator example](examples/actuator-consumer/README.md), [Error handling example](examples/error-handling-consumer/README.md), [Logging example](examples/logging-consumer/README.md), [REST client example](examples/rest-client-consumer/README.md) |
+| Standalone consumer smoke tests | `examples/*` | [Actuator example](examples/actuator-consumer/README.md), [Error handling example](examples/error-handling-consumer/README.md), [Logging example](examples/logging-consumer/README.md), [OpenAPI contract example](examples/openapi-contract-consumer/README.md), [REST client example](examples/rest-client-consumer/README.md) |
 | Private quality-platform pilot | `examples/quality-pilot` | [Quality pipeline](docs/quality-pipeline.md), [Quality pilot](examples/quality-pilot/README.md) |
+| OpenAPI contract publication pilot | `.github/workflows/openapi-contract-pilot.yml` | [OpenAPI contract pilot](docs/pilot/README.md) |
 | Spring Boot AOT and GraalVM native-image | all runtime starters | [Native image guide](docs/native-image.md) |
 
 ---
@@ -396,6 +397,7 @@ framework modules without individual versions:
 
 - [actuator-consumer](examples/actuator-consumer/README.md)
 - [logging-consumer](examples/logging-consumer/README.md)
+- [openapi-contract-consumer](examples/openapi-contract-consumer/README.md)
 - [rest-client-consumer](examples/rest-client-consumer/README.md)
 - [error-handling-consumer](examples/error-handling-consumer/README.md)
 
@@ -469,6 +471,7 @@ canonical process is the tag-triggered workflow documented in
 | [docs/openapi/generation.md](docs/openapi/generation.md) | Canonical models, server API, client, package, dependency, metadata, and generated-output contract. |
 | [docs/openapi/plugin-reference.md](docs/openapi/plugin-reference.md) | Canonical OpenAPI Gradle plugin DSL, defaults, validation rules, tasks, and build wiring. |
 | [docs/openapi/publishing.md](docs/openapi/publishing.md) | OpenAPI local and remote Maven publication, credentials, CI sequencing, and immutable release rules. |
+| [docs/pilot/README.md](docs/pilot/README.md) | Protected single-contract pilot deployment, evidence, and recovery process. |
 | [docs/openapi/versioning.md](docs/openapi/versioning.md) | OpenAPI contract identity, immutable baselines, structural comparison, and SemVer policy. |
 | [docs/openapi/validation.md](docs/openapi/validation.md) | OpenAPI configuration, document, coordinate, compatibility, and CI validation contract. |
 | [docs/openapi/examples.md](docs/openapi/examples.md) | Executable repository contracts, commands, expected artifacts, and report evidence. |
@@ -501,6 +504,7 @@ canonical process is the tag-triggered workflow documented in
 | [docs/mock.md](docs/mock.md) | Mock core and starter usage guide. |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Troubleshooting catalog for Gradle, REST client, OAuth2, SSL, cache, diagnostics, mock, and logging issues. |
 | [examples/logging-consumer/README.md](examples/logging-consumer/README.md) | Standalone logging starter consumer. |
+| [examples/openapi-contract-consumer/README.md](examples/openapi-contract-consumer/README.md) | Standalone generated OpenAPI and contract-testing consumer. |
 | [examples/rest-client-consumer/README.md](examples/rest-client-consumer/README.md) | Standalone REST client starter consumer. |
 | [examples/error-handling-consumer/README.md](examples/error-handling-consumer/README.md) | Standalone error handling starter consumer. |
 | [examples/actuator-consumer/README.md](examples/actuator-consumer/README.md) | Standalone Actuator starter consumer with application-owned endpoint security. |

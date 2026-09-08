@@ -43,9 +43,9 @@ For contract `retail-loyalty-rewards:1.0.0` with default settings, confirm these
 coordinates:
 
 ```text
-com.smbtech.contracts:retail-loyalty-rewards-models:1.0.0
-com.smbtech.contracts:retail-loyalty-rewards-server-api:1.0.0
-com.smbtech.contracts:retail-loyalty-rewards-client:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-jdk21-model:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-jdk21-api:1.0.0
+com.smbtech.contracts:retail-loyalty-rewards-jdk21-client:1.0.0
 ```
 
 Inspect generated sources only to diagnose the contract or template behavior.

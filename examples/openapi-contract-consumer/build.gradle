@@ -1,0 +1,198 @@
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+group = 'com.smbtech.examples'
+version = '0.5.2'
+
+def frameworkRoot = file('../..')
+def frameworkProperties = new Properties()
+file('../../gradle.properties').withInputStream { frameworkProperties.load(it) }
+def frameworkVersion = frameworkProperties.getProperty('frameworkVersion')
+def openFeignVersion = frameworkProperties.getProperty('springCloudOpenFeignVersion')
+def contractVersion = '1.0.0'
+def contractGroup = 'com.smbtech.contracts'
+def contractBase = 'warehouse-inventory-catalog-jdk21'
+def modelCoordinate = "${contractGroup}:${contractBase}-model:${contractVersion}"
+def apiCoordinate = "${contractGroup}:${contractBase}-api:${contractVersion}"
+def clientCoordinate = "${contractGroup}:${contractBase}-client:${contractVersion}"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    maven {
+        name = 'openApiBuild'
+        url = uri("${frameworkRoot}/build/repository/openapi")
+    }
+    maven {
+        name = 'contractTestingBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-openapi-contract-testing/build/repository")
+    }
+    maven {
+        name = 'restClientStarterBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client/build/repository")
+    }
+    maven {
+        name = 'httpClientCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-http-client-core/build/repository")
+    }
+    maven {
+        name = 'loggingCoreBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-logging-core/build/repository")
+    }
+    maven {
+        name = 'commonsBuild'
+        url = uri("${frameworkRoot}/spring-boot-service-framework-commons/build/repository")
+    }
+    mavenCentral()
+}
+
+configurations {
+    generatedApiMetadata {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+    generatedClientMetadata {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    implementation apiCoordinate
+    implementation clientCoordinate
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation "org.springframework.cloud:spring-cloud-starter-openfeign:${openFeignVersion}"
+
+    testImplementation "com.smbtech:spring-boot-service-framework-openapi-contract-testing:${frameworkVersion}"
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    generatedApiMetadata apiCoordinate
+    generatedClientMetadata clientCoordinate
+}
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+def resolvedModules = { configuration ->
+    configuration.incoming.resolutionResult.allComponents.collect { component ->
+        def id = component.moduleVersion
+        id == null ? null : "${id.group}:${id.name}:${id.version}"
+    }.findAll { it != null }.toSet()
+}
+
+tasks.register('validatePublishedContractArtifacts') {
+    group = 'verification'
+    description = 'Validates the generated contract artifacts and Maven dependency topology.'
+
+    doLast {
+        def failures = []
+        def contractHashes = [:]
+        def apiModules = resolvedModules(configurations.generatedApiMetadata)
+        def clientModules = resolvedModules(configurations.generatedClientMetadata)
+
+        [api: apiModules, client: clientModules].each { owner, modules ->
+            def modelVersions = modules.findAll {
+                it.startsWith("${contractGroup}:${contractBase}-model:")
+            }
+            if (modelVersions != [modelCoordinate] as Set) {
+                failures << "${owner} must resolve exactly ${modelCoordinate}; found ${modelVersions.sort()}"
+            }
+        }
+
+        def leakedOpenFeign = clientModules.findAll {
+            it.startsWith('org.springframework.cloud:spring-cloud-openfeign')
+                    || it.startsWith('io.github.openfeign:')
+        }
+        if (!leakedOpenFeign.isEmpty()) {
+            failures << "generated client leaks OpenFeign runtime dependencies: ${leakedOpenFeign.sort()}"
+        }
+
+        def contractArtifacts = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+                .findAll { it.moduleVersion.id.group == contractGroup }
+                .collectEntries { [(it.name): it.file] }
+        def expectedArtifacts = [
+                ("${contractBase}-model"): [
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/model/InventoryItemResponse.class',
+                        'META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml'
+                ],
+                ("${contractBase}-api"): [
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/api/DefaultApi.class',
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/api/DefaultApiController.class',
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/api/DefaultApiDelegate.class',
+                        'META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml'
+                ],
+                ("${contractBase}-client"): [
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/client/httpinterface/DefaultApi.class',
+                        'com/smbtech/contracts/warehouseinventorycatalog/v1/client/openfeign/DefaultApi.class',
+                        'META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml'
+                ]
+        ]
+
+        expectedArtifacts.each { artifactName, requiredEntries ->
+            def artifact = contractArtifacts[artifactName]
+            if (artifact == null) {
+                failures << "runtime classpath did not resolve ${artifactName} from Maven"
+                return
+            }
+            new ZipFile(artifact).withCloseable { archive ->
+                def entries = archive.entries().collect { it.name }.toSet()
+                requiredEntries.findAll { !entries.contains(it) }.each { missing ->
+                    failures << "${artifactName} is missing ${missing}"
+                }
+                if (artifactName != "${contractBase}-model"
+                        && entries.any { it.contains('/v1/model/') && it.endsWith('.class') }) {
+                    failures << "${artifactName} duplicates generated model classes"
+                }
+                if (artifactName == "${contractBase}-client"
+                        && entries.any { it.endsWith('/ApiClient.class') }) {
+                    failures << "${artifactName} contains an unwanted generated client wrapper"
+                }
+                def contractEntry = archive.getEntry(
+                        'META-INF/smbtech/openapi/contracts/warehouse-inventory-catalog/1.0.0/contract.yaml'
+                )
+                if (contractEntry != null) {
+                    contractHashes[artifactName] = archive.getInputStream(contractEntry).withCloseable {
+                        MessageDigest.getInstance('SHA-256').digest(it.bytes).encodeHex().toString()
+                    }
+                }
+            }
+        }
+
+        if (contractHashes.size() == expectedArtifacts.size()
+                && contractHashes.values().toSet().size() != 1) {
+            failures << "generated artifacts contain different contract snapshots: ${contractHashes}"
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException(
+                    'Invalid published OpenAPI contract consumer topology:\n' + failures.join('\n')
+            )
+        }
+    }
+}
+
+tasks.named('test') {
+    dependsOn tasks.named('validatePublishedContractArtifacts')
+}

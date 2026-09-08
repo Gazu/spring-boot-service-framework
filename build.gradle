@@ -25,7 +25,11 @@ allprojects {
 smbtechOpenApi {
     groupId.set('com.smbtech.contracts')
     outputDirectory.set(layout.buildDirectory.dir('generated/smbtech-openapi'))
-    repositoryDirectory.set(layout.buildDirectory.dir('repository/openapi'))
+    repositoryDirectory.set(
+            providers.gradleProperty('openApiRepositoryDirectory')
+                    .map { layout.projectDirectory.dir(it) }
+                    .orElse(layout.buildDirectory.dir('repository/openapi'))
+    )
     baselineDirectory.set(layout.projectDirectory.dir('docs/openapi-baselines'))
     requireBaseline.set(true)
     failOnBreakingChanges.set(
@@ -50,6 +54,7 @@ smbtechOpenApi {
 apply from: 'gradle/platform-contract.gradle'
 apply from: 'gradle/actuator-contract.gradle'
 apply from: 'gradle/logging-async-contract.gradle'
+apply from: 'gradle/pilot-deployment.gradle'
 apply from: 'gradle/documentation-checks.gradle'
 apply from: 'gradle/pull-request-ci.gradle'
 apply from: 'gradle/convention-checks.gradle'

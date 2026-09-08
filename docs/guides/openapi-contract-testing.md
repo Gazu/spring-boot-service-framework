@@ -15,7 +15,7 @@ the test classpath and load its versioned resource:
 
 ```groovy
 dependencies {
-    testImplementation 'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0'
+    testImplementation 'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-model:1.0.0'
 }
 ```
 
@@ -33,17 +33,16 @@ OpenApiContractTestResult result = new OpenApiMvcContractTester(
         objectMapper,
         contract
 ).verifyAll(
-        OpenApiContractTestCase.forOperation("getInventoryItem")
+        OpenApiContractTestCase.forOperation("getWarehouseInventoryItem")
+                .pathParameter("warehouseId", "WH-01")
                 .pathParameter("sku", "SKU-100")
-                .build(),
-        OpenApiContractTestCase.forOperation("getInventoryItem")
-                .pathParameter("sku", "UNKNOWN")
-                .expectedStatus(404)
                 .build()
 );
 
 result.throwIfInvalid();
 ```
+
+Use `expectedStatus(...)` only for a status declared by the operation; see [Error response cases](../openapi-contract-testing.md#error-response-cases).
 
 Provide data that makes the application reach the intended path. The tester
 validates the HTTP contract; fixtures and business state remain owned by the

@@ -16,7 +16,7 @@ The supported Gradle DSL and task names are documented in the
 | Boundary | Current responsibility |
 |---|---|
 | `build-logic/openapi-generator-plugin` | Public Gradle DSL, validation, generation, compilation, packaging, publication, and compatibility orchestration |
-| `build-logic/openapi-templates` | Versioned customization applied after OpenAPI Generator creates Spring HTTP interfaces |
+| `build-logic/openapi-templates` | Versioned customization applied to generated Spring HTTP Interface and OpenFeign contracts |
 | `spring-boot-service-framework-openapi-contract-testing` | Test-scope request and response verification for Spring MVC applications |
 | `spring-boot-service-framework-project-generator` | One-time Spring Boot and hexagonal project scaffolding from a contract or server API JAR |
 
@@ -36,7 +36,8 @@ legacy root task aliases are not part of the current behavior.
 
 The parser accepts OpenAPI `3.0.x` and `3.1.x`. Effective identity defaults to
 group `com.smbtech.contracts`, normalized `info.title`, and `info.version`.
-Normalization, overrides, baselines, and SemVer are owned by
+`info.version` is both the Maven version and the source of the Java package
+major segment. Normalization, overrides, baselines, and SemVer are owned by
 [OpenAPI Contract Versioning](openapi/versioning.md) and the
 [Gradle Plugin Reference](openapi/plugin-reference.md).
 
@@ -46,17 +47,36 @@ For an effective identity `<group>:<name>:<version>`, the plugin creates:
 
 | Kind | Maven coordinate | Generated contract |
 |---|---|---|
-| Models | `<group>:<name>-models:<version>` | DTOs and enums with Jackson and Jakarta Validation annotations |
-| Server API | `<group>:<name>-server-api:<version>` | Spring MVC controller, API interfaces, delegate contracts, and `ApiUtil` support |
-| Client | `<group>:<name>-client:<version>` | Spring HTTP interfaces annotated with `@HttpApiClient("<name>")` |
+| Model | `<group>:<name>-jdk21-model:<version>` | DTOs and enums with Jackson and Jakarta Validation annotations |
+| API | `<group>:<name>-jdk21-api:<version>` | Spring MVC controllers, API interfaces, delegate contracts, and `ApiUtil` support |
+| Client | `<group>:<name>-jdk21-client:<version>` | Declarative client interfaces sharing the model artifact |
 
-The server API and client variants depend on the matching models artifact. Each
-enabled kind produces binary and source JARs under
+The API and client variants expose the matching model artifact as a transitive
+Maven dependency. Each enabled kind produces binary and source JARs under
 `build/libs/smbtech-openapi`.
 
-OpenAPI Generator uses the `spring` generator. Models and server APIs use the
-`spring-boot` library; clients use `spring-http-interface`. Current generation
-enables `useSpringBoot4`, `useJakartaEe`, `useBeanValidation`,
+For unversioned root `<basePackage>` and version major `<major>`, effective
+packages are:
+
+```text
+<basePackage>.v<major>.model
+<basePackage>.v<major>.api
+<basePackage>.v<major>.client.httpinterface
+<basePackage>.v<major>.client.openfeign
+```
+
+Client generation produces matching Spring HTTP Interface and OpenFeign
+interfaces in the two reserved packages and merges them into one client JAR.
+The variants use the same simple interface names in their distinct packages.
+The OpenFeign starter is never a transitive client dependency.
+
+OpenAPI Generator uses the `spring` generator. Models and APIs use the
+`spring-boot` library; client generation runs separate interface-only passes
+with the `spring-http-interface` and `spring-cloud` libraries. The OpenFeign
+pass suppresses the generator's wrapper and configuration types, then adds the
+corporate `@FeignClient` annotation directly to each API interface. Current
+generation enables
+`useSpringBoot4`, `useJakartaEe`, `useBeanValidation`,
 `performBeanValidation`, and `useJackson3`. It disables Swagger UI, generated
 documentation, and generated tests.
 
@@ -126,9 +146,14 @@ known comparison limits are documented in
 | OpenAPI Diff | `2.1.7` | `openApiDiffVersion` |
 | Jackson build parser | `3.1.5` | `jackson3Version` |
 | Handlebars | `4.5.2` | `handlebarsVersion` |
-| Java | `21` | Plugin and generated-source toolchains |
+| Java | `21` | Plugin and generated-source toolchains and artifact IDs |
+| Spring Cloud for OpenFeign consumers | `2025.1.2` minimum | Spring Boot `4.1.x` compatibility boundary |
+| Spring Cloud OpenFeign compile input | `5.0.2` | `springCloudOpenFeignVersion` |
 
 `framework.version`, `generator.version`, and `spring-boot.version` are embedded
 in every generated artifact. A change to any behavior in this inventory must
 update the implementation, compatibility contract, this document, and the
 corresponding tests in the same change.
+
+The external artifact contract and phased client delivery are frozen by
+[ADR 0002](adr/0002-openapi-artifact-contract.md).
