@@ -13,11 +13,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +27,7 @@ import java.util.function.LongSupplier;
 /**
  * Adds bounded execution, caching, and failure isolation to framework diagnostics.
  *
- * <p>The guard uses two daemon workers and no task queue. Snapshot and module refreshes are
+ * <p>The guard uses two daemon workers and a bounded task queue. Snapshot and module refreshes are
  * independently single-flight, so concurrent readers reuse the same bounded result.
  */
 final class GuardedFrameworkDiagnostics implements FrameworkDiagnostics, AutoCloseable {
@@ -287,11 +287,11 @@ final class GuardedFrameworkDiagnostics implements FrameworkDiagnostics, AutoClo
                         .name("smbtech-framework-diagnostics-", 0)
                         .factory();
         return new ThreadPoolExecutor(
-                0,
                 MAX_CONCURRENT_TASKS,
-                30,
+                MAX_CONCURRENT_TASKS,
+                0,
                 TimeUnit.SECONDS,
-                new SynchronousQueue<>(),
+                new ArrayBlockingQueue<>(MAX_CONCURRENT_TASKS),
                 threadFactory,
                 new ThreadPoolExecutor.AbortPolicy());
     }
