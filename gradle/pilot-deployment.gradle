@@ -1,0 +1,417 @@
+import groovy.json.JsonOutput
+import groovy.xml.XmlSlurper
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+
+def pilotContract = providers.gradleProperty('openApiContract').orElse('')
+def pilotExpectedVersion = providers.gradleProperty('openApiPilotVersion').orElse('')
+def pilotCommit = providers.gradleProperty('openApiPilotCommit').orElse(
+        providers.exec {
+            commandLine 'git', 'rev-parse', 'HEAD'
+        }.standardOutput.asText.map { it.trim() }
+)
+def pilotManifest = providers.gradleProperty('openApiPilotManifest')
+        .map { layout.projectDirectory.file(it) }
+        .orElse(layout.buildDirectory.file('reports/openapi-pilot/publication-manifest.json'))
+def sha256 = { byte[] content ->
+    MessageDigest.getInstance('SHA-256').digest(content).encodeHex().toString()
+}
+def sha256File = { File source -> sha256(source.bytes) }
+def relativeUnixPath = { File root, File source ->
+    root.toPath().relativize(source.toPath()).toString().replace(File.separatorChar, '/' as char)
+}
+
+tasks.register('generateOpenApiPilotManifest') {
+    group = 'verification'
+    description = 'Stages one selected OpenAPI contract and records its exact Maven payload.'
+    dependsOn tasks.named('smbtechOpenApiPublishContractToLocalRepository')
+
+    inputs.property('contract', pilotContract)
+    inputs.property('expectedVersion', pilotExpectedVersion)
+    inputs.property('sourceCommit', pilotCommit)
+    inputs.dir(smbtechOpenApi.repositoryDirectory)
+    outputs.file(pilotManifest)
+
+    doLast {
+        def selectedContract = pilotContract.get().trim()
+        if (selectedContract.isEmpty()) {
+            throw new GradleException(
+                    'OpenAPI pilot staging requires -PopenApiContract=<project-relative-openapi-path>.'
+            )
+        }
+        def expectedVersion = pilotExpectedVersion.get().trim()
+        if (!expectedVersion.isEmpty()
+                && !(expectedVersion ==~ /[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z][0-9A-Za-z.-]*)?/)) {
+            throw new GradleException(
+                    'openApiPilotVersion must be a SemVer/Maven-compatible version.'
+            )
+        }
+        def sourceCommit = pilotCommit.get().trim()
+        if (!(sourceCommit ==~ /[0-9a-f]{40}/)) {
+            throw new GradleException('openApiPilotCommit must be a full lowercase Git commit SHA.')
+        }
+
+        File repository = smbtechOpenApi.repositoryDirectory.get().asFile
+        def pomFiles = fileTree(repository) {
+            include '**/*.pom'
+        }.files.sort { left, right -> left.path <=> right.path }
+        if (pomFiles.size() != 3) {
+            throw new GradleException(
+                    "OpenAPI pilot staging must contain exactly three POMs; found ${pomFiles.size()} in ${repository}. " +
+                            'Use an empty dedicated repository directory.'
+            )
+        }
+
+        def artifacts = pomFiles.collect { pomFile ->
+            def pom = new XmlSlurper(false, false).parse(pomFile)
+            def groupId = pom.groupId.text()
+            def artifactId = pom.artifactId.text()
+            def version = pom.version.text()
+            def role = ['model', 'api', 'client'].find { artifactId.endsWith("-jdk21-${it}") }
+            if (groupId.isEmpty() || artifactId.isEmpty() || version.isEmpty() || role == null) {
+                throw new GradleException("Invalid OpenAPI pilot POM: ${pomFile}")
+            }
+            if (!expectedVersion.isEmpty() && version != expectedVersion) {
+                throw new GradleException(
+                        "Pilot version ${expectedVersion} does not match ${groupId}:${artifactId}:${version}."
+                )
+            }
+            if (pomFile.name != "${artifactId}-${version}.pom") {
+                throw new GradleException("Unexpected OpenAPI pilot POM path: ${pomFile}")
+            }
+
+            def payloadNames = [
+                    "${artifactId}-${version}.jar",
+                    "${artifactId}-${version}-sources.jar",
+                    "${artifactId}-${version}.pom",
+                    "${artifactId}-${version}.module"
+            ]
+            def files = payloadNames.collectMany { payloadName ->
+                File payload = new File(pomFile.parentFile, payloadName)
+                File checksum = new File(pomFile.parentFile, "${payloadName}.sha256")
+                if (!payload.isFile() || !checksum.isFile()) {
+                    throw new GradleException(
+                            "Pilot payload or SHA-256 checksum is missing for ${groupId}:${artifactId}:${version}: ${payloadName}"
+                    )
+                }
+                def digest = sha256File(payload)
+                if (checksum.getText('UTF-8').trim() != digest) {
+                    throw new GradleException("Invalid SHA-256 checksum for ${payload}")
+                }
+                [
+                        [path: relativeUnixPath(repository, payload), sha256: digest],
+                        [path: relativeUnixPath(repository, checksum), sha256: sha256File(checksum)]
+                ]
+            }
+
+            File binaryJar = new File(pomFile.parentFile, "${artifactId}-${version}.jar")
+            def classNames = [] as Set
+            byte[] contractSnapshot
+            new ZipFile(binaryJar).withCloseable { archive ->
+                archive.entries().each { entry ->
+                    if (!entry.directory && entry.name.endsWith('.class')) {
+                        classNames << entry.name
+                    }
+                }
+                def snapshot = archive.getEntry('META-INF/smbtech/openapi/contract.yaml')
+                if (snapshot == null) {
+                    throw new GradleException("Embedded OpenAPI snapshot is missing from ${binaryJar}")
+                }
+                contractSnapshot = archive.getInputStream(snapshot).bytes
+            }
+
+            def dependencies = pom.dependencies.dependency.collect { dependency ->
+                [
+                        groupId   : dependency.groupId.text(),
+                        artifactId: dependency.artifactId.text(),
+                        version   : dependency.version.text()
+                ]
+            }
+            [
+                    role          : role,
+                    groupId       : groupId,
+                    artifactId    : artifactId,
+                    version       : version,
+                    files         : files.sort { left, right -> left.path <=> right.path },
+                    classes       : classNames,
+                    dependencies  : dependencies,
+                    snapshotSha256: sha256(contractSnapshot)
+            ]
+        }.sort { left, right -> ['model', 'api', 'client'].indexOf(left.role) <=>
+                ['model', 'api', 'client'].indexOf(right.role) }
+
+        def versions = artifacts.collect { it.version }.toSet()
+        def groups = artifacts.collect { it.groupId }.toSet()
+        def bases = artifacts.collect {
+            it.artifactId.substring(0, it.artifactId.length() - "-jdk21-${it.role}".length())
+        }.toSet()
+        if (versions.size() != 1 || groups.size() != 1 || bases.size() != 1
+                || artifacts.collect { it.role }.toSet() != ['model', 'api', 'client'] as Set) {
+            throw new GradleException(
+                    'OpenAPI pilot staging must contain one model, API, and client coordinate with matching identity.'
+            )
+        }
+
+        def model = artifacts.find { it.role == 'model' }
+        def modelCoordinate = [
+                groupId: model.groupId,
+                artifactId: model.artifactId,
+                version: model.version
+        ]
+        artifacts.findAll { it.role != 'model' }.each { artifact ->
+            def modelDependencies = artifact.dependencies.findAll { it == modelCoordinate }
+            if (modelDependencies.size() != 1) {
+                throw new GradleException(
+                        "${artifact.role} must declare exactly one dependency on ${model.groupId}:${model.artifactId}:${model.version}."
+                )
+            }
+            if (!artifact.classes.intersect(model.classes).isEmpty()) {
+                throw new GradleException("${artifact.role} duplicates classes from the model artifact.")
+            }
+        }
+        def client = artifacts.find { it.role == 'client' }
+        if (client.dependencies.any { it.groupId == 'org.springframework.cloud' }
+                || client.classes.any { it.endsWith('/ApiClient.class') }) {
+            throw new GradleException(
+                    'The staged client leaks OpenFeign dependencies or contains a generated ApiClient wrapper.'
+            )
+        }
+        if (artifacts.collect { it.snapshotSha256 }.toSet().size() != 1) {
+            throw new GradleException('The staged artifacts contain different OpenAPI snapshots.')
+        }
+
+        File selectedFile = file(selectedContract).canonicalFile
+        def rootPath = rootDir.canonicalFile.toPath()
+        if (!selectedFile.toPath().startsWith(rootPath) || !selectedFile.isFile()) {
+            throw new GradleException('The selected OpenAPI pilot contract must be a repository file.')
+        }
+        def manifestArtifacts = artifacts.collect { artifact ->
+            [
+                    role      : artifact.role,
+                    groupId   : artifact.groupId,
+                    artifactId: artifact.artifactId,
+                    version   : artifact.version,
+                    files     : artifact.files
+            ]
+        }
+        def manifest = [
+                schemaVersion       : 1,
+                sourceCommit        : sourceCommit,
+                contractPath        : relativeUnixPath(rootDir, selectedFile),
+                contractSha256      : sha256File(selectedFile),
+                contractVersion     : versions.first(),
+                artifactBaseName    : bases.first(),
+                embeddedSnapshotSha256: artifacts.first().snapshotSha256,
+                artifacts           : manifestArtifacts
+        ]
+        File destination = pilotManifest.get().asFile
+        destination.parentFile.mkdirs()
+        destination.setText(JsonOutput.prettyPrint(JsonOutput.toJson(manifest)) + '\n', 'UTF-8')
+    }
+}
+
+def pilotSmokeRepository = layout.buildDirectory.dir('pilot/smoke-repository')
+def pilotSmokeManifest = layout.buildDirectory.file('pilot/smoke-publication-manifest.json')
+def cleanOpenApiPilotSmoke = tasks.register('cleanOpenApiPilotSmoke', Delete) {
+    delete pilotSmokeRepository, pilotSmokeManifest
+}
+
+def publishOpenApiPilotRuntime = tasks.register('publishOpenApiPilotRuntimeToLocalRepositories') {
+    group = 'publishing'
+    description = 'Publishes the generated client framework dependencies for isolated pilot resolution.'
+    dependsOn(
+            ':spring-boot-service-framework-commons:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-http-client-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-logging-core:publishAllPublicationsToLocalBuildRepository',
+            ':spring-boot-service-framework-starters:spring-boot-service-framework-starter-rest-client:publishAllPublicationsToLocalBuildRepository'
+    )
+}
+
+def stageOpenApiPilotSmoke = tasks.register('stageOpenApiPilotSmoke', Exec) {
+    group = 'verification'
+    description = 'Stages the reference OpenAPI contract through the pilot publication boundary.'
+    dependsOn cleanOpenApiPilotSmoke, publishOpenApiPilotRuntime
+    workingDir rootDir
+    executable './gradlew'
+    args(
+            'generateOpenApiPilotManifest',
+            '-PopenApiContract=docs/openapi/warehouse-inventory-catalog.yaml',
+            '-PopenApiPilotVersion=1.0.0',
+            '-PopenApiRepositoryDirectory=build/pilot/smoke-repository',
+            '-PopenApiPilotManifest=build/pilot/smoke-publication-manifest.json',
+            '-PopenApiPilotCommit=0000000000000000000000000000000000000000',
+            '--no-daemon',
+            '--stacktrace',
+            '--console=plain'
+    )
+}
+
+def verifyOpenApiPilotSmoke = tasks.register('verifyOpenApiPilotSmoke', Exec) {
+    group = 'verification'
+    description = 'Resolves and verifies the staged pilot artifacts from an isolated Gradle build.'
+    dependsOn stageOpenApiPilotSmoke
+    workingDir rootDir
+    executable './gradlew'
+    args(
+            '-p',
+            '.ci/openapi-pilot-consumer',
+            'verifyPilotPublication',
+            "-PpilotManifest=${pilotSmokeManifest.get().asFile.absolutePath}",
+            "-PpilotRepositoryUrl=${pilotSmokeRepository.get().asFile.toURI()}",
+            "-PpilotFrameworkRoot=${rootDir.absolutePath}",
+            "-PpilotVerificationReport=${file('build/reports/openapi-pilot/smoke-verification.json').absolutePath}",
+            '--no-daemon',
+            '--stacktrace',
+            '--console=plain'
+    )
+}
+
+def verifyOpenApiPilotFailureModes = tasks.register('verifyOpenApiPilotFailureModes', Exec) {
+    group = 'verification'
+    description = 'Exercises pilot immutability, isolation, version, and missing-payload failures.'
+    dependsOn stageOpenApiPilotSmoke
+    workingDir rootDir
+    executable 'bash'
+    args(
+            '.ci/openapi-pilot-consumer/test-fixtures.sh',
+            rootDir.absolutePath,
+            pilotSmokeManifest.get().asFile.absolutePath,
+            pilotSmokeRepository.get().asFile.absolutePath
+    )
+}
+
+tasks.register('validateOpenApiPilotDeployment') {
+    group = 'verification'
+    description = 'Validates the OpenAPI pilot workflow, documentation, and security boundaries.'
+
+    def workflow = file('.github/workflows/openapi-contract-pilot.yml')
+    def publicationWorkflow = file('.github/workflows/publish-openapi-contracts.yml')
+    def pilotGuide = file('docs/pilot/README.md')
+    def recoveryGuide = file('docs/pilot/rollback-procedure.md')
+    def consumerBuild = file('.ci/openapi-pilot-consumer/build.gradle')
+    def consumerVerificationMetadata =
+            file('.ci/openapi-pilot-consumer/gradle/verification-metadata.xml')
+    inputs.files(
+            workflow,
+            publicationWorkflow,
+            pilotGuide,
+            recoveryGuide,
+            consumerBuild,
+            consumerVerificationMetadata
+    )
+
+    doLast {
+        def failures = []
+        [
+                workflow,
+                publicationWorkflow,
+                pilotGuide,
+                recoveryGuide,
+                consumerBuild,
+                consumerVerificationMetadata
+        ].each { source ->
+            if (!source.isFile()) {
+                failures << "Missing OpenAPI pilot file: ${relativeUnixPath(rootDir, source)}"
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new GradleException("OpenAPI pilot deployment issues found:\n${failures.join('\n')}")
+        }
+
+        def workflowText = workflow.getText('UTF-8')
+        [
+                'workflow_dispatch:',
+                'expected_version:',
+                'contractTestingCompatibilityCheck',
+                'openApiContractConsumerSmoke',
+                'smbtechOpenApiCompatibilityCheck',
+                'pilotDeploymentCompatibilityCheck',
+                'generateOpenApiPilotManifest',
+                'checkPilotPublicationState',
+                'smbtechOpenApiPublishContract',
+                'verifyPilotPublication',
+                'environment: release',
+                'needs: validate',
+                'OPENAPI_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}',
+                'OPENAPI_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}',
+                'OPENAPI_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}',
+                'github.ref == \'refs/heads/main\'',
+                'if: ${{ failure() }}'
+        ].each { marker ->
+            if (!workflowText.contains(marker)) {
+                failures << "Pilot workflow marker is missing: ${marker}"
+            }
+        }
+        if (workflowText.contains('validate-contracts')
+                || workflowText.contains('pull_request_target:')
+                || workflowText ==~ /(?s).*\n\s*push:\s*.*/) {
+            failures << 'Pilot publication must be manual, must always validate contracts, and must not use pull_request_target.'
+        }
+        if (!(workflowText ==~ /(?s).*expected_version:\s+description:.*?required:\s+true.*/)) {
+            failures << 'Pilot workflow must require the expected contract version.'
+        }
+        def pilotGlobalPermissions = workflowText.substring(
+                workflowText.indexOf('permissions:'), workflowText.indexOf('jobs:'))
+        if (pilotGlobalPermissions.contains('packages: write')) {
+            failures << 'Pilot validation must not inherit package write permission.'
+        }
+        (workflowText =~ /(?m)^\s+uses:\s+(\S+)/).each { match ->
+            if (!(match[1] ==~ /.+@[0-9a-f]{40}/)) {
+                failures << "Pilot action must be pinned by commit SHA: ${match[1]}"
+            }
+        }
+
+        def publicationText = publicationWorkflow.getText('UTF-8')
+        [
+                'contractTestingCompatibilityCheck',
+                'generateOpenApiPilotManifest',
+                'checkPilotPublicationState',
+                'smbtechOpenApiPublishContract',
+                'verifyPilotPublication',
+                '- compatibility',
+                'fail-fast: false',
+                'cancel-in-progress: false'
+        ].each { marker ->
+            if (!publicationText.contains(marker)) {
+                failures << "Contract publication workflow marker is missing: ${marker}"
+            }
+        }
+        if (publicationText.contains('./gradlew smbtechOpenApiPublish\n')) {
+            failures << 'Contract deployment must not invoke the aggregate remote publication task.'
+        }
+        def publicationGlobalPermissions = publicationText.substring(
+                publicationText.indexOf('permissions:'), publicationText.indexOf('concurrency:'))
+        if (publicationGlobalPermissions.contains('packages: write')) {
+            failures << 'Contract validation jobs must not inherit package write permission.'
+        }
+
+        [
+                [pilotGuide, 'generateOpenApiPilotManifest'],
+                [pilotGuide, 'Phase 6'],
+                [pilotGuide, 'release'],
+                [recoveryGuide, 'immutable'],
+                [recoveryGuide, 'partial'],
+                [consumerBuild, 'checkPilotPublicationState'],
+                [consumerBuild, 'verifyPilotPublication'],
+                [consumerVerificationMetadata, 'Selected contract artifacts are verified against the SHA-256 pilot manifest.']
+        ].each { expectation ->
+            if (!expectation[0].getText('UTF-8').contains(expectation[1])) {
+                failures << "${relativeUnixPath(rootDir, expectation[0])} must contain ${expectation[1]}"
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            throw new GradleException("OpenAPI pilot deployment issues found:\n${failures.join('\n')}")
+        }
+    }
+}
+
+tasks.register('pilotDeploymentCompatibilityCheck') {
+    group = 'verification'
+    description = 'Validates deterministic staging, isolated consumption, and pilot deployment policy.'
+    dependsOn(
+            tasks.named('validateOpenApiPilotDeployment'),
+            verifyOpenApiPilotSmoke,
+            verifyOpenApiPilotFailureModes
+    )
+}

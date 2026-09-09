@@ -1,0 +1,249 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.net.HttpURLConnection
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+
+def manifestFile = providers.gradleProperty('pilotManifest').orElse('')
+def repositoryUrl = providers.gradleProperty('pilotRepositoryUrl')
+        .orElse(providers.environmentVariable('PILOT_REPOSITORY_URL'))
+        .orElse('')
+def repositoryUsername = providers.gradleProperty('pilotRepositoryUsername')
+        .orElse(providers.environmentVariable('PILOT_REPOSITORY_USERNAME'))
+        .orElse('')
+def repositoryPassword = providers.gradleProperty('pilotRepositoryPassword')
+        .orElse(providers.environmentVariable('PILOT_REPOSITORY_PASSWORD'))
+        .orElse('')
+def frameworkRoot = providers.gradleProperty('pilotFrameworkRoot').orElse('')
+def stateReport = providers.gradleProperty('pilotStateReport')
+        .map { file(it) }
+        .orElse(layout.buildDirectory.file('reports/openapi-pilot/publication-state.json'))
+def verificationReport = providers.gradleProperty('pilotVerificationReport')
+        .map { file(it) }
+        .orElse(layout.buildDirectory.file('reports/openapi-pilot/publication-verification.json'))
+
+repositories {
+    if (!repositoryUrl.get().trim().isEmpty()) {
+        maven {
+            url = uri(repositoryUrl.get())
+            if (url.scheme != 'file') {
+                credentials {
+                    username = repositoryUsername.get()
+                    password = repositoryPassword.get()
+                }
+            }
+            metadataSources {
+                gradleMetadata()
+                mavenPom()
+                artifact()
+            }
+        }
+    }
+    if (!frameworkRoot.get().trim().isEmpty()) {
+        [
+                'spring-boot-service-framework-starters/spring-boot-service-framework-starter-rest-client',
+                'spring-boot-service-framework-http-client-core',
+                'spring-boot-service-framework-logging-core',
+                'spring-boot-service-framework-commons'
+        ].each { modulePath ->
+            maven {
+                url = uri("${frameworkRoot.get()}/${modulePath}/build/repository")
+            }
+        }
+    }
+    mavenCentral()
+}
+
+def sha256 = { byte[] content ->
+    MessageDigest.getInstance('SHA-256').digest(content).encodeHex().toString()
+}
+def loadManifest = {
+    def path = manifestFile.get().trim()
+    if (path.isEmpty() || !file(path).isFile()) {
+        throw new GradleException('pilotManifest must identify an existing publication manifest.')
+    }
+    def manifest = new JsonSlurper().parse(file(path))
+    if (manifest.schemaVersion != 1 || manifest.artifacts*.role.toSet() !=
+            ['model', 'api', 'client'] as Set || manifest.artifacts.size() != 3) {
+        throw new GradleException('The pilot publication manifest has an unsupported structure.')
+    }
+    manifest
+}
+def validatedRepository = {
+    def value = repositoryUrl.get().trim()
+    if (value.isEmpty()) {
+        throw new GradleException('pilotRepositoryUrl or PILOT_REPOSITORY_URL is required.')
+    }
+    URI repository = URI.create(value.endsWith('/') ? value : "${value}/")
+    if (!(repository.scheme in ['file', 'https']) || repository.userInfo != null) {
+        throw new GradleException('The pilot repository must use file or HTTPS and must not embed credentials.')
+    }
+    if (repository.scheme == 'https'
+            && (repositoryUsername.get().isEmpty() || repositoryPassword.get().isEmpty())) {
+        throw new GradleException('Authenticated pilot repositories require username and password inputs.')
+    }
+    repository
+}
+def remoteBytes = { URI repository, String relativePath, boolean missingAllowed ->
+    if (relativePath.startsWith('/') || relativePath.contains('..')) {
+        throw new GradleException("Unsafe Maven path in pilot manifest: ${relativePath}")
+    }
+    URI source = repository.resolve(relativePath)
+    if (repository.scheme == 'file') {
+        Path path = Path.of(source)
+        if (!Files.isRegularFile(path)) {
+            if (missingAllowed) {
+                return null
+            }
+            throw new GradleException("Published pilot file is missing: ${relativePath}")
+        }
+        return Files.readAllBytes(path)
+    }
+
+    def authorization = Base64.encoder.encodeToString(
+            "${repositoryUsername.get()}:${repositoryPassword.get()}".getBytes('UTF-8')
+    )
+    for (int attempt = 1; attempt <= 5; attempt++) {
+        HttpURLConnection connection = (HttpURLConnection) source.toURL().openConnection()
+        connection.setRequestProperty('Authorization', "Basic ${authorization}")
+        connection.setRequestProperty('Accept', 'application/octet-stream')
+        connection.setConnectTimeout(15_000)
+        connection.setReadTimeout(30_000)
+        int status = connection.responseCode
+        if (status == 200) {
+            return connection.inputStream.withCloseable { it.bytes }
+        }
+        connection.disconnect()
+        if (status == 404 && missingAllowed) {
+            return null
+        }
+        if (status == 404 && attempt < 5) {
+            Thread.sleep(attempt * 1_000L)
+            continue
+        }
+        if (status >= 500 && attempt < 5) {
+            Thread.sleep(attempt * 1_000L)
+            continue
+        }
+        throw new GradleException(
+                "Pilot repository returned HTTP ${status} for ${relativePath}."
+        )
+    }
+    throw new GradleException("Pilot repository did not return ${relativePath}.")
+}
+def writeJson = { File destination, Map content ->
+    destination.parentFile.mkdirs()
+    destination.setText(JsonOutput.prettyPrint(JsonOutput.toJson(content)) + '\n', 'UTF-8')
+}
+def outputFile = { provider ->
+    def value = provider.get()
+    value instanceof File ? value : value.asFile
+}
+
+tasks.register('checkPilotPublicationState') {
+    group = 'verification'
+    description = 'Rejects partial or conflicting remote coordinates before pilot publication.'
+    inputs.file(providers.provider { file(manifestFile.get()) })
+    outputs.file(stateReport)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def manifest = loadManifest()
+        URI repository = validatedRepository()
+        def declaredFiles = manifest.artifacts.collectMany { it.files }
+        def available = declaredFiles.collect { entry ->
+            byte[] content = remoteBytes(repository, entry.path as String, true)
+            [entry: entry, content: content]
+        }
+        int present = available.count { it.content != null }
+        def state
+        if (present == 0) {
+            state = 'absent'
+        } else if (present != available.size()) {
+            state = 'partial'
+        } else if (available.every { sha256(it.content as byte[]) == it.entry.sha256 }) {
+            state = 'identical'
+        } else {
+            state = 'conflict'
+        }
+        writeJson(outputFile(stateReport), [
+                schemaVersion: 1,
+                state: state,
+                sourceCommit: manifest.sourceCommit,
+                contractPath: manifest.contractPath,
+                contractVersion: manifest.contractVersion
+        ])
+        if (state in ['partial', 'conflict']) {
+            throw new GradleException(
+                    "Remote OpenAPI pilot coordinate state is ${state}; publication is blocked."
+            )
+        }
+        logger.lifecycle("OpenAPI pilot publication state: ${state}")
+    }
+}
+
+tasks.register('verifyPilotPublication') {
+    group = 'verification'
+    description = 'Verifies deployed pilot payload hashes and resolves all three Maven coordinates.'
+    inputs.file(providers.provider { file(manifestFile.get()) })
+    outputs.file(verificationReport)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def manifest = loadManifest()
+        URI repository = validatedRepository()
+        def artifacts = manifest.artifacts as List
+        artifacts.collectMany { it.files }.each { entry ->
+            byte[] content = remoteBytes(repository, entry.path as String, false)
+            if (sha256(content) != entry.sha256) {
+                throw new GradleException("Published pilot hash mismatch: ${entry.path}")
+            }
+        }
+
+        def model = artifacts.find { it.role == 'model' }
+        def modelCoordinate = "${model.groupId}:${model.artifactId}:${model.version}"
+        artifacts.each { artifact ->
+            def coordinate = "${artifact.groupId}:${artifact.artifactId}:${artifact.version}"
+            def configuration = configurations.detachedConfiguration(
+                    dependencies.create(coordinate)
+            )
+            configuration.transitive = true
+            def resolvedFiles = configuration.resolve()
+            def binaryName = "${artifact.artifactId}-${artifact.version}.jar"
+            File binary = resolvedFiles.find { it.name == binaryName }
+            def binaryManifest = artifact.files.find { it.path.endsWith("/${binaryName}") }
+            if (binary == null || binaryManifest == null
+                    || sha256(binary.bytes) != binaryManifest.sha256) {
+                throw new GradleException("Clean consumer did not resolve the staged binary ${coordinate}.")
+            }
+            def components = configuration.incoming.resolutionResult.allComponents
+                    .collect { it.moduleVersion }
+                    .findAll { it != null }
+                    .collect { "${it.group}:${it.name}:${it.version}" }
+                    .toSet()
+            if (!components.contains(coordinate)) {
+                throw new GradleException("Clean consumer did not resolve ${coordinate}.")
+            }
+            if (artifact.role != 'model' && !components.contains(modelCoordinate)) {
+                throw new GradleException("${coordinate} did not resolve the shared model coordinate.")
+            }
+            if (components.any { it.startsWith('org.springframework.cloud:spring-cloud-openfeign') }) {
+                throw new GradleException("${coordinate} leaked OpenFeign into the runtime graph.")
+            }
+        }
+
+        writeJson(outputFile(verificationReport), [
+                schemaVersion: 1,
+                status: 'verified',
+                sourceCommit: manifest.sourceCommit,
+                contractPath: manifest.contractPath,
+                contractVersion: manifest.contractVersion,
+                artifactCount: artifacts.size(),
+                embeddedSnapshotSha256: manifest.embeddedSnapshotSha256
+        ])
+        logger.lifecycle(
+                "Verified ${artifacts.size()} OpenAPI pilot coordinates for ${manifest.contractPath}:${manifest.contractVersion}."
+        )
+    }
+}

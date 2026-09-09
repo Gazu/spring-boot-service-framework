@@ -5,7 +5,10 @@ import java.util.Properties;
 import org.gradle.api.GradleException;
 
 record OpenApiToolchainVersions(
-        String frameworkVersion, String openApiGeneratorVersion, String springBootVersion) {
+        String frameworkVersion,
+        String openApiGeneratorVersion,
+        String springBootVersion,
+        String springCloudOpenFeignVersion) {
 
     static OpenApiToolchainVersions load() {
         Properties properties = new Properties();
@@ -22,7 +25,8 @@ record OpenApiToolchainVersions(
         return new OpenApiToolchainVersions(
                 required(properties, "framework.version"),
                 required(properties, "openapi-generator.version"),
-                required(properties, "spring-boot.version"));
+                required(properties, "spring-boot.version"),
+                required(properties, "spring-cloud-openfeign.version"));
     }
 
     private static String required(Properties properties, String name) {

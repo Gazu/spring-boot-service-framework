@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore;
 
-import com.nimbusds.jose.jwk.JWK;
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import com.smbtech.serviceframework.httpclient.domain.KeyStoreDefinition;
 import com.smbtech.serviceframework.httpclient.exception.HttpClientAuthenticationException;
@@ -13,20 +12,14 @@ final class KeyStoreRuntime {
 
     private final KeyStoreManager keyStoreManager;
     private final SslContextFactory sslContextFactory;
-    private final SigningJwkFactory signingJwkFactory;
 
     KeyStoreRuntime(KeyStoreManager keyStoreManager) {
         this.keyStoreManager = keyStoreManager;
         this.sslContextFactory = new SslContextFactory(keyStoreManager);
-        this.signingJwkFactory = new SigningJwkFactory(new PrivateKeyLoader(keyStoreManager));
     }
 
     SSLContext buildSslContext(HttpClientDefinition definition, SSLContext fallbackSslContext) {
         return sslContextFactory.build(definition, fallbackSslContext);
-    }
-
-    JWK resolveSigningJwk(String keyStoreId) {
-        return signingJwkFactory.create(keyStoreId);
     }
 
     void validateLoadable(String keyStoreId) {

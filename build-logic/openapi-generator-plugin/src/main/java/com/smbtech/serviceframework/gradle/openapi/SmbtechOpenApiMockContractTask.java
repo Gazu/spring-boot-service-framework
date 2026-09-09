@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Function;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import org.gradle.api.DefaultTask;
@@ -58,7 +60,7 @@ public abstract class SmbtechOpenApiMockContractTask extends DefaultTask {
     @TaskAction
     public void verifyMockContracts() {
         List<String> failures = new ArrayList<>();
-        List<String> locations = new ArrayList<>();
+        List<ContractLocation> contractLocations = new ArrayList<>();
         Map<String, File> models =
                 getModelArtifacts().getFiles().stream()
                         .filter(File::isFile)
@@ -96,15 +98,21 @@ public abstract class SmbtechOpenApiMockContractTask extends DefaultTask {
                                                                             + ": mock server requires at least one numeric response");
                                                         }
                                                     }));
-            locations.add(
-                    identity.artifactBaseName()
-                            + "=classpath:META-INF/smbtech/openapi/contracts/"
-                            + identity.artifactBaseName()
-                            + "/"
-                            + identity.version()
-                            + "/contract.yaml");
-            verifyEmbeddedContract(identity, models, failures);
+            String contractId = verifyEmbeddedContract(identity, models, failures);
+            contractLocations.add(new ContractLocation(contractId, identity.version()));
         }
+        Map<String, Long> versionsByContract =
+                contractLocations.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        ContractLocation::contractId, Collectors.counting()));
+        List<String> locations =
+                contractLocations.stream()
+                        .map(
+                                location ->
+                                        location.property(
+                                                versionsByContract.get(location.contractId()) > 1))
+                        .toList();
         try {
             Files.createDirectories(getReportFile().get().getAsFile().toPath().getParent());
             Files.writeString(
@@ -120,27 +128,54 @@ public abstract class SmbtechOpenApiMockContractTask extends DefaultTask {
         }
     }
 
-    private static void verifyEmbeddedContract(
+    private static String verifyEmbeddedContract(
             OpenApiContractIdentity identity, Map<String, File> models, List<String> failures) {
-        String artifactName =
-                identity.artifactBaseName() + "-models-" + identity.version() + ".jar";
-        File artifact = models.get(artifactName);
-        if (artifact == null) {
-            failures.add(identity.artifactBaseName() + ": models JAR is missing for mock usage");
-            return;
-        }
-        String resource =
-                "META-INF/smbtech/openapi/contracts/"
-                        + identity.artifactBaseName()
-                        + "/"
-                        + identity.version()
-                        + "/contract.yaml";
-        try (JarFile jar = new JarFile(artifact)) {
-            if (jar.getEntry(resource) == null) {
-                failures.add(identity.artifactBaseName() + ": missing mock resource " + resource);
+        for (File artifact : models.values()) {
+            try (JarFile jar = new JarFile(artifact)) {
+                JarEntry metadataEntry =
+                        jar.getJarEntry("META-INF/smbtech/openapi/contract.properties");
+                if (metadataEntry == null) {
+                    continue;
+                }
+                Properties metadata = new Properties();
+                try (var input = jar.getInputStream(metadataEntry)) {
+                    metadata.load(input);
+                }
+                if (!identity.title().equals(metadata.getProperty("contract.title"))
+                        || !identity.version().equals(metadata.getProperty("contract.version"))) {
+                    continue;
+                }
+                String contractId = metadata.getProperty("contract.id", "").trim();
+                String resource =
+                        "META-INF/smbtech/openapi/contracts/"
+                                + contractId
+                                + "/"
+                                + identity.version()
+                                + "/contract.yaml";
+                if (contractId.isEmpty() || jar.getEntry(resource) == null) {
+                    failures.add(
+                            identity.artifactBaseName() + ": missing mock resource " + resource);
+                }
+                return contractId.isEmpty() ? identity.artifactBaseName() : contractId;
+            } catch (IOException exception) {
+                failures.add(identity.artifactBaseName() + ": cannot inspect models JAR");
+                return identity.artifactBaseName();
             }
-        } catch (IOException exception) {
-            failures.add(identity.artifactBaseName() + ": cannot inspect models JAR");
+        }
+        failures.add(identity.artifactBaseName() + ": models JAR is missing for mock usage");
+        return identity.artifactBaseName();
+    }
+
+    private record ContractLocation(String contractId, String version) {
+
+        private String property(boolean includeVersionInKey) {
+            String key = contractId + (includeVersionInKey ? "." + version : "");
+            return key
+                    + "=classpath:META-INF/smbtech/openapi/contracts/"
+                    + contractId
+                    + "/"
+                    + version
+                    + "/contract.yaml";
         }
     }
 }

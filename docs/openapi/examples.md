@@ -129,7 +129,7 @@ Inspect one binary artifact without extracting it:
 
 ```bash
 jar --list \
-  --file build/libs/smbtech-openapi/retail-loyalty-rewards-client-1.0.0.jar
+  --file build/libs/smbtech-openapi/retail-loyalty-rewards-jdk21-client-1.0.0.jar
 ```
 
 Use the generated evidence for higher-level checks:

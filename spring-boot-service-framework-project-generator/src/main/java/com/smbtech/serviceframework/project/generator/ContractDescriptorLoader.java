@@ -20,6 +20,7 @@ import org.openapitools.codegen.languages.SpringCodegen;
 
 final class ContractDescriptorLoader {
 
+    private static final int CONTRACT_JAVA_RELEASE = 21;
     private static final String METADATA = "META-INF/smbtech/openapi/contract.properties";
     private static final String CONTRACT = "META-INF/smbtech/openapi/contract.yaml";
     private static final Pattern OPENAPI_VERSION = Pattern.compile("3\\.[01]\\.\\d+");
@@ -53,14 +54,20 @@ final class ContractDescriptorLoader {
         String title = contract.getInfo().getTitle().trim();
         String id = NameSupport.normalizeArtifact(title);
         NameSupport.requireArtifact(id, "info.title");
-        String version = first(request.contractVersion(), contract.getInfo().getVersion().trim());
+        String version =
+                canonicalVersion(request.contractVersion(), contract.getInfo().getVersion().trim());
         requireVersion(version);
         String group = first(request.contractGroupId(), "com.smbtech.contracts");
-        String artifact = first(request.contractArtifactId(), id + "-server-api");
+        String artifact =
+                first(request.contractArtifactId(), id + "-jdk" + CONTRACT_JAVA_RELEASE + "-api");
         String apiPackage =
                 first(
                         request.contractApiPackage(),
-                        "com.smbtech.contracts." + NameSupport.compact(id) + ".api");
+                        "com.smbtech.contracts."
+                                + NameSupport.compact(id)
+                                + "."
+                                + versionSegment(version)
+                                + ".api");
         NameSupport.requirePackage(apiPackage, "contractApiPackage");
         return new ContractDescriptor(
                 title,
@@ -104,7 +111,7 @@ final class ContractDescriptorLoader {
             String title = required(metadata, "contract.title", source);
             String id = required(metadata, "contract.id", source);
             String version =
-                    first(
+                    canonicalVersion(
                             request.contractVersion(),
                             required(metadata, "contract.version", source));
             requireVersion(version);
@@ -199,6 +206,22 @@ final class ContractDescriptorLoader {
 
     private static String first(String preferred, String fallback) {
         return preferred == null ? fallback : preferred;
+    }
+
+    private static String canonicalVersion(String configured, String contractVersion) {
+        if (configured != null && !configured.equals(contractVersion)) {
+            throw new ProjectGenerationException(
+                    "Configured contract version '"
+                            + configured
+                            + "' must match OpenAPI info.version '"
+                            + contractVersion
+                            + "'");
+        }
+        return contractVersion;
+    }
+
+    private static String versionSegment(String version) {
+        return "v" + version.substring(0, version.indexOf('.'));
     }
 
     private static boolean blank(String value) {

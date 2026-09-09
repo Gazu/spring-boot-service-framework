@@ -84,7 +84,9 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
     @TaskAction
     public void validateSpecs() {
         List<String> failures = new ArrayList<>();
+        Map<String, String> resolvedContractIdentities = new LinkedHashMap<>();
         Map<String, String> resolvedCoordinates = new LinkedHashMap<>();
+        Map<String, String> resolvedArtifactFiles = new LinkedHashMap<>();
         Map<String, EffectiveSpec> configuredSpecs = configuredSpecs();
         getSpecFiles().getFiles().stream()
                 .sorted(Comparator.comparing(File::getAbsolutePath))
@@ -92,8 +94,12 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
                         source ->
                                 validateSource(
                                         source,
-                                        configuredSpecs.get(source.getAbsolutePath()),
+                                        configuredSpecs.get(
+                                                OpenApiSpecDiscovery.normalizedPath(source)
+                                                        .toString()),
+                                        resolvedContractIdentities,
                                         resolvedCoordinates,
+                                        resolvedArtifactFiles,
                                         failures));
         if (!failures.isEmpty()) {
             throw new GradleException(
@@ -104,7 +110,9 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
     private void validateSource(
             File source,
             EffectiveSpec configured,
+            Map<String, String> resolvedContractIdentities,
             Map<String, String> resolvedCoordinates,
+            Map<String, String> resolvedArtifactFiles,
             List<String> failures) {
         String relativePath = relativePath(source);
         OpenApiContractIdentity identity;
@@ -115,22 +123,47 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
             return;
         }
 
+        String contractIdentity = identity.artifactBaseName() + ":" + identity.version();
+        String previousIdentity =
+                resolvedContractIdentities.putIfAbsent(contractIdentity, relativePath);
+        if (previousIdentity != null) {
+            failures.add(
+                    relativePath
+                            + ": contract identity "
+                            + contractIdentity
+                            + " duplicates "
+                            + previousIdentity);
+        }
+
         String groupId = configured == null ? getDefaultGroupId().get() : configured.groupId();
         String artifactBaseName =
                 configured == null || configured.artifactBaseName().isBlank()
                         ? identity.artifactBaseName()
                         : configured.artifactBaseName();
-        String version =
-                configured == null || configured.version().isBlank()
-                        ? identity.version()
-                        : configured.version();
+        String version = identity.version();
         if (!ARTIFACT_BASE_NAME.matcher(artifactBaseName).matches()) {
             failures.add(relativePath + ": artifact base name is invalid: " + artifactBaseName);
             return;
         }
-        if (!ARTIFACT_VERSION.matcher(version).matches()) {
-            failures.add(relativePath + ": artifact version is invalid: " + version);
-            return;
+        if (configured != null && !configured.version().isBlank()) {
+            if (!ARTIFACT_VERSION.matcher(configured.version()).matches()) {
+                failures.add(
+                        relativePath
+                                + ": configured artifact version is invalid: "
+                                + configured.version());
+            }
+            if (!configured.version().equals(identity.version())) {
+                failures.add(
+                        relativePath
+                                + ": configured version '"
+                                + configured.version()
+                                + "' must match OpenAPI info.version '"
+                                + identity.version()
+                                + "'");
+            }
+        }
+        if (configured != null) {
+            validatePackages(relativePath, identity, artifactBaseName, configured, failures);
         }
         Map<OpenApiArtifactKind, Boolean> enabled =
                 configured == null
@@ -148,9 +181,10 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
                         validateCoordinate(
                                 relativePath,
                                 groupId,
-                                artifactBaseName + "-" + kind.artifactSuffix(),
+                                OpenApiArtifactContract.artifactId(artifactBaseName, kind),
                                 version,
                                 resolvedCoordinates,
+                                resolvedArtifactFiles,
                                 failures);
                     }
                 });
@@ -162,6 +196,7 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
             String artifactName,
             String version,
             Map<String, String> resolvedCoordinates,
+            Map<String, String> resolvedArtifactFiles,
             List<String> failures) {
         if (FRAMEWORK_ARTIFACT_NAMES.contains(artifactName)) {
             failures.add(relativePath + ": generated artifact collides with " + artifactName);
@@ -176,6 +211,17 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
                             + " duplicates "
                             + previous);
         }
+        String artifactFile = artifactName + "-" + version + ".jar";
+        String previousArtifact = resolvedArtifactFiles.putIfAbsent(artifactFile, relativePath);
+        if (previousArtifact != null) {
+            failures.add(
+                    relativePath
+                            + ": generated artifact file "
+                            + artifactFile
+                            + " duplicates "
+                            + previousArtifact
+                            + "; output file names do not include groupId");
+        }
     }
 
     private Map<String, EffectiveSpec> configuredSpecs() {
@@ -186,19 +232,28 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
                 continue;
             }
             String groupId = fields[2].isBlank() ? getDefaultGroupId().get() : fields[2];
-            specs.put(
-                    new File(fields[1]).getAbsolutePath(),
+            String sourcePath = OpenApiSpecDiscovery.normalizedPath(new File(fields[1])).toString();
+            EffectiveSpec effective =
                     new EffectiveSpec(
                             groupId,
                             fields[3],
                             fields[4],
+                            fields[5],
+                            fields[6],
+                            fields[7],
+                            fields[8],
                             Map.of(
                                     OpenApiArtifactKind.MODELS,
                                     Boolean.parseBoolean(fields[9]),
                                     OpenApiArtifactKind.SERVER_API,
                                     Boolean.parseBoolean(fields[10]),
                                     OpenApiArtifactKind.CLIENT,
-                                    Boolean.parseBoolean(fields[11]))));
+                                    Boolean.parseBoolean(fields[11])));
+            EffectiveSpec previous = specs.putIfAbsent(sourcePath, effective);
+            if (previous != null) {
+                throw new GradleException(
+                        "OpenAPI input " + sourcePath + " is configured more than once");
+            }
         }
         return specs;
     }
@@ -213,9 +268,67 @@ public abstract class SmbtechOpenApiValidateSpecsTask extends DefaultTask {
                 .replace(File.separatorChar, '/');
     }
 
+    private static void validatePackages(
+            String relativePath,
+            OpenApiContractIdentity identity,
+            String artifactBaseName,
+            EffectiveSpec configured,
+            List<String> failures) {
+        String packageRoot =
+                configured.basePackage().isBlank()
+                        ? OpenApiArtifactContract.defaultPackageRoot(artifactBaseName)
+                        : configured.basePackage();
+        if (packageRoot.matches(".*\\.v[0-9]+$")) {
+            failures.add(
+                    relativePath
+                            + ": basePackage must not include a version segment; it is derived from OpenAPI info.version");
+        }
+        String versionedRoot =
+                OpenApiArtifactContract.versionedPackageRoot(packageRoot, identity.version());
+        validatePackageOverride(
+                relativePath,
+                "modelPackage",
+                configured.modelPackage(),
+                versionedRoot + ".model",
+                failures);
+        validatePackageOverride(
+                relativePath,
+                "serverApiPackage",
+                configured.serverApiPackage(),
+                versionedRoot + ".api",
+                failures);
+        validatePackageOverride(
+                relativePath,
+                "clientPackage",
+                configured.clientPackage(),
+                versionedRoot + ".client",
+                failures);
+    }
+
+    private static void validatePackageOverride(
+            String relativePath,
+            String property,
+            String configured,
+            String expected,
+            List<String> failures) {
+        if (!configured.isBlank() && !configured.equals(expected)) {
+            failures.add(
+                    relativePath
+                            + ": "
+                            + property
+                            + " must be '"
+                            + expected
+                            + "' because generated packages follow OpenAPI info.version");
+        }
+    }
+
     private record EffectiveSpec(
             String groupId,
             String artifactBaseName,
             String version,
+            String basePackage,
+            String modelPackage,
+            String serverApiPackage,
+            String clientPackage,
             Map<OpenApiArtifactKind, Boolean> enabled) {}
 }

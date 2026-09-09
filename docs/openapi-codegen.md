@@ -33,7 +33,8 @@ The plugin produces three independently consumable boundaries:
 
 - transport models shared by providers and consumers;
 - a Spring MVC server contract implemented through delegates;
-- declarative Spring HTTP client interfaces.
+- declarative Spring HTTP Interface and Spring Cloud OpenFeign client
+  interfaces in one client artifact.
 
 The exact package layout, dependencies, annotations, metadata, and artifact
 coordinates are owned by
@@ -42,9 +43,10 @@ coordinates are owned by
 ## Runtime Boundary
 
 Provider applications implement generated delegate interfaces and keep domain
-behavior outside generated controllers. Consumer applications inject generated
-HTTP interfaces while the REST client starter supplies transport,
-authentication, TLS, resilience, observability, and endpoint configuration.
+behavior outside generated controllers. Consumer applications choose the
+generated HTTP Interface or OpenFeign package. The REST client starter supplies
+the HTTP Interface runtime; OpenFeign applications add and configure Spring
+Cloud OpenFeign explicitly.
 
 Generated artifacts do not contain business implementations, credentials,
 environment URLs, or application-specific domain models.
@@ -70,7 +72,9 @@ Spring MVC implementation returns responses allowed by the document.
 | One-time hexagonal service generation | `spring-boot-service-framework-project-generator` |
 
 The module split and decision to use OpenAPI Generator are recorded in
-[ADR 0001](adr/0001-openapi-generator-engine.md). Documentation ownership is
+[ADR 0001](adr/0001-openapi-generator-engine.md). External artifact identity,
+packages, versions, and dependencies are frozen by
+[ADR 0002](adr/0002-openapi-artifact-contract.md). Documentation ownership is
 defined by the
 [OpenAPI Documentation Architecture](openapi/documentation-architecture.md).
 

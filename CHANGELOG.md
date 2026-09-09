@@ -10,7 +10,26 @@ Release process details live in [docs/releasing.md](docs/releasing.md).
 
 ## Unreleased
 
-No unreleased changes.
+### Changed
+
+- Freeze the Java 21 OpenAPI artifact contract: `-jdk21-model`, `-jdk21-api`,
+  and `-jdk21-client` coordinates, `info.version`-derived package majors, and a
+  transitive model dependency from API and client artifacts.
+- Generate matching Spring HTTP Interface and Spring Cloud OpenFeign interfaces
+  in each `-jdk21-client` artifact while keeping OpenFeign dependencies owned by
+  the consuming application.
+- Auto-register valid contracts from conventional OpenAPI directories so
+  multi-folder repositories generate, verify, and publish without one DSL entry
+  per contract.
+- Publish changed OpenAPI contracts independently through a GitHub Actions
+  matrix, with one selected model, API, and dual-interface client release per
+  contract path.
+- Validate locally published generated contracts through a standalone Spring MVC
+  consumer that exercises full contract coverage and both generated client
+  variants before release or contract publication.
+- Stage and deploy one generated OpenAPI contract through a protected pilot,
+  with immutable-coordinate preflight, payload manifests, clean remote
+  resolution, deployment receipts, and partial-publication recovery evidence.
 
 ## 0.5.2 - 2026-09-01
 

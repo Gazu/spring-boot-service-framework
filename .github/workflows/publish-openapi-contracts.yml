@@ -1,0 +1,255 @@
+name: Publish OpenAPI Contracts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/src/main/openapi/*.json"
+      - "**/src/main/openapi/*.yaml"
+      - "**/src/main/openapi/*.yml"
+      - "**/openapi/*.json"
+      - "**/openapi/*.yaml"
+      - "**/openapi/*.yml"
+      - "**/swagger/*.json"
+      - "**/swagger/*.yaml"
+      - "**/swagger/*.yml"
+  workflow_dispatch:
+    inputs:
+      contract:
+        description: Project-relative path to one configured or discovered OpenAPI contract
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-openapi-contracts-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Detect changed contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      contracts: ${{ steps.contracts.outputs.contracts }}
+      has_contracts: ${{ steps.contracts.outputs.has_contracts }}
+
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Select contracts
+        id: contracts
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          REQUESTED_CONTRACT: ${{ inputs.contract }}
+        run: |
+          set -euo pipefail
+          candidates=()
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            candidates+=("${REQUESTED_CONTRACT}")
+          else
+            empty_tree="$(git hash-object -t tree /dev/null)"
+            base_sha="${BEFORE_SHA}"
+            if [[ "${base_sha}" =~ ^0+$ ]]; then
+              base_sha="${empty_tree}"
+            fi
+            while IFS= read -r -d '' path; do
+              candidates+=("${path}")
+            done < <(git diff --name-only --diff-filter=ACMRT -z "${base_sha}" "${CURRENT_SHA}" --)
+          fi
+
+          contracts=()
+          for path in "${candidates[@]}"; do
+            if [[ "${path}" == /* || "${path}" == ../* || "${path}" == */../* ]]; then
+              echo "Contract path must stay inside the repository: ${path}" >&2
+              exit 1
+            fi
+            if [[ "${path}" =~ (^|/)(\.git|\.gradle|build)/ ]]; then
+              continue
+            fi
+            if [[ "${path}" =~ (^|/)(src/main/openapi|openapi|swagger)/[^/]+\.(json|yaml|yml)$ ]] &&
+              [[ -f "${path}" ]]; then
+              contracts+=("${path}")
+            elif [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+              echo "Not a discoverable OpenAPI contract: ${path}" >&2
+              exit 1
+            fi
+          done
+
+          contracts_json="$({ printf '%s\n' "${contracts[@]}" | sed '/^$/d' | LC_ALL=C sort -u; } |
+            jq --raw-input --slurp 'split("\n") | map(select(length > 0))')"
+          echo "contracts=${contracts_json}" >>"${GITHUB_OUTPUT}"
+          if [[ "${contracts_json}" == "[]" ]]; then
+            echo "has_contracts=false" >>"${GITHUB_OUTPUT}"
+          else
+            echo "has_contracts=true" >>"${GITHUB_OUTPUT}"
+          fi
+
+  compatibility:
+    name: Validate changed contract release
+    needs: detect
+    if: needs.detect.outputs.has_contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-read-only: true
+
+      - name: Run OpenAPI and published-contract compatibility gates
+        run: >-
+          ./gradlew contractTestingCompatibilityCheck
+          smbtechOpenApiCompatibilityCheck
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+  publish:
+    name: Publish ${{ matrix.contract }}
+    needs:
+      - detect
+      - compatibility
+    if: needs.detect.outputs.has_contracts == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        contract: ${{ fromJSON(needs.detect.outputs.contracts) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Stage selected contract artifacts
+        env:
+          CONTRACT_PATH: ${{ matrix.contract }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          ./gradlew generateOpenApiPilotManifest
+          "-PopenApiContract=${CONTRACT_PATH}"
+          "-PopenApiPilotCommit=${SOURCE_COMMIT}"
+          -PopenApiRepositoryDirectory=build/pilot/evidence/repository
+          -PopenApiPilotManifest=build/pilot/evidence/publication-manifest.json
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Publish pilot runtime dependencies locally
+        run: >-
+          ./gradlew publishOpenApiPilotRuntimeToLocalRepositories
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Resolve staged publication from an isolated consumer
+        run: >-
+          ./gradlew -p .ci/openapi-pilot-consumer verifyPilotPublication
+          "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json"
+          "-PpilotRepositoryUrl=file://${GITHUB_WORKSPACE}/build/pilot/evidence/repository"
+          "-PpilotFrameworkRoot=${GITHUB_WORKSPACE}"
+          "-PpilotVerificationReport=${GITHUB_WORKSPACE}/build/pilot/evidence/local-verification.json"
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Check remote coordinate state
+        id: remote
+        env:
+          PILOT_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PILOT_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PILOT_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew -p .ci/openapi-pilot-consumer checkPilotPublicationState \
+            "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json" \
+            "-PpilotStateReport=${GITHUB_WORKSPACE}/build/pilot/evidence/remote-state.json" \
+            --no-daemon --stacktrace --console=plain
+          state="$(jq -r '.state' build/pilot/evidence/remote-state.json)"
+          echo "state=${state}" >>"${GITHUB_OUTPUT}"
+
+      - name: Publish selected contract artifacts
+        if: steps.remote.outputs.state == 'absent'
+        env:
+          CONTRACT_PATH: ${{ matrix.contract }}
+          OPENAPI_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          OPENAPI_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          OPENAPI_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: >-
+          ./gradlew smbtechOpenApiPublishContract
+          "-PopenApiContract=${CONTRACT_PATH}"
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Verify deployed payload and Maven resolution
+        env:
+          PILOT_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}
+          PILOT_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}
+          PILOT_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}
+        run: >-
+          ./gradlew -p .ci/openapi-pilot-consumer verifyPilotPublication
+          "-PpilotManifest=${GITHUB_WORKSPACE}/build/pilot/evidence/publication-manifest.json"
+          "-PpilotVerificationReport=${GITHUB_WORKSPACE}/build/pilot/evidence/remote-verification.json"
+          --refresh-dependencies
+          --no-daemon
+          --stacktrace
+          --console=plain
+
+      - name: Record publication failure recovery
+        if: ${{ failure() }}
+        run: |
+          mkdir -p build/pilot/evidence
+          cat >build/pilot/evidence/RECOVERY.md <<'RECOVERY'
+          Contract publication failed. Preserve any successfully published immutable
+          coordinates, inspect remote-state.json, and recover with a new contract
+          patch version when the remote state is partial or conflicting.
+          RECOVERY
+
+      - name: Upload contract publication evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openapi-contract-publication-${{ strategy.job-index }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/pilot/evidence
+          if-no-files-found: warn
+          retention-days: 90

@@ -12,10 +12,12 @@ public final class KeyStoreRuntimeTestFixtures {
 
     public static Capabilities capabilities(
             KeyStoreDefinitionSource definitionSource, ResourceLoader resourceLoader) {
-        KeyStoreRuntime runtime =
-                new KeyStoreRuntime(new KeyStoreManager(definitionSource, resourceLoader));
+        KeyStoreManager keyStoreManager = new KeyStoreManager(definitionSource, resourceLoader);
+        KeyStoreRuntime runtime = new KeyStoreRuntime(keyStoreManager);
         return new Capabilities(
-                runtime::validateLoadable, runtime::validateMtls, runtime::resolveSigningJwk);
+                runtime::validateLoadable,
+                runtime::validateMtls,
+                new SigningJwkFactory(new PrivateKeyLoader(keyStoreManager))::create);
     }
 
     public record Capabilities(

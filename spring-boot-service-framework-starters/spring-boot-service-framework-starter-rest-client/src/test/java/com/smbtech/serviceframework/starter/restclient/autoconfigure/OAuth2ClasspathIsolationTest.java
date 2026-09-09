@@ -15,14 +15,16 @@ class OAuth2ClasspathIsolationTest {
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
-                    .withClassLoader(new FilteredClassLoader("org.springframework.security"))
+                    .withClassLoader(
+                            new FilteredClassLoader(
+                                    "org.springframework.security", "com.nimbusds.jose"))
                     .withConfiguration(
                             AutoConfigurations.of(
                                     RestClientAutoConfiguration.class,
                                     OAuth2RestClientAutoConfiguration.class));
 
     @Test
-    void startsWithoutSpringSecurityAndKeepsBaseRestClientInfrastructure() {
+    void startsWithoutOAuth2ClassesAndKeepsBaseRestClientInfrastructure() {
         contextRunner.run(
                 context -> {
                     assertThat(context).hasNotFailed();

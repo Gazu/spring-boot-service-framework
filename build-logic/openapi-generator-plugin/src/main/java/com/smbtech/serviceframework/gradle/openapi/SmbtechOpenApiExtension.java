@@ -7,6 +7,7 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.ProviderFactory;
 
 /** Gradle extension for configuring OpenAPI contract generation and publication. */
 public abstract class SmbtechOpenApiExtension {
@@ -29,9 +30,11 @@ public abstract class SmbtechOpenApiExtension {
      *
      * @param objects Gradle object factory
      * @param layout current project layout
+     * @param providers Gradle provider factory
      */
     @Inject
-    public SmbtechOpenApiExtension(ObjectFactory objects, ProjectLayout layout) {
+    public SmbtechOpenApiExtension(
+            ObjectFactory objects, ProjectLayout layout, ProviderFactory providers) {
         this.groupId = objects.property(String.class).convention("com.smbtech.contracts");
         this.outputDirectory =
                 objects.directoryProperty()
@@ -42,7 +45,14 @@ public abstract class SmbtechOpenApiExtension {
         this.baselineDirectory =
                 objects.directoryProperty()
                         .convention(layout.getProjectDirectory().dir("src/main/openapi-baselines"));
-        this.publicationRepositoryUrl = objects.property(String.class);
+        this.publicationRepositoryUrl =
+                objects.property(String.class)
+                        .convention(
+                                providers
+                                        .gradleProperty("openApiRepositoryUrl")
+                                        .orElse(
+                                                providers.environmentVariable(
+                                                        "OPENAPI_REPOSITORY_URL")));
         this.requireBaseline = objects.property(Boolean.class).convention(false);
         this.failOnBreakingChanges = objects.property(Boolean.class).convention(false);
         this.publishModels = objects.property(Boolean.class).convention(true);

@@ -61,4 +61,5 @@ The complete usage contract and examples live in
 ```bash
 ./gradlew :spring-boot-service-framework-openapi-contract-testing:check
 ./gradlew contractTestingCompatibilityCheck
+./gradlew openApiContractConsumerSmoke
 ```

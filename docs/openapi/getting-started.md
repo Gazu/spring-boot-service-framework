@@ -1,7 +1,7 @@
 # OpenAPI Getting Started
 
 This guide takes one OpenAPI contract from source to locally published models,
-server API, and HTTP client artifacts. It uses only plugin defaults and the
+server API, and dual HTTP client artifacts. It uses only plugin defaults and the
 `warehouse-inventory-catalog:1.0.0` example exercised by this repository.
 
 ## Before You Start
@@ -101,18 +101,24 @@ repositories {
     }
     mavenCentral()
 }
+```
 
+Because the contract is under `src/main/openapi`, the plugin discovers it
+without a `specs` block. The defaults generate all three artifact kinds under
+group `com.smbtech.contracts`.
+
+Explicit registration is only needed for a custom path or overrides:
+
+```groovy
 smbtechOpenApi {
     specs {
         register('warehouseInventoryCatalog') {
             input.set(file('src/main/openapi/warehouse-inventory-catalog.yaml'))
+            groupId.set('com.example.contracts')
         }
     }
 }
 ```
-
-The defaults generate all three artifact kinds under group
-`com.smbtech.contracts`.
 
 ## 3. Validate The Contract
 
@@ -138,9 +144,9 @@ The result under `build/libs/smbtech-openapi` contains binary and source JARs
 for these coordinates:
 
 ```text
-com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0
-com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0
-com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0
+com.smbtech.contracts:warehouse-inventory-catalog-jdk21-model:1.0.0
+com.smbtech.contracts:warehouse-inventory-catalog-jdk21-api:1.0.0
+com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0
 ```
 
 Each binary JAR embeds the original contract and deterministic metadata under
@@ -178,7 +184,7 @@ Add the generated server contract to a Spring Boot application:
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0'
+    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-api:1.0.0'
 }
 ```
 
@@ -187,8 +193,8 @@ Implement its delegate as a Spring bean:
 ```java
 package com.example.inventory;
 
-import com.smbtech.contracts.warehouseinventorycatalog.api.DefaultApiDelegate;
-import com.smbtech.contracts.warehouseinventorycatalog.model.InventoryItemResponse;
+import com.smbtech.contracts.warehouseinventorycatalog.v1.api.DefaultApiDelegate;
+import com.smbtech.contracts.warehouseinventorycatalog.v1.model.InventoryItemResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -206,15 +212,21 @@ final class WarehouseInventoryDelegate implements DefaultApiDelegate {
 The generated controller discovers this bean and exposes the mapping declared
 by the contract. Business and domain logic remain in the consuming application.
 
-## 7. Consume The HTTP Client
+## 7. Consume The Client Artifact
 
 Add the generated client contract to a consumer application:
 
 ```groovy
 dependencies {
-    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0'
+    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0'
 }
 ```
+
+The artifact contains matching interfaces for Spring HTTP Interface and Spring
+Cloud OpenFeign. Choose the package that matches the consuming application's
+HTTP stack.
+
+### Spring HTTP Interface
 
 The generated `DefaultApi` carries
 `@HttpApiClient("warehouse-inventory-catalog")`. Configure the matching client:
@@ -233,8 +245,8 @@ Inject the generated interface normally:
 ```java
 package com.example.inventory;
 
-import com.smbtech.contracts.warehouseinventorycatalog.client.DefaultApi;
-import com.smbtech.contracts.warehouseinventorycatalog.model.InventoryItemResponse;
+import com.smbtech.contracts.warehouseinventorycatalog.v1.client.httpinterface.DefaultApi;
+import com.smbtech.contracts.warehouseinventorycatalog.v1.model.InventoryItemResponse;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -251,6 +263,52 @@ final class WarehouseInventoryGateway {
     }
 }
 ```
+
+### Spring Cloud OpenFeign
+
+The client artifact deliberately does not expose OpenFeign transitively. Add
+the compatible Spring Cloud train and starter in the consuming application:
+
+```groovy
+dependencies {
+    implementation platform('org.springframework.cloud:spring-cloud-dependencies:2025.1.2')
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    implementation 'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0'
+}
+```
+
+Enable scanning for the generated OpenFeign package:
+
+```java
+package com.example.inventory;
+
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication
+@EnableFeignClients(
+        basePackages =
+                "com.smbtech.contracts.warehouseinventorycatalog.v1.client.openfeign")
+class InventoryApplication {}
+```
+
+The OpenFeign `DefaultApi` has the same operations and model types as the HTTP
+Interface variant and carries a direct `@FeignClient` annotation. Configure its
+URL under the generated client name:
+
+```yaml
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          warehouse-inventory-catalog:
+            url: http://localhost:8080
+```
+
+Application code can then inject
+`com.smbtech.contracts.warehouseinventorycatalog.v1.client.openfeign.DefaultApi`.
+No generated endpoint URL or OpenFeign runtime is stored in the client JAR.
 
 ## 8. Run The Compatibility Gate
 
@@ -272,8 +330,8 @@ contract.
 ## Expected Result
 
 You now have one source contract, three versioned Maven artifacts, a delegate
-boundary for the provider, an injectable HTTP interface for consumers, and a
-repeatable compatibility gate.
+boundary for the provider, matching HTTP Interface and OpenFeign contracts for
+consumers, and a repeatable compatibility gate.
 
 Continue with the [OpenAPI Portal](index.md) for publication, versioning,
 contract testing, mocks, scaffolding, and troubleshooting. The complete current

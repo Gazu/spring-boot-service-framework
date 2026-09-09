@@ -53,7 +53,7 @@ Use a generated server API JAR instead of a document:
 
 ```bash
 ./gradlew :spring-boot-service-framework-project-generator:generateHexagonalProject \
-  -PapiJar=/path/to/warehouse-inventory-catalog-server-api-1.0.0.jar \
+  -PapiJar=/path/to/warehouse-inventory-catalog-jdk21-api-1.0.0.jar \
   -Poutput=build/generated/warehouse-inventory-service \
   -PcontractRepository=https://artifactory.example.com/maven-releases
 ```
@@ -77,9 +77,9 @@ from the root repository.
 | `frameworkVersion` | `--framework-version` | No | Framework version embedded in the project-generator artifact. |
 | `springBootVersion` | `--spring-boot-version` | No | Spring Boot version embedded in the project-generator artifact. |
 | `contractGroup` | `--contract-group` | No | Source metadata, or `com.smbtech.contracts` for document input. |
-| `contractArtifact` | `--contract-artifact` | No | Source metadata, or `<normalized-contract-id>-server-api` for document input. |
-| `contractVersion` | `--contract-version` | No | Source metadata or `info.version`. |
-| `contractApiPackage` | `--contract-api-package` | No | `com.smbtech.contracts.<contract-id-without-hyphens>.api` for document input. Not allowed for JAR input. |
+| `contractArtifact` | `--contract-artifact` | No | Source metadata, or `<normalized-contract-id>-jdk21-api` for document input. |
+| `contractVersion` | `--contract-version` | No | Optional assertion; it must match source metadata or `info.version`. |
+| `contractApiPackage` | `--contract-api-package` | No | `com.smbtech.contracts.<contract-id-without-hyphens>.v<major>.api` for document input. Not allowed for JAR input. |
 | `contractRepository` | `--contract-repository` | No | No additional repository. Paths become `file:` repository URIs. |
 | `force` | `--force` | No | `false`; when `true`, replaces a non-empty disposable target. |
 
@@ -300,9 +300,9 @@ The repository `compatibilityCheck` lifecycle includes this scaffolding check.
 |---|---|---|
 | `Provide exactly one of ... spec ... apiJar` | Both contract inputs or neither were provided. | Select one source. |
 | `Contract source does not exist` | The document or JAR path cannot be resolved. | Use an existing file and check path resolution from the repository root. |
-| `embedded contract metadata is missing` | The JAR was not produced as a framework server API artifact. | Use the generated `server-api` JAR, not models or client JARs. |
+| `embedded contract metadata is missing` | The JAR was not produced as a framework API artifact. | Use the generated `-jdk21-api` JAR, not model or client JARs. |
 | `contains no ApiDelegate interfaces` | The JAR has no generated server delegate contract. | Regenerate the server API from a contract with operations. |
-| `Could not find ... server-api` | The generated project cannot resolve its contract dependency. | Publish locally or configure `contractRepository` with the correct coordinate. |
+| `Could not find ... -jdk21-api` | The generated project cannot resolve its contract dependency. | Publish locally or configure `contractRepository` with the correct coordinate. |
 | `Output directory is not empty` | The target contains files and replacement is disabled. | Choose an empty target; use force only for a disposable scaffold. |
 | `contractApiPackage cannot override` | A JAR source already fixes its compiled package. | Remove the override or generate from the source document. |
 | ArchUnit test failure | Application code crossed a generated dependency boundary. | Move the dependency behind the appropriate port or adapter. |

@@ -58,6 +58,7 @@ source, but should not duplicate long explanations.
 | OpenAPI code generation capability overview | `docs/openapi-codegen.md` |
 | OpenAPI contract identity, baselines, and SemVer policy | `docs/openapi/versioning.md` |
 | OpenAPI contract testing | `docs/openapi-contract-testing.md` |
+| OpenAPI contract pilot deployment and recovery | `docs/pilot/README.md` |
 | OpenAPI contract testing module boundary | `spring-boot-service-framework-openapi-contract-testing/README.md` |
 | OpenAPI Gradle build-logic boundary | `build-logic/openapi-generator-plugin/README.md` |
 | Java and Spring Boot Gradle conventions | `build-logic/conventions/README.md` |

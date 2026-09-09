@@ -18,6 +18,7 @@ framework.
 | Implement a generated server API | [Artifact Generation](generation.md) | Understand the delegate and controller boundary before implementing it. |
 | Consume a generated HTTP client | [Artifact Generation](generation.md) | Understand the HTTP interface and model dependencies before consuming it. |
 | Publish artifacts remotely | [Artifact Publishing](publishing.md) | Configure a private Maven registry without committing credentials. |
+| Run a protected publication pilot | [OpenAPI Contract Pilot](../pilot/README.md) | Stage one contract, publish it independently, and verify the remote payload. |
 | Define or review contract versions | [Contract Versioning](versioning.md) | Apply immutable baselines and the framework SemVer policy. |
 | Run a focused breaking-change procedure | [Check OpenAPI Breaking Changes](../guides/check-openapi-breaking-changes.md) | Update a contract and review its compatibility result. |
 | Test a Spring MVC implementation | [OpenAPI Contract Testing](../openapi-contract-testing.md) | Verify requests and responses against declared operations. |
@@ -34,7 +35,7 @@ framework.
 | Service implementer | Follow [Generate OpenAPI Contract Artifacts](../guides/openapi-generated-artifacts.md), then use [Project Scaffolding](scaffolding.md) when starting a new service. |
 | Client developer | Review [Artifact Generation](generation.md) and the [REST Client Guide](../rest-client.md). |
 | Test engineer | Use [OpenAPI Contract Testing](../openapi-contract-testing.md) and [Mock Core And Starter](../mock.md). |
-| Build or platform maintainer | Read the [Current Behavior Inventory](../openapi-behavior-inventory.md), [Documentation Architecture](documentation-architecture.md), and [OpenAPI Generator ADR](../adr/0001-openapi-generator-engine.md). |
+| Build or platform maintainer | Read the [Current Behavior Inventory](../openapi-behavior-inventory.md), [Documentation Architecture](documentation-architecture.md), and [OpenAPI artifact contract ADR](../adr/0002-openapi-artifact-contract.md). |
 
 ## Reference
 
@@ -63,6 +64,7 @@ framework.
 | Executable Spring MVC contract tests | [OpenAPI Contract Testing Module](../../spring-boot-service-framework-openapi-contract-testing/README.md) |
 | One-time Spring Boot project scaffolding implementation | [Project Generator](../../spring-boot-service-framework-project-generator/README.md) |
 | Source-generation engine decision | [ADR 0001](../adr/0001-openapi-generator-engine.md) |
+| Artifact identity and dependency contract | [ADR 0002](../adr/0002-openapi-artifact-contract.md) |
 
 ## Repository Examples
 

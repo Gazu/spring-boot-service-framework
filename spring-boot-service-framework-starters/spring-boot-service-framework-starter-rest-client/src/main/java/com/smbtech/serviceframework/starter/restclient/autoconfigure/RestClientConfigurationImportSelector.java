@@ -9,6 +9,7 @@ final class RestClientConfigurationImportSelector implements ImportSelector {
         "com.smbtech.serviceframework.starter.restclient.autoconfigure.DynamicRestClientRegistrationConfiguration",
         "com.smbtech.serviceframework.starter.restclient.adapter.out.apache.ApacheHttpClientConfiguration",
         "com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.KeyStoreRuntimeConfiguration",
+        "com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore.SigningJwkRuntimeConfiguration",
         "com.smbtech.serviceframework.starter.restclient.adapter.out.spring.RestClientRuntimeConfiguration"
     };
 

@@ -20,6 +20,7 @@ examples, or maintain the repository.
 | Review pre-1.0 nullability and binary compatibility policy | [Pre-1.0 API Policy](pre-1.0-api-policy.md) |
 | Write or review module READMEs | [Module README Convention](module-readme-convention.md) |
 | Run the private quality-platform pilot | [Quality Pipeline](quality-pipeline.md) |
+| Stage or publish an OpenAPI contract pilot | [OpenAPI Contract Pilot](pilot/README.md) |
 | Review the public surface of every artifact | [Public API Inventory](public-api-inventory.md) |
 | Upgrade across a pre-1.0 source, binary, dependency, or configuration change | [Pre-1.0 Migration Guide](guides/migrate-public-names-and-properties.md) |
 | Contribute code or documentation | [Contributing](../CONTRIBUTING.md) |
@@ -38,6 +39,7 @@ examples, or maintain the repository.
 | OpenAPI/Swagger code generation for models, server API, and REST clients | [OpenAPI Portal](openapi/index.md) | [OpenAPI Code Generation](openapi-codegen.md), [Current behavior inventory](openapi-behavior-inventory.md), [REST Client Starter Guide](rest-client.md) |
 | OpenAPI Gradle plugin DSL, defaults, validation, and tasks | [OpenAPI Gradle Plugin Reference](openapi/plugin-reference.md) | [Getting Started](openapi/getting-started.md), [Artifact Generation](openapi/generation.md) |
 | OpenAPI local and remote Maven publication | [OpenAPI Artifact Publishing](openapi/publishing.md) | [Gradle Plugin Reference](openapi/plugin-reference.md), [Contract Versioning](openapi/versioning.md) |
+| OpenAPI pilot deployment and immutable recovery | [OpenAPI Contract Pilot](pilot/README.md) | [Contract validation](pilot/contract-validation.md), [Recovery](pilot/rollback-procedure.md) |
 | OpenAPI generated artifact contents and dependency boundaries | [OpenAPI Artifact Generation](openapi/generation.md) | [Getting Started](openapi/getting-started.md), [Current behavior inventory](openapi-behavior-inventory.md) |
 | OpenAPI contract identity, baselines, and SemVer policy | [OpenAPI Contract Versioning](openapi/versioning.md) | [Breaking change recipe](guides/check-openapi-breaking-changes.md), [OpenAPI Code Generation](openapi-codegen.md), [Compatibility](compatibility.md) |
 | OpenAPI configuration, document, coordinate, and compatibility validation | [OpenAPI Validation](openapi/validation.md) | [Gradle Plugin Reference](openapi/plugin-reference.md), [Contract Versioning](openapi/versioning.md) |

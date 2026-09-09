@@ -1,6 +1,5 @@
 package com.smbtech.serviceframework.starter.restclient.adapter.out.authentication.keystore;
 
-import com.nimbusds.jose.jwk.JWK;
 import com.smbtech.serviceframework.httpclient.domain.HttpClientDefinition;
 import com.smbtech.serviceframework.httpclient.port.out.KeyStoreDefinitionSource;
 import java.util.function.BiFunction;
@@ -15,20 +14,20 @@ import org.springframework.core.io.ResourceLoader;
 class KeyStoreRuntimeConfiguration {
 
     @Bean
-    KeyStoreRuntime restClientKeyStoreRuntime(
+    KeyStoreManager restClientKeyStoreManager(
             KeyStoreDefinitionSource definitionSource, ResourceLoader resourceLoader) {
-        return new KeyStoreRuntime(new KeyStoreManager(definitionSource, resourceLoader));
+        return new KeyStoreManager(definitionSource, resourceLoader);
+    }
+
+    @Bean
+    KeyStoreRuntime restClientKeyStoreRuntime(KeyStoreManager keyStoreManager) {
+        return new KeyStoreRuntime(keyStoreManager);
     }
 
     @Bean("restClientSslContextBuilder")
     BiFunction<HttpClientDefinition, SSLContext, SSLContext> restClientSslContextBuilder(
             KeyStoreRuntime runtime) {
         return runtime::buildSslContext;
-    }
-
-    @Bean("restClientSigningJwkResolver")
-    Function<String, JWK> restClientSigningJwkResolver(KeyStoreRuntime runtime) {
-        return runtime::resolveSigningJwk;
     }
 
     @Bean("restClientKeyStoreContentValidator")

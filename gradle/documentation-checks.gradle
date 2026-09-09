@@ -474,6 +474,7 @@ tasks.register('validateOpenApiBehaviorInventory') {
     def extensionSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiExtension.java')
     def specSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiSpec.java')
     def artifactKindSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactKind.java')
+    def artifactContractSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactContract.java')
     def generatorSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGenerateTask.java')
     def generationConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
     def metadataSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiMetadataTask.java')
@@ -486,6 +487,7 @@ tasks.register('validateOpenApiBehaviorInventory') {
             extensionSource,
             specSource,
             artifactKindSource,
+            artifactContractSource,
             generatorSource,
             generationConfigurerSource,
             metadataSource,
@@ -537,8 +539,8 @@ tasks.register('validateOpenApiBehaviorInventory') {
             if (!artifactKindSource.text.contains("${enumName}(\"${suffix}\")")) {
                 failures << "OpenAPI artifact kind implementation must contain ${enumName}=${suffix}"
             }
-            if (!inventory.contains("-`${suffix}`") && !inventory.contains("-${suffix}")) {
-                failures << "OpenAPI behavior inventory must document artifact suffix ${suffix}"
+            if (!inventory.contains("`${suffix}`")) {
+                failures << "OpenAPI behavior inventory must document internal artifact kind ${suffix}"
             }
         }
 
@@ -578,7 +580,8 @@ tasks.register('validateOpenApiBehaviorInventory') {
                 openApiGeneratorVersion: 'OpenAPI Generator',
                 openApiDiffVersion     : 'OpenAPI Diff',
                 jackson3Version        : 'Jackson build parser',
-                handlebarsVersion      : 'Handlebars'
+                handlebarsVersion      : 'Handlebars',
+                springCloudOpenFeignVersion: 'Spring Cloud OpenFeign compile input'
         ].each { propertyName, componentName ->
             def value = versions.getProperty(propertyName)
             if (value == null || value.isBlank()) {
@@ -708,7 +711,7 @@ tasks.register('validateOpenApiPluginReference') {
                 '| `smbtechOpenApi.publishModels` | `Property<Boolean>` | `true` |',
                 '| `smbtechOpenApi.publishServerApi` | `Property<Boolean>` | `true` |',
                 '| `smbtechOpenApi.publishClient` | `Property<Boolean>` | `true` |',
-                '| `smbtechOpenApi.specs.<name>.input` | `RegularFileProperty` | Required |',
+                '| `smbtechOpenApi.specs.<name>.input` | `RegularFileProperty` | Required for explicit entries |',
                 '| `smbtechOpenApi.specs.<name>.artifactBaseName` | `Property<String>` | Normalized `info.title` |',
                 '| `smbtechOpenApi.specs.<name>.version` | `Property<String>` | `info.version` |',
                 '| `smbtechOpenApi.specs.<name>.publishModels` | `Property<Boolean>` | Global `publishModels` |',
@@ -810,6 +813,7 @@ tasks.register('validateOpenApiPublishingDocumentation') {
     def generationFile = file('docs/openapi/generation.md')
     def gettingStartedFile = file('docs/openapi/getting-started.md')
     def artifactGuide = file('docs/guides/openapi-generated-artifacts.md')
+    def contractPublicationWorkflow = file('.github/workflows/publish-openapi-contracts.yml')
 
     inputs.files(
             publishingFile,
@@ -825,7 +829,8 @@ tasks.register('validateOpenApiPublishingDocumentation') {
             behaviorInventory,
             generationFile,
             gettingStartedFile,
-            artifactGuide
+            artifactGuide,
+            contractPublicationWorkflow
     )
 
     doLast {
@@ -851,11 +856,14 @@ tasks.register('validateOpenApiPublishingDocumentation') {
         }
 
         [
-                '<group>:<name>-models:<version>',
-                '<group>:<name>-server-api:<version>',
-                '<group>:<name>-client:<version>',
+                '<group>:<name>-jdk21-model:<version>',
+                '<group>:<name>-jdk21-api:<version>',
+                '<group>:<name>-jdk21-client:<version>',
                 'smbtechOpenApiPublishToLocalRepository',
                 'smbtechOpenApiPublish',
+                'smbtechOpenApiPublishContractToLocalRepository',
+                'smbtechOpenApiPublishContract',
+                'openApiContract',
                 'smbtechOpenApiCompatibilityCheck',
                 'smbtechOpenApi.repositoryDirectory',
                 'smbtechOpenApi.publicationRepositoryUrl',
@@ -867,10 +875,11 @@ tasks.register('validateOpenApiPublishingDocumentation') {
                 'openApiRepositoryPassword',
                 'OPENAPI_REPOSITORY_PASSWORD',
                 'OPENAPI_REPOSITORY_URL',
-                'warehouse-inventory-catalog-models-1.0.0.jar',
-                'warehouse-inventory-catalog-models-1.0.0-sources.jar',
-                'warehouse-inventory-catalog-models-1.0.0.pom',
-                'warehouse-inventory-catalog-models-1.0.0.module',
+                'openApiRepositoryUrl',
+                'warehouse-inventory-catalog-jdk21-model-1.0.0.jar',
+                'warehouse-inventory-catalog-jdk21-model-1.0.0-sources.jar',
+                'warehouse-inventory-catalog-jdk21-model-1.0.0.pom',
+                'warehouse-inventory-catalog-jdk21-model-1.0.0.module',
                 '`.sha256`',
                 '~/.gradle/gradle.properties',
                 'file:///absolute/path/to/contract-project/build/repository/openapi',
@@ -885,6 +894,9 @@ tasks.register('validateOpenApiPublishingDocumentation') {
                 [pluginSource, 'apply("maven-publish")'],
                 [generationConfigurerSource, 'PUBLISH_LOCAL_TASK_NAME = "smbtechOpenApiPublishToLocalRepository"'],
                 [generationConfigurerSource, 'PUBLISH_REMOTE_TASK_NAME = "smbtechOpenApiPublish"'],
+                [generationConfigurerSource, '"smbtechOpenApiPublishContractToLocalRepository"'],
+                [generationConfigurerSource, 'PUBLISH_CONTRACT_REMOTE_TASK_NAME = "smbtechOpenApiPublishContract"'],
+                [generationConfigurerSource, 'CONTRACT_SELECTOR_PROPERTY = "openApiContract"'],
                 [generationConfigurerSource, 'repository.setName("smbtechOpenApiLocal")'],
                 [generationConfigurerSource, 'repository.setName("smbtechOpenApiRemote")'],
                 [generationConfigurerSource, 'gradleProperty("openApiRepositoryUsername")'],
@@ -908,7 +920,10 @@ tasks.register('validateOpenApiPublishingDocumentation') {
                 'smbtechOpenApi.publicationRepositoryUrl',
                 'smbtechOpenApi.repositoryDirectory',
                 'smbtechOpenApiPublish',
-                'smbtechOpenApiPublishToLocalRepository'
+                'smbtechOpenApiPublishToLocalRepository',
+                'smbtechOpenApiPublishContract',
+                'smbtechOpenApiPublishContractToLocalRepository',
+                'selector-property=openApiContract'
         ].each { marker ->
             if (!compatibilityContract.text.contains(marker)) {
                 failures << "OpenAPI publication compatibility contract must protect ${marker}"
@@ -954,6 +969,33 @@ tasks.register('validateOpenApiPublishingDocumentation') {
             failures << 'openapi-codegen.md must delegate publication commands to publishing.md'
         }
 
+        def workflow = contractPublicationWorkflow.text
+        [
+                'name: Publish OpenAPI Contracts',
+                'workflow_dispatch:',
+                'branches:',
+                '- main',
+                'git diff --name-only --diff-filter=ACMRT',
+                'contractTestingCompatibilityCheck',
+                'smbtechOpenApiCompatibilityCheck',
+                'smbtechOpenApiPublishContract',
+                '"-PopenApiContract=${CONTRACT_PATH}"',
+                'OPENAPI_REPOSITORY_URL: ${{ secrets.PRIVATE_MAVEN_URL }}',
+                'OPENAPI_REPOSITORY_USERNAME: ${{ secrets.PRIVATE_MAVEN_USERNAME }}',
+                'OPENAPI_REPOSITORY_PASSWORD: ${{ secrets.PRIVATE_MAVEN_PASSWORD }}',
+                'fail-fast: false',
+                'cancel-in-progress: false'
+        ].each { marker ->
+            if (!workflow.contains(marker)) {
+                failures << "OpenAPI contract publication workflow must contain ${marker}"
+            }
+        }
+        (workflow =~ /(?m)^\s+uses:\s+(\S+)/).each { match ->
+            if (!(match[1] ==~ /.+@[0-9a-f]{40}/)) {
+                failures << "OpenAPI contract publication action must be pinned by commit SHA: ${match[1]}"
+            }
+        }
+
         if (!failures.isEmpty()) {
             throw new GradleException(
                     "OpenAPI publishing documentation issues found:\n" + failures.join('\n'))
@@ -970,6 +1012,7 @@ tasks.register('validateOpenApiVersioningDocumentation') {
     def contractReaderSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiContractReader.java')
     def compatibilitySupportSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilitySupport.java')
     def breakingTaskSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBreakingChangeTask.java')
+    def validateSpecsSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiValidateSpecsTask.java')
     def compatibilityConfigurerSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiCompatibilityConfigurer.java')
     def extensionSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiExtension.java')
     def rootBuild = file('build.gradle')
@@ -989,6 +1032,7 @@ tasks.register('validateOpenApiVersioningDocumentation') {
             contractReaderSource,
             compatibilitySupportSource,
             breakingTaskSource,
+            validateSpecsSource,
             compatibilityConfigurerSource,
             extensionSource,
             rootBuild,
@@ -1009,7 +1053,7 @@ tasks.register('validateOpenApiVersioningDocumentation') {
 
         [
                 'Version Source',
-                'Effective Artifact Version',
+                'Effective Artifact And Package Version',
                 'Contract Identity',
                 'Baseline Layout',
                 'Exact Baseline',
@@ -1053,8 +1097,8 @@ tasks.register('validateOpenApiVersioningDocumentation') {
                 '0.4.0',
                 '1.0.0',
                 'Pre-release and build suffixes',
-                'does not reject that divergence',
-                'overrides are not used for baseline\n  identity or SemVer comparison'
+                'a divergent value is\ninvalid',
+                'major component also selects the generated Java namespace'
         ].each { marker ->
             if (!reference.contains(marker)) {
                 failures << "OpenAPI versioning reference must document ${marker}"
@@ -1077,6 +1121,7 @@ tasks.register('validateOpenApiVersioningDocumentation') {
                 [breakingTaskSource, 'currentVersion.isMajorIncreaseFrom(previousVersion)'],
                 [breakingTaskSource, 'currentVersion.isMinorOrMajorIncreaseFrom(previousVersion)'],
                 [breakingTaskSource, 'getFailOnBreakingChanges().get()'],
+                [validateSpecsSource, 'must match OpenAPI info.version'],
                 [extensionSource, 'dir("src/main/openapi-baselines")'],
                 [extensionSource, 'getRequireBaseline()'],
                 [extensionSource, 'getFailOnBreakingChanges()'],
@@ -1151,6 +1196,7 @@ tasks.register('validateOpenApiValidationDocumentation') {
     def validationFile = file('docs/openapi/validation.md')
     def compatibilityContract = file('gradle/compatibility/contracts/openApiGradlePlugin.txt')
     def pluginSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGeneratorPlugin.java')
+    def discoverySource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiSpecDiscovery.java')
     def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
     def validateSpecsSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiValidateSpecsTask.java')
     def contractReaderSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiContractReader.java')
@@ -1169,6 +1215,7 @@ tasks.register('validateOpenApiValidationDocumentation') {
             validationFile,
             compatibilityContract,
             pluginSource,
+            discoverySource,
             buildLogicCheckSource,
             validateSpecsSource,
             contractReaderSource,
@@ -1233,7 +1280,7 @@ tasks.register('validateOpenApiValidationDocumentation') {
                 'consumer-test.txt',
                 'mock-contracts.properties',
                 'OpenAPI spec validation issues found:',
-                'does not\ndirectly aggregate the configuration and spec validation tasks',
+                'directly depends on configuration and spec validation',
                 'permits an empty specification set',
                 'does not enforce a complete Maven group naming grammar',
                 'OpenAPI Contract Testing',
@@ -1248,10 +1295,10 @@ tasks.register('validateOpenApiValidationDocumentation') {
         [
                 [pluginSource, 'BUILD_LOGIC_CHECK_TASK_NAME = "smbtechOpenApiBuildLogicCheck"'],
                 [pluginSource, 'VALIDATE_SPECS_TASK_NAME = "smbtechOpenApiValidateSpecs"'],
-                [pluginSource, '"**/src/main/openapi/*.yaml"'],
-                [pluginSource, '"**/openapi/*.json"'],
-                [pluginSource, '"**/swagger/*.yml"'],
-                [pluginSource, 'patterns.exclude'],
+                [discoverySource, '"**/src/main/openapi/*.yaml"'],
+                [discoverySource, '"**/openapi/*.json"'],
+                [discoverySource, '"**/swagger/*.yml"'],
+                [discoverySource, 'patterns.exclude'],
                 [generationConfigurerSource, '.named("check")'],
                 [compatibilityConfigurerSource, '.named("check")'],
                 [buildLogicCheckSource, 'must enable at least one generated artifact'],
@@ -1261,6 +1308,7 @@ tasks.register('validateOpenApiValidationDocumentation') {
                 [validateSpecsSource, 'FRAMEWORK_ARTIFACT_NAMES'],
                 [validateSpecsSource, 'generated coordinate '],
                 [validateSpecsSource, 'duplicates '],
+                [validateSpecsSource, 'generated artifact file '],
                 [validateSpecsSource, 'generated artifact collides with '],
                 [validateSpecsSource, 'sorted(Comparator.comparing(File::getAbsolutePath))'],
                 [contractReaderSource, 'openapi must declare a supported 3.0.x or 3.1.x version'],
@@ -1269,7 +1317,9 @@ tasks.register('validateOpenApiValidationDocumentation') {
                 [contractReaderSource, 'paths must contain at least one operation'],
                 [contractReaderSource, 'operationId is required'],
                 [contractReaderSource, 'must be unique'],
-                [generationConfigurerSource, 'task.dependsOn(\n                                            SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME)'],
+                [contractReaderSource, 'normalize to generated API family'],
+                [generationConfigurerSource, 'SmbtechOpenApiGeneratorPlugin\n                                                    .BUILD_LOGIC_CHECK_TASK_NAME'],
+                [generationConfigurerSource, 'SmbtechOpenApiGeneratorPlugin.VALIDATE_SPECS_TASK_NAME'],
                 [compatibilityConfigurerSource, 'COMPATIBILITY_TASK_NAME = "smbtechOpenApiCompatibilityCheck"'],
                 [compatibilityConfigurerSource, 'task.dependsOn(\n                                            breakingChange,\n                                            reproducibility,\n                                            migration,\n                                            consumerTest,\n                                            mockContract)']
         ].each { expectation ->
@@ -1296,9 +1346,9 @@ tasks.register('validateOpenApiValidationDocumentation') {
             }
         }
 
-        if (compatibilityConfigurerSource.text.contains('BUILD_LOGIC_CHECK_TASK_NAME')
-                || compatibilityConfigurerSource.text.contains('VALIDATE_SPECS_TASK_NAME')) {
-            failures << 'compatibility aggregate must remain distinct from configuration and spec validation'
+        if (!compatibilityConfigurerSource.text.contains('BUILD_LOGIC_CHECK_TASK_NAME')
+                || !compatibilityConfigurerSource.text.contains('VALIDATE_SPECS_TASK_NAME')) {
+            failures << 'compatibility aggregate must depend on configuration and spec validation'
         }
         if (!architectureFile.text.contains(
                 '| Configuration, document, coordinate, and compatibility validation | `docs/openapi/validation.md` | Same validation reference |')) {
@@ -1449,7 +1499,7 @@ tasks.register('validateOpenApiScaffoldingDocumentation') {
                 [descriptorLoaderSource, '"META-INF/smbtech/openapi/contract.properties"'],
                 [descriptorLoaderSource, '"META-INF/smbtech/openapi/contract.yaml"'],
                 [descriptorLoaderSource, '"com.smbtech.contracts"'],
-                [descriptorLoaderSource, 'id + "-server-api"'],
+                [descriptorLoaderSource, 'id + "-jdk"'],
                 [descriptorLoaderSource, 'contractApiPackage cannot override classes embedded in a server API JAR'],
                 [contributorSource, 'src/main/openapi/contract.yaml'],
                 [contributorSource, 'HexagonalArchitectureTest.java'],
@@ -1884,7 +1934,7 @@ tasks.register('validateOpenApiGettingStarted') {
                 '4. Generate The Artifacts',
                 '5. Publish Locally',
                 '6. Implement The Server API',
-                '7. Consume The HTTP Client',
+                '7. Consume The Client Artifact',
                 '8. Run The Compatibility Gate',
                 'Expected Result'
         ].each { section ->
@@ -1901,13 +1951,17 @@ tasks.register('validateOpenApiGettingStarted') {
                 "version: '1.0.0'",
                 'operationId: getWarehouseInventoryItem',
                 "register('warehouseInventoryCatalog')",
-                'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0',
-                'com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0',
-                'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-model:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-api:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0',
                 'build/libs/smbtech-openapi',
                 'build/repository/openapi',
                 'DefaultApiDelegate',
                 '@HttpApiClient(\"warehouse-inventory-catalog\")',
+                '@FeignClient',
+                'spring-cloud-starter-openfeign',
+                '.client.httpinterface',
+                '.client.openfeign',
                 'authentication-type: NONE',
                 'src/main/openapi-baselines/warehouse-inventory-catalog/1.0.0.yaml'
         ].each { marker ->
@@ -1970,6 +2024,7 @@ tasks.register('validateOpenApiGenerationDocumentation') {
     def architectureFile = file('docs/openapi/documentation-architecture.md')
     def codegenFile = file('docs/openapi-codegen.md')
     def artifactKindSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactKind.java')
+    def artifactContractSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiArtifactContract.java')
     def generationSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/OpenApiGenerationConfigurer.java')
     def generateTaskSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiGenerateTask.java')
     def buildLogicCheckSource = file('build-logic/openapi-generator-plugin/src/main/java/com/smbtech/serviceframework/gradle/openapi/SmbtechOpenApiBuildLogicCheckTask.java')
@@ -1981,6 +2036,7 @@ tasks.register('validateOpenApiGenerationDocumentation') {
             architectureFile,
             codegenFile,
             artifactKindSource,
+            artifactContractSource,
             generationSource,
             generateTaskSource,
             buildLogicCheckSource,
@@ -1995,8 +2051,8 @@ tasks.register('validateOpenApiGenerationDocumentation') {
                 'Generation Pipeline',
                 'Artifact Set',
                 'Package Layout',
-                'Models Artifact',
-                'Server API Artifact',
+                'Model Artifact',
+                'API Artifact',
                 'Client Artifact',
                 'Artifact Dependency Rules',
                 'Generated Outputs',
@@ -2011,16 +2067,18 @@ tasks.register('validateOpenApiGenerationDocumentation') {
         }
 
         [
-                'com.smbtech.contracts:warehouse-inventory-catalog-models:1.0.0',
-                'com.smbtech.contracts:warehouse-inventory-catalog-server-api:1.0.0',
-                'com.smbtech.contracts:warehouse-inventory-catalog-client:1.0.0',
-                'com.smbtech.contracts.warehouseinventorycatalog.model',
-                'com.smbtech.contracts.warehouseinventorycatalog.api',
-                'com.smbtech.contracts.warehouseinventorycatalog.client',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-model:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-api:1.0.0',
+                'com.smbtech.contracts:warehouse-inventory-catalog-jdk21-client:1.0.0',
+                'com.smbtech.contracts.warehouseinventorycatalog.v1.model',
+                'com.smbtech.contracts.warehouseinventorycatalog.v1.api',
+                'com.smbtech.contracts.warehouseinventorycatalog.v1.client.httpinterface',
+                'com.smbtech.contracts.warehouseinventorycatalog.v1.client.openfeign',
                 'DefaultApiDelegate',
                 'DefaultApiController',
                 'ApiUtil',
                 '@HttpApiClient(\"warehouse-inventory-catalog\")',
+                '@FeignClient(',
                 'build/generated/smbtech-openapi/<spec-name>/<kind>/src/main/java',
                 'build/classes/smbtech-openapi/<spec-name>/<kind>',
                 'build/generated/smbtech-openapi-metadata/<spec-name>/<kind>',
@@ -2042,15 +2100,15 @@ tasks.register('validateOpenApiGenerationDocumentation') {
         }
 
         [
-                MODELS   : 'models',
-                SERVER_API: 'server-api',
-                CLIENT   : 'client'
-        ].each { enumName, suffix ->
-            if (!artifactKindSource.text.contains("${enumName}(\"${suffix}\")")) {
-                failures << "OpenAPI artifact kind implementation must contain ${enumName}=${suffix}"
+                MODELS    : [internal: 'models', external: 'model'],
+                SERVER_API: [internal: 'server-api', external: 'api'],
+                CLIENT    : [internal: 'client', external: 'client']
+        ].each { enumName, kind ->
+            if (!artifactKindSource.text.contains("${enumName}(\"${kind.internal}\")")) {
+                failures << "OpenAPI artifact kind implementation must contain ${enumName}=${kind.internal}"
             }
-            if (!reference.contains("-${suffix}:1.0.0")) {
-                failures << "OpenAPI generation reference must document ${suffix} coordinates"
+            if (!reference.contains("-jdk21-${kind.external}:1.0.0")) {
+                failures << "OpenAPI generation reference must document ${kind.external} coordinates"
             }
         }
 
@@ -2075,6 +2133,7 @@ tasks.register('validateOpenApiGenerationDocumentation') {
                 'org.hibernate.validator:hibernate-validator',
                 'org.springframework:spring-web',
                 'jakarta.servlet:jakarta.servlet-api',
+                'org.springframework.cloud:spring-cloud-openfeign-core',
                 'spring-boot-service-framework-starter-rest-client'
         ].each { dependency ->
             if (!generationSource.text.contains(dependency)) {
@@ -2085,7 +2144,8 @@ tasks.register('validateOpenApiGenerationDocumentation') {
         [
                 'setGeneratorName("spring")',
                 'setLibrary("spring-boot")',
-                'setLibrary("spring-http-interface")',
+                'HTTP_INTERFACE_LIBRARY = "spring-http-interface"',
+                'OPENFEIGN_LIBRARY = "spring-cloud"',
                 'addAdditionalProperty("delegatePattern", true)',
                 'addAdditionalProperty("interfaceOnly", true)',
                 'addAdditionalProperty("useResponseEntity", true)'
@@ -2095,7 +2155,8 @@ tasks.register('validateOpenApiGenerationDocumentation') {
             }
         }
 
-        if (!generationSource.text.contains('getRelease().set(21)')) {
+        if (!generationSource.text.contains('OpenApiArtifactContract.JAVA_RELEASE')
+                || !artifactContractSource.text.contains('JAVA_RELEASE = 21')) {
             failures << 'OpenAPI generated sources must remain compiled with Java 21'
         }
         if (!buildLogicCheckSource.text.contains(
@@ -2825,7 +2886,11 @@ def openApiDocumentationCompatibilityModel = [
                 'docs/openapi/troubleshooting.md',
                 'docs/openapi-behavior-inventory.md',
                 'docs/openapi-codegen.md',
-                'docs/openapi-contract-testing.md'
+                'docs/openapi-contract-testing.md',
+                'docs/pilot/README.md',
+                'docs/pilot/contract-validation.md',
+                'docs/pilot/example-pilot-process.md',
+                'docs/pilot/rollback-procedure.md'
         ],
         tasks      : [
                 'generateOpenApiDocumentationCompatibilityContract',
@@ -2842,9 +2907,11 @@ def openApiDocumentationCompatibilityModel = [
                 'validateOpenApiPluginReference',
                 'validateOpenApiPortal',
                 'validateOpenApiPublishingDocumentation',
+                'validateOpenApiPilotDeployment',
                 'validateOpenApiScaffoldingDocumentation',
                 'validateOpenApiValidationDocumentation',
-                'validateOpenApiVersioningDocumentation'
+                'validateOpenApiVersioningDocumentation',
+                'pilotDeploymentCompatibilityCheck'
         ],
         evidence   : [
                 'build/reports/smbtech-openapi/documentation-check.txt'
@@ -2963,6 +3030,7 @@ tasks.register('documentationCheck') {
             tasks.named('validateDocumentationCatalog'),
             tasks.named('validateChangelogAndReleaseDocs'),
             tasks.named('validateDocumentationVersions'),
+            tasks.named('validateOpenApiPilotDeployment'),
             tasks.named('openApiDocumentationCheck'),
             tasks.named('validateModuleReadmes'),
             tasks.named('validateExampleSecrets'),

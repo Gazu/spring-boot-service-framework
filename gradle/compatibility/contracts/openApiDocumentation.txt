@@ -17,11 +17,16 @@ documents:
 - docs/openapi/troubleshooting.md
 - docs/openapi/validation.md
 - docs/openapi/versioning.md
+- docs/pilot/README.md
+- docs/pilot/contract-validation.md
+- docs/pilot/example-pilot-process.md
+- docs/pilot/rollback-procedure.md
 
 tasks:
 - generateOpenApiDocumentationCompatibilityContract
 - openApiDocumentationCheck
 - openApiDocumentationCompatibilityCheck
+- pilotDeploymentCompatibilityCheck
 - validateOpenApiBehaviorInventory
 - validateOpenApiDocumentationArchitecture
 - validateOpenApiDocumentationCommands
@@ -30,6 +35,7 @@ tasks:
 - validateOpenApiExamplesAndTroubleshooting
 - validateOpenApiGenerationDocumentation
 - validateOpenApiGettingStarted
+- validateOpenApiPilotDeployment
 - validateOpenApiPluginReference
 - validateOpenApiPortal
 - validateOpenApiPublishingDocumentation

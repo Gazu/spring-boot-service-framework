@@ -50,7 +50,7 @@ public final class ProjectGeneratorCli {
                   --spring-boot-version=<version>       Spring Boot version
                   --contract-group=<group>              Server API group override
                   --contract-artifact=<artifact>        Server API artifact override
-                  --contract-version=<version>          Server API version override
+                  --contract-version=<version>          Must match contract info.version
                   --contract-api-package=<package>      API package override for spec input
                   --contract-repository=<uri-or-path>   Maven repository for contract artifacts
                   --force                               Replace a non-empty output directory

@@ -2,11 +2,11 @@
 
 Versioned OpenAPI Generator template bundle for framework contract artifacts.
 
-The module is intentionally resource-only. It currently owns the corporate
-Spring HTTP interface annotation fragment used to add `@HttpApiClient` to
-generated client contracts. Additional model or server overrides belong here,
-not in Gradle task code. The module must not contain parsing, task wiring,
-publication logic, or application runtime behavior.
+The module is intentionally resource-only. It owns the corporate client
+annotation fragments used to add `@HttpApiClient` to Spring HTTP Interface
+contracts and `@FeignClient` to OpenFeign contracts. Additional model or server
+overrides belong here, not in Gradle task code. The module must not contain
+parsing, task wiring, publication logic, or application runtime behavior.
 
 ## Boundary
 

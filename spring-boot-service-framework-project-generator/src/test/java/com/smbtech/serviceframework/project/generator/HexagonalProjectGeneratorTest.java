@@ -47,13 +47,16 @@ class HexagonalProjectGeneratorTest {
         assertTrue(
                 Files.isRegularFile(
                         javaFile(output, "adapter/in/web/CustomersApiDelegateAdapter.java")));
+        assertContains(
+                javaFile(output, "adapter/in/web/OrdersApiDelegateAdapter.java"),
+                "import com.smbtech.contracts.customerorderorchestration.v2.api.OrdersApiDelegate;");
         assertTrue(Files.isRegularFile(testJavaFile(output, "HexagonalArchitectureTest.java")));
         assertFalse(Files.exists(output.resolve("src/main/resources/application.yaml")));
         assertContains(
                 output.resolve("build.gradle"), "com.tngtech.archunit:archunit-junit5:1.4.1");
         assertContains(
                 output.resolve("build.gradle"),
-                "com.smbtech.contracts:customer-order-orchestration-server-api:2.1.0");
+                "com.smbtech.contracts:customer-order-orchestration-jdk21-api:2.1.0");
         assertContains(
                 testJavaFile(output, "HexagonalArchitectureTest.java"),
                 "domain_is_framework_independent");
@@ -61,7 +64,7 @@ class HexagonalProjectGeneratorTest {
 
     @Test
     void extractsContractAndDelegateTypesFromServerApiJar() throws IOException {
-        Path jar = createServerApiJar(tempDirectory.resolve("orders-server-api.jar"));
+        Path jar = createServerApiJar(tempDirectory.resolve("orders-jdk21-api.jar"));
         Path output = tempDirectory.resolve("jar-project");
 
         GeneratedProject project =
@@ -71,10 +74,9 @@ class HexagonalProjectGeneratorTest {
                                                 new ServerApiJarSource(jar), output)
                                         .build());
 
+        assertEquals("com.example.contracts:orders-jdk21-api:1.4.0", project.serverApiCoordinate());
         assertEquals(
-                "com.example.contracts:orders-server-api:1.4.0", project.serverApiCoordinate());
-        assertEquals(
-                java.util.List.of("com.example.contracts.orders.api.OrdersApiDelegate"),
+                java.util.List.of("com.example.contracts.orders.v1.api.OrdersApiDelegate"),
                 project.delegateTypes());
         Path adapter =
                 output.resolve(
@@ -122,11 +124,30 @@ class HexagonalProjectGeneratorTest {
                 () -> HexagonalProjectGenerator.create().generate(request));
     }
 
+    @Test
+    void rejectsContractVersionThatDiffersFromInfoVersion() throws IOException {
+        ProjectGenerationRequest request =
+                ProjectGenerationRequest.builder(
+                                new OpenApiDocumentSource(fixtureSpec()),
+                                tempDirectory.resolve("version-mismatch"))
+                        .contractVersion("3.0.0")
+                        .build();
+
+        ProjectGenerationException exception =
+                assertThrows(
+                        ProjectGenerationException.class,
+                        () -> HexagonalProjectGenerator.create().generate(request));
+
+        assertTrue(exception.getMessage().contains("info.version"));
+        assertTrue(exception.getMessage().contains("2.1.0"));
+        assertTrue(exception.getMessage().contains("3.0.0"));
+    }
+
     private Path createServerApiJar(Path jar) throws IOException {
         String metadata =
                 """
                 artifact.group=com.example.contracts
-                artifact.id=orders-server-api
+                artifact.id=orders-jdk21-api
                 artifact.kind=server-api
                 contract.id=orders
                 contract.title=orders
@@ -136,7 +157,7 @@ class HexagonalProjectGeneratorTest {
         try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jar))) {
             add(output, "META-INF/smbtech/openapi/contract.properties", metadata);
             add(output, "META-INF/smbtech/openapi/contract.yaml", contract);
-            add(output, "com/example/contracts/orders/api/OrdersApiDelegate.class", "delegate");
+            add(output, "com/example/contracts/orders/v1/api/OrdersApiDelegate.class", "delegate");
         }
         return jar;
     }

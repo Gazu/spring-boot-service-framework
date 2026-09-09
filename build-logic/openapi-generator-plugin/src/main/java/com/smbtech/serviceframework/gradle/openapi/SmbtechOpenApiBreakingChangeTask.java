@@ -9,6 +9,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -95,8 +98,22 @@ public abstract class SmbtechOpenApiBreakingChangeTask extends DefaultTask {
                             .filter(File::isFile)
                             .sorted(Comparator.comparing(File::getPath))
                             .toList();
+            Map<String, Long> contractVersions =
+                    specs.stream()
+                            .map(OpenApiContractReader::read)
+                            .map(OpenApiContractIdentity::artifactBaseName)
+                            .collect(
+                                    Collectors.groupingBy(
+                                            Function.identity(), Collectors.counting()));
             for (File spec : specs) {
-                compare(spec.toPath(), baselineRoot, reportRoot, failures);
+                OpenApiContractIdentity identity = OpenApiContractReader.read(spec);
+                compare(
+                        spec.toPath(),
+                        identity,
+                        baselineRoot,
+                        reportRoot,
+                        contractVersions.get(identity.artifactBaseName()) > 1,
+                        failures);
             }
             Files.writeString(
                     reportRoot.resolve("summary.txt"),
@@ -114,9 +131,18 @@ public abstract class SmbtechOpenApiBreakingChangeTask extends DefaultTask {
         }
     }
 
-    private void compare(Path current, Path baselineRoot, Path reportRoot, List<String> failures)
+    private void compare(
+            Path current,
+            OpenApiContractIdentity identity,
+            Path baselineRoot,
+            Path reportRoot,
+            boolean includeVersionInReportName,
+            List<String> failures)
             throws IOException {
-        OpenApiContractIdentity identity = OpenApiContractReader.read(current.toFile());
+        String reportName =
+                identity.artifactBaseName()
+                        + (includeVersionInReportName ? "-" + identity.version() : "")
+                        + ".md";
         Path exact = OpenApiCompatibilitySupport.exactBaseline(baselineRoot, identity).orElse(null);
         if (exact == null) {
             if (getRequireBaseline().get()) {
@@ -138,7 +164,7 @@ public abstract class SmbtechOpenApiBreakingChangeTask extends DefaultTask {
                 OpenApiCompatibilitySupport.previousBaseline(baselineRoot, identity).orElse(null);
         if (previous == null) {
             Files.writeString(
-                    reportRoot.resolve(identity.artifactBaseName() + ".md"),
+                    reportRoot.resolve(reportName),
                     "# " + identity.title() + "\n\nNo earlier baseline was found.\n",
                     StandardCharsets.UTF_8);
             return;
@@ -149,8 +175,7 @@ public abstract class SmbtechOpenApiBreakingChangeTask extends DefaultTask {
                 OpenApiCompare.fromLocations(previous.toString(), current.toString());
         try (OutputStreamWriter writer =
                 new OutputStreamWriter(
-                        Files.newOutputStream(
-                                reportRoot.resolve(identity.artifactBaseName() + ".md")),
+                        Files.newOutputStream(reportRoot.resolve(reportName)),
                         StandardCharsets.UTF_8)) {
             new MarkdownRender().render(difference, writer);
         }

@@ -44,6 +44,7 @@ created, the current owner in this table remains canonical.
 | Gradle DSL, defaults, and tasks | `docs/openapi/plugin-reference.md` | Same plugin reference |
 | Configuration, document, coordinate, and compatibility validation | `docs/openapi/validation.md` | Same validation reference |
 | Maven publication and credentials | `docs/openapi/publishing.md` | Same publishing guide |
+| Protected contract pilot and immutable recovery | `docs/pilot/README.md` | Same pilot guide |
 | Coordinates, SemVer, baselines, and breaking changes | `docs/openapi/versioning.md` | Same versioning reference |
 | MVC contract testing and mock behavior | `docs/openapi-contract-testing.md` and `docs/mock.md` | `docs/openapi/testing.md` |
 | Hexagonal project generation | `docs/openapi/scaffolding.md` | Same scaffolding reference |
