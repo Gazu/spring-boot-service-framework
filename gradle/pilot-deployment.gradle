@@ -260,6 +260,7 @@ def verifyOpenApiPilotSmoke = tasks.register('verifyOpenApiPilotSmoke', Exec) {
             "-PpilotRepositoryUrl=${pilotSmokeRepository.get().asFile.toURI()}",
             "-PpilotFrameworkRoot=${rootDir.absolutePath}",
             "-PpilotVerificationReport=${file('build/reports/openapi-pilot/smoke-verification.json').absolutePath}",
+            '--refresh-dependencies',
             '--no-daemon',
             '--stacktrace',
             '--console=plain'
